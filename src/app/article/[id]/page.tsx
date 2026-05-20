@@ -30,19 +30,6 @@ function formatPrice(value: number | string) {
   }).format(Number(value));
 }
 
-function getWhatsAppHref(title: string) {
-  const phoneNumber = '34619148601';
-  const rawMessage = `Hola, estoy interesado en el artículo ${title}, ¿podrías darme mas información?`;
-  return `https://wa.me/${phoneNumber}?text=${encodeURIComponent(rawMessage)}`;
-}
-
-function getEmailHref(title: string) {
-  const email = 'minienginescreations@gmail.com';
-  const subject = encodeURIComponent(title);
-  const body = encodeURIComponent(`Hola, estoy interesado en el artículo ${title}. ¿Podrías darme más información? Un saludo.`);
-  return `mailto:${email}?subject=${subject}&body=${body}`;
-}
-
 export async function generateMetadata(
   { params }: { params: Promise<{ id: string }> }
 ): Promise<Metadata> {
@@ -176,33 +163,6 @@ export default async function ArticlePage({
               </div>
             </div>
 
-            <p className={styles.contactPrompt}>
-              Consulta disponibilidad y costes de envío aquí:
-            </p>
-            <div className={styles.actions}>
-              <a
-                href={getWhatsAppHref(article.title)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={styles.whatsappAction}
-              >
-                WhatsApp
-              </a>
-              <a
-                href="https://www.instagram.com/minienginescreations?igsh=MWRkMXpwYXJma2ZmYw%3D%3D&utm_source=qr"
-                target="_blank"
-                rel="noopener noreferrer"
-                className={styles.instagramAction}
-              >
-                Instagram
-              </a>
-              <a
-                href={getEmailHref(article.title)}
-                className={styles.emailAction}
-              >
-                Email
-              </a>
-            </div>
             <ShareButtons title={article.title} />
           </section>
         </div>
