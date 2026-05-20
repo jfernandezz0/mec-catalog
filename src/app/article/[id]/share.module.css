@@ -1,0 +1,83 @@
+.container {
+  margin-top: 24px;
+  border-top: 1px solid var(--border-card);
+  padding-top: 20px;
+}
+
+.label {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.buttons {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.shareBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid var(--border-card);
+  border-radius: 9px;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  padding: 11px 14px;
+  font-size: 13.5px;
+  font-weight: 800;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 150ms ease;
+}
+
+.shareBtn:hover {
+  background: var(--bg-button-white-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+}
+
+.whatsappBtn:hover {
+  border-color: #25d366;
+  color: #25d366;
+  background: rgba(37, 211, 102, 0.05);
+}
+
+.telegramBtn:hover {
+  border-color: #0088cc;
+  color: #0088cc;
+  background: rgba(0, 136, 204, 0.05);
+}
+
+.emailBtn:hover {
+  border-color: #eab308;
+  color: #eab308;
+  background: rgba(234, 179, 8, 0.05);
+}
+
+.copyBtn:hover {
+  border-color: var(--text-primary);
+}
+
+.copiedBtn {
+  background: var(--bg-available) !important;
+  color: var(--text-available) !important;
+  border-color: var(--text-available) !important;
+}
+
+.icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 480px) {
+  .buttons {
+    grid-template-columns: 1fr;
+  }
+}

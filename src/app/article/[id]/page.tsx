@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import ArticleGallery from './ArticleGallery';
+import ShareButtons from './ShareButtons';
 import styles from './article.module.css';
 
 export const revalidate = 0;
@@ -202,6 +203,7 @@ export default async function ArticlePage({
                 Email
               </a>
             </div>
+            <ShareButtons title={article.title} />
           </section>
         </div>
       </div>
