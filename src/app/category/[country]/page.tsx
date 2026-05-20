@@ -52,7 +52,10 @@ export default async function CategoryPage({
     console.error('Could not load articles:', JSON.stringify(error, null, 2));
   }
 
-  const articleItems = articles ?? [];
+  const allArticles = articles ?? [];
+  const availableArticles = allArticles.filter((a) => a.quantity > 0);
+  const soldOutArticles = allArticles.filter((a) => a.quantity === 0);
+  const articleItems = [...availableArticles, ...soldOutArticles];
   const mecLogo = getMECLogo(category.country_code);
 
   return (
@@ -86,7 +89,8 @@ export default async function CategoryPage({
             </div>
           )}
           <p className={styles.summary}>
-            {articleItems.length} artículo{articleItems.length === 1 ? '' : 's'} disponible{articleItems.length === 1 ? '' : 's'}.
+            {availableArticles.length} artículo{availableArticles.length === 1 ? '' : 's'} disponible{availableArticles.length === 1 ? '' : 's'}
+            {soldOutArticles.length > 0 && ` · ${soldOutArticles.length} agotado${soldOutArticles.length === 1 ? '' : 's'}`}.
           </p>
         </header>
 
