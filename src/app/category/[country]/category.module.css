@@ -67,7 +67,7 @@
   max-width: 320px;
   height: auto;
   object-fit: contain;
-  filter: invert(var(--logo-invert, 0));
+  filter: var(--logo-flag-filter, none);
 }
 
 .title {

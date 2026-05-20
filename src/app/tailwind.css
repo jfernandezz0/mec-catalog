@@ -26,6 +26,7 @@
 
   /* Inversion of logo */
   --logo-invert: 0;
+  --logo-flag-filter: none;
 
   /* Category card hovers default light mode */
   --cc-hover-bg-ALE: #fffbeb;
@@ -73,6 +74,7 @@
 
     /* Inversion of logo (inverts black text to white) */
     --logo-invert: 1;
+    --logo-flag-filter: invert(1) hue-rotate(180deg);
 
     /* Category card hovers dark mode adaptation (semi-transparent backgrounds, vibrant borders) */
     --cc-hover-bg-ALE: rgba(245, 158, 11, 0.12);
