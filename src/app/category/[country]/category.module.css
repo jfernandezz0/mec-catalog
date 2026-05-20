@@ -217,23 +217,131 @@
   gap: 12px;
 }
 
-.cardLogo {
+.cardShareContainer {
+  position: relative;
   flex-shrink: 0;
+}
+
+.cardShareBtn {
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-top: 2px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--border-card);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  padding: 0;
 }
 
-.cardLogoImg {
-  object-fit: contain;
-  opacity: 0.15;
-  filter: grayscale(1) invert(var(--logo-invert, 0));
-  transition: opacity 0.2s ease;
+.cardShareBtn:hover,
+.cardShareBtnActive {
+  background: var(--text-primary);
+  border-color: var(--text-primary);
+  color: var(--bg-page);
 }
 
-.card:hover .cardLogoImg {
-  opacity: 0.35;
+.shareIcon {
+  width: 14px;
+  height: 14px;
+}
+
+.iconSmall {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.cardDropdown {
+  position: absolute;
+  top: 38px;
+  right: 0;
+  width: 190px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  padding: 5px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  z-index: 50;
+  transform-origin: top right;
+  animation: slideDown 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.cardDropdownItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-primary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 120ms ease;
+  text-align: left;
+}
+
+.cardDropdownItem:hover {
+  background: var(--bg-button-white-hover);
+}
+
+.itemWhatsapp:hover {
+  color: #25d366 !important;
+}
+
+.itemTelegram:hover {
+  color: #0088cc !important;
+}
+
+.itemInstagram:hover {
+  color: #e1306c !important;
+}
+
+.itemEmail:hover {
+  color: #eab308 !important;
+}
+
+.itemCopy:hover {
+  color: var(--text-primary) !important;
+}
+
+.cardToast {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  right: 12px;
+  background: var(--text-primary);
+  color: var(--bg-page);
+  font-size: 11px;
+  font-weight: 800;
+  padding: 6px 10px;
+  border-radius: 6px;
+  text-align: center;
+  animation: fadeInOut 2.5s ease forwards;
+  pointer-events: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 60;
 }
 
 .cardTitle {
