@@ -210,6 +210,32 @@
   padding: 16px;
 }
 
+.titleRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.cardLogo {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 2px;
+}
+
+.cardLogoImg {
+  object-fit: contain;
+  opacity: 0.15;
+  filter: grayscale(1) invert(var(--logo-invert, 0));
+  transition: opacity 0.2s ease;
+}
+
+.card:hover .cardLogoImg {
+  opacity: 0.35;
+}
+
 .cardTitle {
   display: flex;
   flex-direction: column;
