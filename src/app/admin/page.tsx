@@ -21,6 +21,7 @@ type Article = {
   price: number | string;
   quantity: number;
   image_urls: string[] | null;
+  sort_order: number;
 };
 
 type FormState = {
@@ -124,8 +125,8 @@ export default function AdminPage() {
     setLoadingArticles(true);
     const { data, error } = await supabase
       .from('articles')
-      .select('id, category_id, title, description, price, quantity, image_urls')
-      .order('id', { ascending: false });
+      .select('id, category_id, title, description, price, quantity, image_urls, sort_order')
+      .order('sort_order', { ascending: true });
 
     if (error) {
       alert(`Could not load articles: ${error.message}`);
@@ -188,6 +189,42 @@ export default function AdminPage() {
   function handleDeleteExistingImage(url: string) {
     setExistingImageUrls((current) => current.filter((u) => u !== url));
     setImagesToDelete((current) => [...current, url]);
+  }
+
+  function moveImage(index: number, direction: 'left' | 'right') {
+    setExistingImageUrls((current) => {
+      const next = [...current];
+      const swapIndex = direction === 'left' ? index - 1 : index + 1;
+      if (swapIndex < 0 || swapIndex >= next.length) return current;
+      [next[index], next[swapIndex]] = [next[swapIndex], next[index]];
+      return next;
+    });
+  }
+
+  async function moveArticle(articleId: number, direction: 'up' | 'down') {
+    const idx = articles.findIndex((a) => a.id === articleId);
+    if (idx === -1) return;
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= articles.length) return;
+
+    const a = articles[idx];
+    const b = articles[swapIdx];
+
+    // Swap sort_order values
+    const [orderA, orderB] = [a.sort_order, b.sort_order];
+
+    await Promise.all([
+      supabase.from('articles').update({ sort_order: orderB }).eq('id', a.id),
+      supabase.from('articles').update({ sort_order: orderA }).eq('id', b.id),
+    ]);
+
+    // Update local state immediately
+    setArticles((current) => {
+      const next = [...current];
+      next[idx] = { ...a, sort_order: orderB };
+      next[swapIdx] = { ...b, sort_order: orderA };
+      return next.sort((x, y) => x.sort_order - y.sort_order);
+    });
   }
 
   async function deleteStorageImages(urls: string[]) {
@@ -617,6 +654,24 @@ export default function AdminPage() {
                         <div className={styles.cardActions}>
                           <button
                             type="button"
+                            className={styles.cardOrderButton}
+                            onClick={() => moveArticle(article.id, 'up')}
+                            aria-label="Subir"
+                            title="Subir"
+                          >
+                            ↑
+                          </button>
+                          <button
+                            type="button"
+                            className={styles.cardOrderButton}
+                            onClick={() => moveArticle(article.id, 'down')}
+                            aria-label="Bajar"
+                            title="Bajar"
+                          >
+                            ↓
+                          </button>
+                          <button
+                            type="button"
                             className={styles.cardEditButton}
                             onClick={() => startEditing(article)}
                           >
@@ -703,13 +758,13 @@ export default function AdminPage() {
               <label className={styles.field}>
                 <span className={styles.labelRow}>
                   <span>Descripción</span>
-                  <span className={styles.hint}>{formState.description.length}/200</span>
+                  <span className={styles.hint}>{formState.description.length}/250</span>
                 </span>
                 <textarea
                   name="description"
                   value={formState.description}
                   onChange={updateField}
-                  maxLength={200}
+                  maxLength={250}
                   rows={4}
                   placeholder="Detalles sobre el estado, edición limitada, extras incluidos, etc."
                   disabled={loading}
@@ -762,11 +817,11 @@ export default function AdminPage() {
 
               {/* Existing images manager (only in Edit mode) */}
               {activeTab === 'edit' && existingImageUrls.length > 0 && (
-                <div className={styles.existingImages}>
+                  <div className={styles.existingImages}>
                   <span className={styles.labelRow}>
                     <span>Imágenes guardadas</span>
                     <span className={styles.hint}>
-                      Haz clic en la X para eliminar
+                      ← → para reordenar · × para eliminar
                     </span>
                   </span>
                   <div className={styles.imageGrid}>
@@ -787,6 +842,26 @@ export default function AdminPage() {
                         >
                           ×
                         </button>
+                        <div className={styles.imageMoveButtons}>
+                          <button
+                            type="button"
+                            className={styles.imageMoveBtn}
+                            onClick={() => moveImage(index, 'left')}
+                            disabled={index === 0}
+                            title="Mover a la izquierda"
+                          >
+                            ←
+                          </button>
+                          <button
+                            type="button"
+                            className={styles.imageMoveBtn}
+                            onClick={() => moveImage(index, 'right')}
+                            disabled={index === existingImageUrls.length - 1}
+                            title="Mover a la derecha"
+                          >
+                            →
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>

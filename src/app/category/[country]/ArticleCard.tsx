@@ -101,9 +101,7 @@ export default function ArticleCard({ article }: ArticleCardProps) {
 
       <div className={styles.content}>
         <h2 className={styles.cardTitle}>{article.title}</h2>
-        <p className={styles.description}>
-          {article.description || 'Sin descripción disponible.'}
-        </p>
+
         <div className={styles.metaRow}>
           <span className={styles.price}>{formatPrice(article.price)}</span>
           <span className={styles.stock}>{article.quantity} en stock</span>

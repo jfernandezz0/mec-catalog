@@ -45,7 +45,7 @@ export default async function CategoryPage({
     .from('articles')
     .select('id, title, description, price, quantity, image_urls')
     .eq('category_id', category.id)
-    .order('id', { ascending: false })
+    .order('sort_order', { ascending: true })
     .returns<Article[]>();
 
   if (error) {

@@ -204,6 +204,9 @@
 
 .cardActions {
   margin-top: 14px;
+  display: flex;
+  gap: 6px;
+  align-items: center;
 }
 
 .cardEditButton {
@@ -225,6 +228,27 @@
 .cardEditButton:hover {
   border-color: #171717;
   background: #fafafa;
+}
+
+.cardOrderButton {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 36px;
+  height: 38px;
+  border: 1px solid #e5e5e5;
+  border-radius: 6px;
+  background: #fff;
+  color: #404040;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 150ms ease;
+  flex-shrink: 0;
+}
+
+.cardOrderButton:hover {
+  border-color: #171717;
+  background: #f5f5f5;
 }
 
 .emptyState {
@@ -404,6 +428,40 @@
 .deleteImageBadge:hover {
   background: rgb(220, 38, 38);
   transform: scale(1.1);
+}
+
+.imageMoveButtons {
+  position: absolute;
+  bottom: 3px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  gap: 2px;
+}
+
+.imageMoveBtn {
+  width: 22px;
+  height: 18px;
+  border: 0;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 150ms ease;
+}
+
+.imageMoveBtn:hover {
+  background: rgba(0, 0, 0, 0.8);
+}
+
+.imageMoveBtn:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
 }
 
 /* Upload Box */
