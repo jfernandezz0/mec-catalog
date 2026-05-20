@@ -91,7 +91,19 @@ export default async function ArticlePage({
             <p className={styles.eyebrow}>
               {category?.name ?? 'MiniEngines Creations'}
             </p>
-            <h1 className={styles.title}>{article.title}</h1>
+            {(() => {
+              const parts = article.title.split(' – ');
+              const marca = parts[0];
+              const modelo = parts.slice(1).join(' – ');
+              return modelo ? (
+                <>
+                  <p className={styles.marca}>{marca}</p>
+                  <h1 className={styles.title}>{modelo}</h1>
+                </>
+              ) : (
+                <h1 className={styles.title}>{article.title}</h1>
+              );
+            })()}
             <p className={styles.description}>
               {article.description || 'Sin descripción disponible.'}
             </p>

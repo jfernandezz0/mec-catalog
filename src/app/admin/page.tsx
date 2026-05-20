@@ -26,7 +26,8 @@ type Article = {
 
 type FormState = {
   categoryId: string;
-  title: string;
+  marca: string;
+  modelo: string;
   description: string;
   price: string;
   quantity: string;
@@ -34,7 +35,8 @@ type FormState = {
 
 const initialFormState: FormState = {
   categoryId: '',
-  title: '',
+  marca: '',
+  modelo: '',
   description: '',
   price: '',
   quantity: '1',
@@ -175,7 +177,8 @@ export default function AdminPage() {
     setEditingArticle(article);
     setFormState({
       categoryId: String(article.category_id),
-      title: article.title,
+      marca: article.title.includes(' – ') ? article.title.split(' – ')[0] : article.title,
+      modelo: article.title.includes(' – ') ? article.title.split(' – ').slice(1).join(' – ') : '',
       description: article.description ?? '',
       price: String(article.price),
       quantity: String(article.quantity),
@@ -290,7 +293,7 @@ export default function AdminPage() {
       const imageUrls = await uploadImages();
       const { error } = await supabase.from('articles').insert({
         category_id: Number(formState.categoryId),
-        title: formState.title,
+        title: `${formState.marca.trim()} – ${formState.modelo.trim()}`,
         description: formState.description,
         price,
         quantity,
@@ -334,7 +337,7 @@ export default function AdminPage() {
         .from('articles')
         .update({
           category_id: Number(formState.categoryId),
-          title: formState.title,
+          title: `${formState.marca.trim()} – ${formState.modelo.trim()}`,
           description: formState.description,
           price,
           quantity,
@@ -740,15 +743,32 @@ export default function AdminPage() {
 
               <label className={styles.field}>
                 <span className={styles.labelRow}>
-                  <span>Título</span>
-                  <span className={styles.hint}>{formState.title.length}/60</span>
+                  <span>Marca</span>
+                  <span className={styles.hint}>{formState.marca.length}/40</span>
                 </span>
                 <input
-                  name="title"
-                  value={formState.title}
+                  name="marca"
+                  value={formState.marca}
+                  onChange={updateField}
+                  maxLength={40}
+                  placeholder="Ej: Porsche, Ferrari, McLaren..."
+                  required
+                  disabled={loading}
+                  className={styles.control}
+                />
+              </label>
+
+              <label className={styles.field}>
+                <span className={styles.labelRow}>
+                  <span>Modelo</span>
+                  <span className={styles.hint}>{formState.modelo.length}/60</span>
+                </span>
+                <input
+                  name="modelo"
+                  value={formState.modelo}
                   onChange={updateField}
                   maxLength={60}
-                  placeholder="Ej: Porsche 911 GT3 RS"
+                  placeholder="Ej: 911 GT3 RS, F40, Senna..."
                   required
                   disabled={loading}
                   className={styles.control}
