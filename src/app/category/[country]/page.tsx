@@ -76,25 +76,31 @@ export default async function CategoryPage({
   const { country } = await params;
   const countryCode = country.toUpperCase();
 
-  const { data: category } = await supabase
+  const { data: category, error: categoryError } = await supabase
     .from('categories')
     .select('id, name, country_code')
     .eq('country_code', countryCode)
     .maybeSingle<Category>();
 
+  if (categoryError) {
+    console.error('Could not load category:', JSON.stringify(categoryError, null, 2));
+    throw new Error('No se pudo cargar la categoría.');
+  }
+
   if (!category) {
     notFound();
   }
 
-  const { data: articles, error } = await supabase
+  const { data: articles, error: articlesError } = await supabase
     .from('articles')
     .select('id, title, description, price, quantity, image_urls')
     .eq('category_id', category.id)
     .order('sort_order', { ascending: true })
     .returns<Article[]>();
 
-  if (error) {
-    console.error('Could not load articles:', JSON.stringify(error, null, 2));
+  if (articlesError) {
+    console.error('Could not load articles:', JSON.stringify(articlesError, null, 2));
+    throw new Error('No se pudo cargar los artículos de la categoría.');
   }
 
   const allArticles = articles ?? [];

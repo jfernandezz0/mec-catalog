@@ -90,21 +90,31 @@ export default async function ArticlePage({
     notFound();
   }
 
-  const { data: article } = await supabase
+  const { data: article, error: articleError } = await supabase
     .from('articles')
     .select('id, category_id, title, description, price, quantity, image_urls')
     .eq('id', articleId)
     .maybeSingle<Article>();
 
+  if (articleError) {
+    console.error('Could not load article:', JSON.stringify(articleError, null, 2));
+    throw new Error('No se pudo cargar el artículo.');
+  }
+
   if (!article) {
     notFound();
   }
 
-  const { data: category } = await supabase
+  const { data: category, error: categoryError } = await supabase
     .from('categories')
     .select('name, country_code')
     .eq('id', article.category_id)
     .maybeSingle<Category>();
+
+  if (categoryError) {
+    console.error('Could not load category:', JSON.stringify(categoryError, null, 2));
+    throw new Error('No se pudo cargar la categoría asociada al artículo.');
+  }
 
   const categoryHref = category
     ? `/category/${category.country_code.toLowerCase()}`

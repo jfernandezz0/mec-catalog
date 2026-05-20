@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import Image from "next/image";
+import ConnectionStatus from "./components/ConnectionStatus";
 import "./tailwind.css";
 
 const jakarta = Plus_Jakarta_Sans({
@@ -48,6 +49,7 @@ export default function RootLayout({
   return (
     <html lang="es" className={jakarta.className}>
       <body className="bg-[color:var(--bg-page)] text-[color:var(--text-primary)] antialiased flex flex-col min-h-screen">
+        <ConnectionStatus />
         <div className="flex-1">
           {children}
         </div>
