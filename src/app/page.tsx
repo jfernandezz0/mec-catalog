@@ -10,6 +10,14 @@ type IconProps = SVGProps<SVGSVGElement> & {
   size?: number;
 };
 
+type Category = {
+  id: number;
+  name: string;
+  country_code: string;
+  is_visible?: boolean;
+  articles?: Array<{ count: number }>;
+};
+
 function Instagram({ size = 24, ...props }: IconProps) {
   return (
     <svg
@@ -32,18 +40,42 @@ function Instagram({ size = 24, ...props }: IconProps) {
 }
 
 export default async function Home() {
-  // Fetch categories with their article count
+  // Fetch categories with their article count, filtering hidden categories if the field exists.
+  let categoryList: Category[] = [];
+  let shouldFilterVisibility = false;
+
   const { data: categories, error } = await supabase
     .from('categories')
-    .select('*, articles(count)')
+    .select('id, name, country_code, is_visible, articles(count)')
     .order('id', { ascending: true });
 
   if (error) {
-    console.error("Detalle del error de red:", JSON.stringify(error, null, 2));
+    if (error.message.includes('is_visible')) {
+      const { data: fallbackCategories, error: fallbackError } = await supabase
+        .from('categories')
+        .select('id, name, country_code, articles(count)')
+        .order('id', { ascending: true });
+
+      if (fallbackError) {
+        console.error('Fallback error al cargar categorías:', JSON.stringify(fallbackError, null, 2));
+      }
+
+      categoryList = fallbackCategories ?? [];
+    } else {
+      console.error('Detalle del error de red:', JSON.stringify(error, null, 2));
+      categoryList = categories ?? [];
+    }
+  } else {
+    categoryList = categories ?? [];
+    shouldFilterVisibility = true;
+  }
+
+  if (shouldFilterVisibility) {
+    categoryList = categoryList.filter((category) => category.is_visible !== false);
   }
 
   // Sort by article count descending
-  const sorted = (categories ?? []).sort((a, b) => {
+  const sorted = categoryList.sort((a, b) => {
     const countA = Array.isArray(a.articles) ? a.articles[0]?.count ?? 0 : 0;
     const countB = Array.isArray(b.articles) ? b.articles[0]?.count ?? 0 : 0;
     return countB - countA;

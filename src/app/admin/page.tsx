@@ -11,6 +11,7 @@ type Category = {
   id: number;
   name: string;
   country_code: string;
+  is_visible?: boolean;
 };
 
 type Article = {
@@ -84,7 +85,7 @@ export default function AdminPage() {
   const [categoryName, setCategoryName] = useState('');
   const [categoryCode, setCategoryCode] = useState('');
   const [categoryLoading, setCategoryLoading] = useState(false);
-  const [categoryDeletingId, setCategoryDeletingId] = useState<number | null>(null);
+  const [categoryUpdatingId, setCategoryUpdatingId] = useState<number | null>(null);
 
   useEffect(() => {
     async function getSession() {
@@ -109,7 +110,7 @@ export default function AdminPage() {
     async function loadCategories() {
       const { data, error } = await supabase
         .from('categories')
-        .select('id, name, country_code')
+        .select('id, name, country_code, is_visible')
         .order('id', { ascending: true });
 
       if (error) {
@@ -419,6 +420,7 @@ export default function AdminPage() {
           {
             name: categoryName.trim(),
             country_code: codeClean,
+            is_visible: true,
           },
         ]);
 
@@ -440,7 +442,7 @@ export default function AdminPage() {
   async function reloadCategories() {
     const { data: catData, error: catError } = await supabase
       .from('categories')
-      .select('id, name, country_code')
+      .select('id, name, country_code, is_visible')
       .order('id', { ascending: true });
 
     if (catError) {
@@ -450,28 +452,24 @@ export default function AdminPage() {
     setCategories(catData ?? []);
   }
 
-  async function handleDeleteCategory(categoryId: number) {
-    const confirmed = confirm('¿Seguro que deseas eliminar esta categoría? Esta acción no se puede deshacer.');
-    if (!confirmed) return;
-
-    setCategoryDeletingId(categoryId);
+  async function handleToggleCategoryVisibility(categoryId: number, currentVisibility: boolean | undefined) {
+    setCategoryUpdatingId(categoryId);
 
     try {
       const { error } = await supabase
         .from('categories')
-        .delete()
+        .update({ is_visible: !currentVisibility })
         .eq('id', categoryId);
 
       if (error) {
         throw new Error(error.message);
       }
 
-      alert('Categoría eliminada correctamente.');
       await reloadCategories();
     } catch (error) {
-      alert(error instanceof Error ? error.message : 'Error al eliminar la categoría.');
+      alert(error instanceof Error ? error.message : 'Error al actualizar la visibilidad.');
     } finally {
-      setCategoryDeletingId(null);
+      setCategoryUpdatingId(null);
     }
   }
 
@@ -1080,15 +1078,22 @@ export default function AdminPage() {
                         <div className={styles.categoryInfo}>
                           <span className={styles.categoryNameText}>{cat.name}</span>
                           <span className={styles.categoryCodeText}>{cat.country_code}</span>
+                          {!cat.is_visible && (
+                            <span className={styles.categoryHiddenBadge}>Oculta</span>
+                          )}
                         </div>
                         <button
                           type="button"
-                          className={styles.dangerButton}
-                          onClick={() => handleDeleteCategory(cat.id)}
-                          disabled={categoryDeletingId === cat.id}
+                          className={styles.secondaryButton}
+                          onClick={() => handleToggleCategoryVisibility(cat.id, cat.is_visible)}
+                          disabled={categoryUpdatingId === cat.id}
                           style={{ marginLeft: 'auto' }}
                         >
-                          {categoryDeletingId === cat.id ? 'Eliminando...' : 'Eliminar'}
+                          {categoryUpdatingId === cat.id
+                            ? 'Guardando...'
+                            : cat.is_visible === false
+                            ? 'Mostrar'
+                            : 'Ocultar'}
                         </button>
                       </div>
                     ))}
