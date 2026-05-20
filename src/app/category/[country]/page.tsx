@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { getFlagEmoji, getMECLogo } from '@/lib/utils';
+import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -22,6 +23,50 @@ type Article = {
   quantity: number;
   image_urls: string[] | null;
 };
+
+export async function generateMetadata(
+  { params }: { params: Promise<{ country: string }> }
+): Promise<Metadata> {
+  const { country } = await params;
+
+  const { data: category } = await supabase
+    .from('categories')
+    .select('id, name, country_code')
+    .eq('country_code', country.toUpperCase())
+    .single();
+
+  if (!category) return { title: 'Categoría | MiniEngines Creations' };
+
+  const flag = getFlagEmoji(category.country_code);
+  const title = `${flag} ${category.name} | MiniEngines Creations`;
+  const description = `Explora el catálogo de artículos de ${category.name} en MiniEngines Creations.`;
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      url: `https://mec-catalog.vercel.app/category/${country}`,
+      siteName: 'MiniEngines Creations',
+      type: 'website',
+      images: [
+        {
+          url: 'https://mec-catalog.vercel.app/logo.png',
+          width: 800,
+          height: 300,
+          alt: `MiniEngines Creations — ${category.name}`,
+        },
+      ],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+    },
+  };
+}
+
 
 export default async function CategoryPage({
   params,

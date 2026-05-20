@@ -11,10 +11,32 @@ const jakarta = Plus_Jakarta_Sans({
 
 export const metadata: Metadata = {
   title: "MiniEngines Creations",
-  description: "Catálogo digital de artículos y ediciones limitadas.",
+  description: "Catálogo digital de artículos y ediciones limitadas de miniaturas de coches.",
   icons: {
     icon: "/logo_mini.png",
     apple: "/logo_mini.png",
+  },
+  openGraph: {
+    title: "MiniEngines Creations",
+    description: "Catálogo digital de artículos y ediciones limitadas de miniaturas de coches.",
+    url: "https://mec-catalog.vercel.app",
+    siteName: "MiniEngines Creations",
+    locale: "es_ES",
+    type: "website",
+    images: [
+      {
+        url: "https://mec-catalog.vercel.app/logo.png",
+        width: 800,
+        height: 300,
+        alt: "MiniEngines Creations",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "MiniEngines Creations",
+    description: "Catálogo digital de artículos y ediciones limitadas de miniaturas de coches.",
+    images: ["https://mec-catalog.vercel.app/logo.png"],
   },
 };
 

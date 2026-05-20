@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import ArticleGallery from './ArticleGallery';
@@ -40,6 +41,54 @@ function getEmailHref(title: string) {
   const body = encodeURIComponent(`Hola, estoy interesado en el artículo ${title}. ¿Podrías darme más información? Un saludo.`);
   return `mailto:${email}?subject=${subject}&body=${body}`;
 }
+
+export async function generateMetadata(
+  { params }: { params: Promise<{ id: string }> }
+): Promise<Metadata> {
+  const { id } = await params;
+  const articleId = Number(id);
+
+  const { data: article } = await supabase
+    .from('articles')
+    .select('title, description, price, image_urls')
+    .eq('id', articleId)
+    .single();
+
+  if (!article) return { title: 'Artículo | MiniEngines Creations' };
+
+  const ogImage = article.image_urls?.[0] ?? 'https://mec-catalog.vercel.app/logo.png';
+  const price = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(Number(article.price));
+  const description = article.description
+    ? `${article.description} — ${price}`
+    : `${price} · MiniEngines Creations`;
+
+  return {
+    title: `${article.title} | MiniEngines Creations`,
+    description,
+    openGraph: {
+      title: article.title,
+      description,
+      url: `https://mec-catalog.vercel.app/article/${id}`,
+      siteName: 'MiniEngines Creations',
+      type: 'website',
+      images: [
+        {
+          url: ogImage,
+          width: 1200,
+          height: 630,
+          alt: article.title,
+        },
+      ],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: article.title,
+      description,
+      images: [ogImage],
+    },
+  };
+}
+
 
 export default async function ArticlePage({
   params,
