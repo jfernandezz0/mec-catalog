@@ -68,6 +68,7 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(false);
   const [loadingCategories, setLoadingCategories] = useState(true);
   const [loadingArticles, setLoadingArticles] = useState(true);
+  const [hasVisibilityColumn, setHasVisibilityColumn] = useState(true);
 
   // Edit-specific states
   const [editingArticle, setEditingArticle] = useState<Article | null>(null);
@@ -115,6 +116,7 @@ export default function AdminPage() {
 
       if (error) {
         if (error.message.includes('is_visible')) {
+          setHasVisibilityColumn(false);
           const { data: fallbackData, error: fallbackError } = await supabase
             .from('categories')
             .select('id, name, country_code')
@@ -124,13 +126,19 @@ export default function AdminPage() {
             alert(`Could not load categories: ${fallbackError.message}`);
             setCategories([]);
           } else {
-            setCategories(fallbackData ?? []);
+            setCategories(
+              (fallbackData ?? []).map((category) => ({
+                ...category,
+                is_visible: true,
+              }))
+            );
           }
         } else {
           alert(`Could not load categories: ${error.message}`);
           setCategories([]);
         }
       } else {
+        setHasVisibilityColumn(true);
         setCategories(data ?? []);
       }
 
@@ -479,6 +487,7 @@ export default function AdminPage() {
 
     if (catError) {
       if (catError.message.includes('is_visible')) {
+        setHasVisibilityColumn(false);
         const { data: fallbackCatData, error: fallbackCatError } = await supabase
           .from('categories')
           .select('id, name, country_code')
@@ -488,13 +497,19 @@ export default function AdminPage() {
           throw new Error(fallbackCatError.message);
         }
 
-        setCategories(fallbackCatData ?? []);
+        setCategories(
+          (fallbackCatData ?? []).map((category) => ({
+            ...category,
+            is_visible: true,
+          }))
+        );
         return;
       }
 
       throw new Error(catError.message);
     }
 
+    setHasVisibilityColumn(true);
     setCategories(catData ?? []);
   }
 
@@ -1121,35 +1136,44 @@ export default function AdminPage() {
               <div className={styles.categoryListCard}>
                 <h2 className={styles.sectionTitle}>Países y Categorías Activas</h2>
                 {categories.length > 0 ? (
-                  <div className={styles.categoryGridCompact}>
-                    {categories.map((cat) => (
-                      <div key={cat.id} className={styles.categoryRow}>
-                        <span className={styles.categoryFlag}>
-                          {getFlagEmoji(cat.country_code)}
-                        </span>
-                        <div className={styles.categoryInfo}>
-                          <span className={styles.categoryNameText}>{cat.name}</span>
-                          <span className={styles.categoryCodeText}>{cat.country_code}</span>
-                          {!cat.is_visible && (
-                            <span className={styles.categoryHiddenBadge}>Oculta</span>
-                          )}
+                  <>
+                    {!hasVisibilityColumn && (
+                      <p style={{ marginBottom: '12px', color: '#444', fontSize: '0.95rem' }}>
+                        La columna <strong>is_visible</strong> no existe en la tabla. Las categorías se muestran como visibles y la funcionalidad de ocultar/mostrar no está disponible hasta que se añada.
+                      </p>
+                    )}
+                    <div className={styles.categoryGridCompact}>
+                      {categories.map((cat) => (
+                        <div key={cat.id} className={styles.categoryRow}>
+                          <span className={styles.categoryFlag}>
+                            {getFlagEmoji(cat.country_code)}
+                          </span>
+                          <div className={styles.categoryInfo}>
+                            <span className={styles.categoryNameText}>{cat.name}</span>
+                            <span className={styles.categoryCodeText}>{cat.country_code}</span>
+                            {hasVisibilityColumn && cat.is_visible === false && (
+                              <span className={styles.categoryHiddenBadge}>Oculta</span>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            className={styles.secondaryButton}
+                            onClick={() => handleToggleCategoryVisibility(cat.id, cat.is_visible)}
+                            disabled={categoryUpdatingId === cat.id || !hasVisibilityColumn}
+                            style={{ marginLeft: 'auto' }}
+                          >
+                            {categoryUpdatingId === cat.id
+                              ? 'Guardando...'
+                              : !hasVisibilityColumn
+                              ? 'No disponible'
+                              : cat.is_visible === false
+                              ? 'Mostrar'
+                              : 'Ocultar'}
+                          </button>
                         </div>
-                        <button
-                          type="button"
-                          className={styles.secondaryButton}
-                          onClick={() => handleToggleCategoryVisibility(cat.id, cat.is_visible)}
-                          disabled={categoryUpdatingId === cat.id}
-                          style={{ marginLeft: 'auto' }}
-                        >
-                          {categoryUpdatingId === cat.id
-                            ? 'Guardando...'
-                            : cat.is_visible === false
-                            ? 'Mostrar'
-                            : 'Ocultar'}
-                        </button>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  </>
                 ) : (
                   <p className={styles.emptyText}>No hay categorías creadas.</p>
                 )}
