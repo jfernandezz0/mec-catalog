@@ -13,8 +13,8 @@ export const metadata: Metadata = {
   title: "MiniEngines Creations",
   description: "Catálogo digital de artículos y ediciones limitadas de miniaturas de coches.",
   icons: {
-    icon: "/logo_mini.png",
-    apple: "/logo_mini.png",
+    icon: "/MEC_square.png",
+    apple: "/MEC_square.png",
   },
   openGraph: {
     title: "MiniEngines Creations",
