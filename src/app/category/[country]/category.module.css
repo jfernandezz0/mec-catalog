@@ -121,20 +121,19 @@
 .imageButton {
   position: absolute;
   top: 50%;
-  display: grid;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 34px;
   height: 34px;
   transform: translateY(-50%);
-  place-items: center;
   border: 0;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.92);
   color: #171717;
   cursor: pointer;
-  font-size: 26px;
-  font-weight: 800;
-  line-height: 1;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+  transition: background 150ms ease;
 }
 
 .imageButton:hover {
@@ -162,25 +161,32 @@
 }
 
 .dots {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
-  justify-content: center;
-  gap: 7px;
-  border-bottom: 1px solid #eeeeee;
-  padding: 10px 12px 0;
+  gap: 6px;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.28);
+  padding: 5px 8px;
+  border-radius: 999px;
 }
 
 .dot {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border: 0;
   border-radius: 999px;
-  background: #d4d4d4;
+  background: rgba(255, 255, 255, 0.55);
   cursor: pointer;
   padding: 0;
+  transition: background 150ms ease, transform 150ms ease;
 }
 
 .dotActive {
-  background: #171717;
+  background: #fff;
+  transform: scale(1.2);
 }
 
 .content {
