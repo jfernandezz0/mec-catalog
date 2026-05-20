@@ -74,25 +74,25 @@
 .imageButton {
   position: absolute;
   top: 50%;
-  display: grid;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 42px;
   height: 42px;
   transform: translateY(-50%);
-  place-items: center;
   border: 0;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.93);
   color: #171717;
   cursor: pointer;
-  font-size: 30px;
-  font-weight: 900;
-  line-height: 1;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  transition: background 150ms ease;
 }
 
 .imageButton:hover {
   background: #fff;
 }
+
 
 .prevButton {
   left: 14px;
