@@ -104,7 +104,9 @@ export default function ArticleCard({ article }: ArticleCardProps) {
 
         <div className={styles.metaRow}>
           <span className={styles.price}>{formatPrice(article.price)}</span>
-          <span className={styles.stock}>{article.quantity} en stock</span>
+          <span className={article.quantity === 0 ? styles.stockOut : styles.stock}>
+            {article.quantity === 0 ? 'Agotado' : `${article.quantity} en stock`}
+          </span>
         </div>
         <Link href={`/article/${article.id}`} className={styles.detailLink}>
           Ver ficha
