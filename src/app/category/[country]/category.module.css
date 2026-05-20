@@ -94,7 +94,7 @@
 }
 
 .card {
-  overflow: hidden;
+  overflow: visible;
   border: 1px solid var(--border-card);
   border-radius: 12px;
   background: var(--bg-card);
@@ -312,10 +312,6 @@
 
 .itemTelegram:hover {
   color: #0088cc !important;
-}
-
-.itemInstagram:hover {
-  color: #e1306c !important;
 }
 
 .itemEmail:hover {
