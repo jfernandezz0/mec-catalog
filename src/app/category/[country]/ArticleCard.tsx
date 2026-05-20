@@ -100,7 +100,19 @@ export default function ArticleCard({ article }: ArticleCardProps) {
       )}
 
       <div className={styles.content}>
-        <h2 className={styles.cardTitle}>{article.title}</h2>
+        {(() => {
+          const parts = article.title.split(' – ');
+          const marca = parts[0];
+          const modelo = parts.slice(1).join(' – ');
+          return modelo ? (
+            <h2 className={styles.cardTitle}>
+              <span className={styles.cardMarca}>{marca}</span>
+              <span className={styles.cardModelo}>{modelo}</span>
+            </h2>
+          ) : (
+            <h2 className={styles.cardTitle}>{article.title}</h2>
+          );
+        })()}
 
         <div className={styles.metaRow}>
           <span className={styles.price}>{formatPrice(article.price)}</span>

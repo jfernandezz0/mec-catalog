@@ -645,7 +645,19 @@ export default function AdminPage() {
                       </div>
                       <div className={styles.cardContent}>
                         <span className={styles.cardCategory}>{categoryName}</span>
-                        <h2 className={styles.cardTitle}>{article.title}</h2>
+                        {(() => {
+                          const parts = article.title.split(' – ');
+                          const marca = parts[0];
+                          const modelo = parts.slice(1).join(' – ');
+                          return modelo ? (
+                            <h2 className={styles.cardTitle}>
+                              <span className={styles.cardBrand}>{marca}</span>
+                              <span>{modelo}</span>
+                            </h2>
+                          ) : (
+                            <h2 className={styles.cardTitle}>{article.title}</h2>
+                          );
+                        })()}
                         <div className={styles.cardMeta}>
                           <span className={styles.cardPrice}>
                             {formatPrice(article.price)}
