@@ -4,19 +4,19 @@ import { getFlagEmoji } from '@/lib/utils';
 import Link from 'next/link';
 import { useState } from 'react';
 
-// Soft hover tones per country code, inspired by each flag's dominant colour
+// Soft hover tones per country code, inspired by each flag's dominant colour (uses CSS variables for dark mode support)
 const hoverStyles: Record<string, { bg: string; border: string }> = {
-  ALE: { bg: '#fffbeb', border: '#f59e0b' },   // Germany – amber/gold
-  JAP: { bg: '#fef2f2', border: '#f87171' },   // Japan – red
-  ITA: { bg: '#f0fdf4', border: '#4ade80' },   // Italy – green
-  USA: { bg: '#eff6ff', border: '#60a5fa' },   // USA – blue
-  FRA: { bg: '#eff6ff', border: '#3b82f6' },   // France – blue
-  UK:  { bg: '#eef2ff', border: '#818cf8' },   // UK – indigo
-  CRO: { bg: '#fef2f2', border: '#f87171' },   // Croatia – red
-  SUE: { bg: '#fefce8', border: '#facc15' },   // Sweden – yellow
+  ALE: { bg: 'var(--cc-hover-bg-ALE, #fffbeb)', border: 'var(--cc-hover-border-ALE, #f59e0b)' },   // Germany
+  JAP: { bg: 'var(--cc-hover-bg-JAP, #fef2f2)', border: 'var(--cc-hover-border-JAP, #f87171)' },   // Japan
+  ITA: { bg: 'var(--cc-hover-bg-ITA, #f0fdf4)', border: 'var(--cc-hover-border-ITA, #4ade80)' },   // Italy
+  USA: { bg: 'var(--cc-hover-bg-USA, #eff6ff)', border: 'var(--cc-hover-border-USA, #60a5fa)' },   // USA
+  FRA: { bg: 'var(--cc-hover-bg-FRA, #eff6ff)', border: 'var(--cc-hover-border-FRA, #3b82f6)' },   // France
+  UK:  { bg: 'var(--cc-hover-bg-UK, #eef2ff)',  border: 'var(--cc-hover-border-UK, #818cf8)' },    // UK
+  CRO: { bg: 'var(--cc-hover-bg-CRO, #fef2f2)', border: 'var(--cc-hover-border-CRO, #f87171)' },   // Croatia
+  SUE: { bg: 'var(--cc-hover-bg-SUE, #fefce8)', border: 'var(--cc-hover-border-SUE, #facc15)' },   // Sweden
 };
 
-const defaultStyle = { bg: '#f9fafb', border: '#d1d5db' };
+const defaultStyle = { bg: 'var(--bg-page, #f9fafb)', border: 'var(--border-card, #d1d5db)' };
 
 type Category = {
   id: number;
@@ -33,8 +33,8 @@ export default function CategoryCard({ category }: { category: Category }) {
       href={`/category/${category.country_code.toLowerCase()}`}
       className="p-4 h-28 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm text-center border transition-all duration-200"
       style={{
-        backgroundColor: hovered ? style.bg : '#ffffff',
-        borderColor: hovered ? style.border : '#e5e7eb',
+        backgroundColor: hovered ? style.bg : 'var(--bg-card, #ffffff)',
+        borderColor: hovered ? style.border : 'var(--border-card, #e5e7eb)',
         transform: hovered ? 'translateY(-2px) scale(1.03)' : 'translateY(0) scale(1)',
         boxShadow: hovered
           ? '0 8px 24px -4px rgba(0,0,0,0.12)'
@@ -44,7 +44,7 @@ export default function CategoryCard({ category }: { category: Category }) {
       onMouseLeave={() => setHovered(false)}
     >
       <span className="text-3xl">{getFlagEmoji(category.country_code)}</span>
-      <span className="text-sm font-semibold tracking-wide text-neutral-700">
+      <span className="text-sm font-semibold tracking-wide text-[color:var(--text-primary)] opacity-90">
         {category.name}
       </span>
     </Link>

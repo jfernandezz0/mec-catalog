@@ -50,7 +50,7 @@ export default async function Home() {
   });
 
   return (
-    <main className="min-h-screen p-6 max-w-2xl mx-auto font-sans bg-neutral-50">
+    <main className="min-h-screen p-6 max-w-2xl mx-auto font-sans bg-[color:var(--bg-page)] text-[color:var(--text-primary)]">
       <header className="text-center mb-10 mt-8">
         <div className="flex justify-center mb-4">
           <Image
@@ -59,10 +59,10 @@ export default async function Home() {
             width={320}
             height={120}
             priority
-            style={{ width: '100%', maxWidth: '320px', height: 'auto' }}
+            style={{ width: '100%', maxWidth: '320px', height: 'auto', filter: 'invert(var(--logo-invert, 0))' }}
           />
         </div>
-        <p className="text-neutral-500 text-sm">
+        <p className="text-[color:var(--text-secondary)] text-sm">
           Catálogo digital de artículos y ediciones limitadas.
         </p>
       </header>
@@ -72,7 +72,7 @@ export default async function Home() {
           href="https://www.instagram.com/minienginescreations"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-neutral-800 hover:text-pink-600 transition-colors"
+          className="text-[color:var(--text-primary)] opacity-85 hover:text-pink-600 transition-all"
           aria-label="Visitar Instagram de MiniEngines Creations"
         >
           <Instagram size={28} />
@@ -80,7 +80,7 @@ export default async function Home() {
       </div>
 
       <section>
-        <h2 className="text-lg font-semibold mb-4 text-center">Categorías</h2>
+        <h2 className="text-lg font-semibold mb-4 text-center text-[color:var(--text-primary)]">Categorías</h2>
         {/* 2 columns on mobile, 4 on md+ */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {sorted.map((category) => (

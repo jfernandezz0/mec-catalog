@@ -47,17 +47,17 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" className={jakarta.className}>
-      <body className="bg-neutral-50 text-neutral-900 antialiased flex flex-col min-h-screen">
+      <body className="bg-[color:var(--bg-page)] text-[color:var(--text-primary)] antialiased flex flex-col min-h-screen">
         <div className="flex-1">
           {children}
         </div>
-        <footer className="py-8 flex flex-col items-center gap-2 border-t border-neutral-100">
+        <footer className="py-8 flex flex-col items-center gap-2 border-t border-[color:var(--border-card)]">
           <Image
             src="/logo_txt.png"
             alt="MiniEngines Creations"
             width={200}
             height={40}
-            style={{ height: 'auto', opacity: 0.35 }}
+            style={{ height: 'auto', opacity: 0.35, filter: 'invert(var(--logo-invert, 0))' }}
           />
         </footer>
       </body>
