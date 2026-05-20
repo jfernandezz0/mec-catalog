@@ -116,8 +116,10 @@ export default async function ArticlePage({
                 </span>
               </div>
               <div className={styles.fact}>
-                <span className={styles.factLabel}>Disponibles</span>
-                <span className={styles.factValue}>{article.quantity}</span>
+                <span className={styles.factLabel}>Estado</span>
+                <span className={article.quantity === 0 ? styles.stockOut : styles.stockIn}>
+                  {article.quantity === 0 ? 'Agotado' : 'Disponible'}
+                </span>
               </div>
             </div>
 

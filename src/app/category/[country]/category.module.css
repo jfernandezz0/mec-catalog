@@ -243,6 +243,15 @@
   font-weight: 800;
 }
 
+.stockIn {
+  border-radius: 999px;
+  background: #f0fdf4;
+  color: #16a34a;
+  padding: 6px 9px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .stockOut {
   border-radius: 999px;
   background: #fef2f2;
