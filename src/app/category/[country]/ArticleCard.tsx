@@ -85,13 +85,15 @@ export default function ArticleCard({ article, index }: ArticleCardProps) {
       <div className={styles.imageWrap}>
         {imageUrl ? (
           <>
-            <Image
-              src={imageUrl}
-              alt={`${article.title} image ${currentImage + 1}`}
-              fill
-              sizes="(max-width: 560px) 100vw, (max-width: 820px) 50vw, 33vw"
-              className={styles.image}
-            />
+            <Link href={`/article/${article.id}`} className={styles.imageLink} aria-label={`Ver ficha de ${article.title}`}>
+              <Image
+                src={imageUrl}
+                alt={`${article.title} image ${currentImage + 1}`}
+                fill
+                sizes="(max-width: 560px) 100vw, (max-width: 820px) 50vw, 33vw"
+                className={styles.image}
+              />
+            </Link>
 
             {hasMultipleImages && (
               <>
