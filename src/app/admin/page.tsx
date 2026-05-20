@@ -84,6 +84,7 @@ export default function AdminPage() {
   const [categoryName, setCategoryName] = useState('');
   const [categoryCode, setCategoryCode] = useState('');
   const [categoryLoading, setCategoryLoading] = useState(false);
+  const [categoryDeletingId, setCategoryDeletingId] = useState<number | null>(null);
 
   useEffect(() => {
     async function getSession() {
@@ -428,21 +429,49 @@ export default function AdminPage() {
       alert('Categoría creada correctamente.');
       setCategoryName('');
       setCategoryCode('');
-      
-      // Reload categories list
-      const { data: catData, error: catError } = await supabase
-        .from('categories')
-        .select('id, name, country_code')
-        .order('id', { ascending: true });
-
-      if (catError) {
-        throw new Error(catError.message);
-      }
-      setCategories(catData ?? []);
+      await reloadCategories();
     } catch (error) {
       alert(error instanceof Error ? error.message : 'Error al crear la categoría.');
     } finally {
       setCategoryLoading(false);
+    }
+  }
+
+  async function reloadCategories() {
+    const { data: catData, error: catError } = await supabase
+      .from('categories')
+      .select('id, name, country_code')
+      .order('id', { ascending: true });
+
+    if (catError) {
+      throw new Error(catError.message);
+    }
+
+    setCategories(catData ?? []);
+  }
+
+  async function handleDeleteCategory(categoryId: number) {
+    const confirmed = confirm('¿Seguro que deseas eliminar esta categoría? Esta acción no se puede deshacer.');
+    if (!confirmed) return;
+
+    setCategoryDeletingId(categoryId);
+
+    try {
+      const { error } = await supabase
+        .from('categories')
+        .delete()
+        .eq('id', categoryId);
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      alert('Categoría eliminada correctamente.');
+      await reloadCategories();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Error al eliminar la categoría.');
+    } finally {
+      setCategoryDeletingId(null);
     }
   }
 
@@ -1052,6 +1081,15 @@ export default function AdminPage() {
                           <span className={styles.categoryNameText}>{cat.name}</span>
                           <span className={styles.categoryCodeText}>{cat.country_code}</span>
                         </div>
+                        <button
+                          type="button"
+                          className={styles.dangerButton}
+                          onClick={() => handleDeleteCategory(cat.id)}
+                          disabled={categoryDeletingId === cat.id}
+                          style={{ marginLeft: 'auto' }}
+                        >
+                          {categoryDeletingId === cat.id ? 'Eliminando...' : 'Eliminar'}
+                        </button>
                       </div>
                     ))}
                   </div>
