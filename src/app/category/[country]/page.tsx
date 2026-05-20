@@ -141,8 +141,8 @@ export default async function CategoryPage({
 
         {articleItems.length > 0 ? (
           <section className={styles.grid}>
-            {articleItems.map((article) => (
-              <ArticleCard article={article} key={article.id} />
+            {articleItems.map((article, index) => (
+              <ArticleCard article={article} key={article.id} index={index} />
             ))}
           </section>
         ) : (

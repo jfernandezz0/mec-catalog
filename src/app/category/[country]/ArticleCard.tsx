@@ -14,6 +14,7 @@ type ArticleCardProps = {
     quantity: number;
     image_urls: string[] | null;
   };
+  index?: number;
 };
 
 function formatPrice(value: number | string) {
@@ -23,7 +24,7 @@ function formatPrice(value: number | string) {
   }).format(Number(value));
 }
 
-export default function ArticleCard({ article }: ArticleCardProps) {
+export default function ArticleCard({ article, index }: ArticleCardProps) {
   const imageUrls = article.image_urls?.filter(Boolean) ?? [];
   const [currentImage, setCurrentImage] = useState(0);
   const imageUrl = imageUrls[currentImage];
@@ -42,7 +43,10 @@ export default function ArticleCard({ article }: ArticleCardProps) {
   }
 
   return (
-    <article className={styles.card}>
+    <article 
+      className={styles.card}
+      style={index !== undefined ? { animationDelay: `${index * 60}ms` } : undefined}
+    >
       <div className={styles.imageWrap}>
         {imageUrl ? (
           <>

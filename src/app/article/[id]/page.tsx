@@ -137,6 +137,9 @@ export default async function ArticlePage({
           <ArticleGallery imageUrls={imageUrls} title={article.title} />
 
           <section className={styles.detailsCard}>
+            <span className={styles.refCode}>
+              #MEC-{String(article.id).padStart(4, '0')}
+            </span>
             <p className={styles.eyebrow}>
               {category?.name ?? 'MiniEngines Creations'}
             </p>
