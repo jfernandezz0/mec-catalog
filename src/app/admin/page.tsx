@@ -114,10 +114,26 @@ export default function AdminPage() {
         .order('id', { ascending: true });
 
       if (error) {
-        alert(`Could not load categories: ${error.message}`);
+        if (error.message.includes('is_visible')) {
+          const { data: fallbackData, error: fallbackError } = await supabase
+            .from('categories')
+            .select('id, name, country_code')
+            .order('id', { ascending: true });
+
+          if (fallbackError) {
+            alert(`Could not load categories: ${fallbackError.message}`);
+            setCategories([]);
+          } else {
+            setCategories(fallbackData ?? []);
+          }
+        } else {
+          alert(`Could not load categories: ${error.message}`);
+          setCategories([]);
+        }
+      } else {
+        setCategories(data ?? []);
       }
 
-      setCategories(data ?? []);
       setLoadingCategories(false);
     }
 
@@ -414,18 +430,34 @@ export default function AdminPage() {
 
     try {
       const codeClean = categoryCode.toUpperCase().trim();
+      const categoryRecord: Record<string, unknown> = {
+        name: categoryName.trim(),
+        country_code: codeClean,
+      };
+
+      categoryRecord.is_visible = true;
+
       const { error } = await supabase
         .from('categories')
-        .insert([
-          {
-            name: categoryName.trim(),
-            country_code: codeClean,
-            is_visible: true,
-          },
-        ]);
+        .insert([categoryRecord]);
 
       if (error) {
-        throw new Error(error.message);
+        if (error.message.includes('is_visible')) {
+          const { error: fallbackError } = await supabase
+            .from('categories')
+            .insert([
+              {
+                name: categoryName.trim(),
+                country_code: codeClean,
+              },
+            ]);
+
+          if (fallbackError) {
+            throw new Error(fallbackError.message);
+          }
+        } else {
+          throw new Error(error.message);
+        }
       }
 
       alert('Categoría creada correctamente.');
@@ -446,6 +478,20 @@ export default function AdminPage() {
       .order('id', { ascending: true });
 
     if (catError) {
+      if (catError.message.includes('is_visible')) {
+        const { data: fallbackCatData, error: fallbackCatError } = await supabase
+          .from('categories')
+          .select('id, name, country_code')
+          .order('id', { ascending: true });
+
+        if (fallbackCatError) {
+          throw new Error(fallbackCatError.message);
+        }
+
+        setCategories(fallbackCatData ?? []);
+        return;
+      }
+
       throw new Error(catError.message);
     }
 
@@ -462,6 +508,12 @@ export default function AdminPage() {
         .eq('id', categoryId);
 
       if (error) {
+        if (error.message.includes('is_visible')) {
+          throw new Error(
+            'La columna is_visible no existe en la tabla categories. Agrega la columna para usar ocultar/mostrar.'
+          );
+        }
+
         throw new Error(error.message);
       }
 
