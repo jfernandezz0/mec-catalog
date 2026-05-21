@@ -908,12 +908,6 @@ export default function AdminPage() {
           </div>
 
           <div className={styles.headerRight}>
-            <div className={styles.status}>
-              <span className={styles.statusValue}>
-                {loadingArticles ? '...' : articles.length}
-              </span>
-              <span className={styles.statusLabel}>artículos en catálogo</span>
-            </div>
             <button
               type="button"
               onClick={handleLogout}
@@ -921,6 +915,12 @@ export default function AdminPage() {
             >
               Cerrar sesión
             </button>
+            <div className={styles.status}>
+              <span className={styles.statusValue}>
+                {loadingArticles ? '...' : articles.length}
+              </span>
+              <span className={styles.statusLabel}>artículos en catálogo</span>
+            </div>
           </div>
         </header>
 
