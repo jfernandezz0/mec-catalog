@@ -62,6 +62,61 @@ function getSafeFilePath(file: File) {
   return `articles/${fileName}`;
 }
 
+function compressImage(file: File, maxWidth = 1200, quality = 0.8): Promise<File> {
+  return new Promise((resolve) => {
+    if (typeof window === 'undefined' || !file.type.startsWith('image/')) {
+      return resolve(file);
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new window.Image();
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          return resolve(file);
+        }
+
+        ctx.drawImage(img, 0, 0, width, height);
+
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) {
+              return resolve(file);
+            }
+            const originalNameWithoutExt = file.name.replace(/\.[^/.]+$/, "");
+            const newName = `${originalNameWithoutExt}.jpg`;
+            const compressedFile = new File([blob], newName, {
+              type: 'image/jpeg',
+              lastModified: Date.now(),
+            });
+            resolve(compressedFile);
+          },
+          'image/jpeg',
+          quality
+        );
+      };
+      img.onerror = () => resolve(file);
+      img.src = event.target?.result as string;
+    };
+    reader.onerror = () => resolve(file);
+    reader.readAsDataURL(file);
+  });
+}
+
+
 function formatPrice(value: number | string) {
   return new Intl.NumberFormat('es-ES', {
     style: 'currency',
@@ -363,10 +418,11 @@ export default function AdminPage() {
     const imageUrls: string[] = [];
 
     for (const file of files) {
-      const filePath = getSafeFilePath(file);
+      const compressedFile = await compressImage(file);
+      const filePath = getSafeFilePath(compressedFile);
       const { error } = await supabase.storage
         .from('product-images')
-        .upload(filePath, file, {
+        .upload(filePath, compressedFile, {
           cacheControl: '3600',
           upsert: false,
         });
