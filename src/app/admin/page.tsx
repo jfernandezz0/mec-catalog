@@ -88,6 +88,9 @@ export default function AdminPage() {
   const [categoryLoading, setCategoryLoading] = useState(false);
   const [categoryUpdatingId, setCategoryUpdatingId] = useState<number | null>(null);
 
+  // Catalog filter state
+  const [selectedCatalogCategoryId, setSelectedCatalogCategoryId] = useState<number | null>(null);
+
   useEffect(() => {
     async function getSession() {
       const { data: { session } } = await supabase.auth.getSession();
@@ -194,6 +197,7 @@ export default function AdminPage() {
   function handleTabChange(tab: 'catalog' | 'create' | 'categories') {
     resetForm();
     setActiveTab(tab);
+    setSelectedCatalogCategoryId(null);
     if (tab === 'catalog') {
       loadArticles();
     }
@@ -230,14 +234,14 @@ export default function AdminPage() {
     });
   }
 
-  async function moveArticle(articleId: number, direction: 'up' | 'down') {
-    const idx = articles.findIndex((a) => a.id === articleId);
+  async function moveArticle(articleId: number, direction: 'up' | 'down', contextArticles: Article[]) {
+    const idx = contextArticles.findIndex((a) => a.id === articleId);
     if (idx === -1) return;
     const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
-    if (swapIdx < 0 || swapIdx >= articles.length) return;
+    if (swapIdx < 0 || swapIdx >= contextArticles.length) return;
 
-    const a = articles[idx];
-    const b = articles[swapIdx];
+    const a = contextArticles[idx];
+    const b = contextArticles[swapIdx];
 
     // Swap sort_order values
     const [orderA, orderB] = [a.sort_order, b.sort_order];
@@ -249,10 +253,12 @@ export default function AdminPage() {
 
     // Update local state immediately
     setArticles((current) => {
-      const next = [...current];
-      next[idx] = { ...a, sort_order: orderB };
-      next[swapIdx] = { ...b, sort_order: orderA };
-      return next.sort((x, y) => x.sort_order - y.sort_order);
+      const updated = current.map((art) => {
+        if (art.id === a.id) return { ...art, sort_order: orderB };
+        if (art.id === b.id) return { ...art, sort_order: orderA };
+        return art;
+      });
+      return updated.sort((x, y) => x.sort_order - y.sort_order);
     });
   }
 
@@ -514,15 +520,6 @@ export default function AdminPage() {
   }
 
   async function handleToggleCategoryVisibility(categoryId: number, currentVisibility: boolean | undefined) {
-    // Protect: can only hide if no articles are linked
-    if (currentVisibility !== false) {
-      const linkedCount = articles.filter((a) => a.category_id === categoryId).length;
-      if (linkedCount > 0) {
-        alert(`Esta categoría tiene ${linkedCount} artículo${linkedCount === 1 ? '' : 's'} asociado${linkedCount === 1 ? '' : 's'}. Elimina o mueve los artículos antes de ocultarla.`);
-        return;
-      }
-    }
-
     setCategoryUpdatingId(categoryId);
 
     try {
@@ -531,15 +528,7 @@ export default function AdminPage() {
         .update({ is_visible: !currentVisibility })
         .eq('id', categoryId);
 
-      if (error) {
-        if (error.message.includes('is_visible')) {
-          throw new Error(
-            'La columna is_visible no existe en la tabla categories. Agrega la columna para usar ocultar/mostrar.'
-          );
-        }
-
-        throw new Error(error.message);
-      }
+      if (error) throw new Error(error.message);
 
       await reloadCategories();
     } catch (error) {
@@ -686,11 +675,11 @@ export default function AdminPage() {
             </h1>
             <p className={styles.subtitle}>
               {activeTab === 'catalog'
-                ? 'Ver, editar o eliminar los artículos del catálogo digital.'
+                ? 'Ver, editar o eliminar los artículos y categorías del catálogo digital.'
                 : activeTab === 'create'
                 ? 'Crea un artículo, sube sus fotos y asígnalo a una categoría de país.'
                 : activeTab === 'categories'
-                ? 'Crea nuevas categorías, ocúltalas o elimínalas si no tienen artículos.'
+                ? 'Gestiona las categorías desde aquí. Puedes mostrar/ocultar y eliminar categorías.'
                 : 'Modifica los campos del artículo, gestiona sus imágenes o bórralo permanentemente.'}
             </p>
             </div>
@@ -748,108 +737,156 @@ export default function AdminPage() {
         </nav>
 
         {/* Catalog View */}
-        {activeTab === 'catalog' && (
-          <div>
-            {loadingArticles ? (
-              <div className={styles.loading}>Cargando catálogo...</div>
-            ) : articles.length > 0 ? (
-              <div className={styles.catalogGrid}>
-                {articles.map((article) => {
-                  const categoryName =
-                    categories.find((c) => c.id === article.category_id)?.name ||
-                    'Sin categoría';
-                  const primaryImageUrl =
-                    article.image_urls && article.image_urls.length > 0
-                      ? article.image_urls[0]
-                      : null;
+        {activeTab === 'catalog' && (() => {
+          const displayedArticles = selectedCatalogCategoryId === null
+            ? articles
+            : articles.filter((a) => a.category_id === selectedCatalogCategoryId);
 
-                  return (
-                    <article key={article.id} className={styles.catalogCard}>
-                      <div className={styles.cardImageWrap}>
-                        {primaryImageUrl ? (
-                          <Image
-                            src={primaryImageUrl}
-                            alt={article.title}
-                            fill
-                            sizes="(max-width: 640px) 100vw, 400px"
-                            className={styles.cardImage}
-                          />
-                        ) : (
-                          <div className={styles.cardNoImage}>Sin imagen</div>
-                        )}
-                      </div>
-                      <div className={styles.cardContent}>
-                        <span className={styles.cardCategory}>{categoryName}</span>
-                        {(() => {
-                          const parts = article.title.split(' – ');
-                          const marca = parts[0];
-                          const modelo = parts.slice(1).join(' – ');
-                          return modelo ? (
-                            <h2 className={styles.cardTitle}>
-                              <span className={styles.cardBrand}>{marca}</span>
-                              <span>{modelo}</span>
-                            </h2>
+          return (
+            <div>
+              {/* Category filter submenu */}
+              {!loadingArticles && categories.length > 0 && (
+                <div className={styles.catalogCategoryFilter}>
+                  <button
+                    type="button"
+                    className={`${styles.catalogCategoryPill} ${selectedCatalogCategoryId === null ? styles.catalogCategoryPillActive : ''}`}
+                    onClick={() => setSelectedCatalogCategoryId(null)}
+                  >
+                    Todas
+                    <span className={styles.catalogPillCount}>{articles.length}</span>
+                  </button>
+                  {categories.map((cat) => {
+                    const count = articles.filter((a) => a.category_id === cat.id).length;
+                    return (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        className={`${styles.catalogCategoryPill} ${selectedCatalogCategoryId === cat.id ? styles.catalogCategoryPillActive : ''}`}
+                        onClick={() => setSelectedCatalogCategoryId(cat.id)}
+                      >
+                        {getFlagEmoji(cat.country_code)} {cat.name}
+                        <span className={styles.catalogPillCount}>{count}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {loadingArticles ? (
+                <div className={styles.loading}>Cargando catálogo...</div>
+              ) : displayedArticles.length > 0 ? (
+                <div className={styles.catalogGrid}>
+                  {displayedArticles.map((article) => {
+                    const catName =
+                      categories.find((c) => c.id === article.category_id)?.name ||
+                      'Sin categoría';
+                    const primaryImageUrl =
+                      article.image_urls && article.image_urls.length > 0
+                        ? article.image_urls[0]
+                        : null;
+
+                    return (
+                      <article key={article.id} className={styles.catalogCard}>
+                        <div className={styles.cardImageWrap}>
+                          {primaryImageUrl ? (
+                            <Image
+                              src={primaryImageUrl}
+                              alt={article.title}
+                              fill
+                              sizes="(max-width: 640px) 100vw, 400px"
+                              className={styles.cardImage}
+                            />
                           ) : (
-                            <h2 className={styles.cardTitle}>{article.title}</h2>
-                          );
-                        })()}
-                        <div className={styles.cardMeta}>
-                          <span className={styles.cardPrice}>
-                            {formatPrice(article.price)}
-                          </span>
-                          <span className={styles.cardStock}>
-                            {article.quantity} ud.
-                          </span>
+                            <div className={styles.cardNoImage}>Sin imagen</div>
+                          )}
                         </div>
-                        <div className={styles.cardActions}>
-                          <button
-                            type="button"
-                            className={styles.cardOrderButton}
-                            onClick={() => moveArticle(article.id, 'up')}
-                            aria-label="Subir"
-                            title="Subir"
-                          >
-                            ↑
-                          </button>
-                          <button
-                            type="button"
-                            className={styles.cardOrderButton}
-                            onClick={() => moveArticle(article.id, 'down')}
-                            aria-label="Bajar"
-                            title="Bajar"
-                          >
-                            ↓
-                          </button>
-                          <button
-                            type="button"
-                            className={styles.cardEditButton}
-                            onClick={() => startEditing(article)}
-                          >
-                            Abrir Ficha / Editar
-                          </button>
+                        <div className={styles.cardContent}>
+                          <span className={styles.cardCategory}>{catName}</span>
+                          {(() => {
+                            const parts = article.title.split(' – ');
+                            const marca = parts[0];
+                            const modelo = parts.slice(1).join(' – ');
+                            return modelo ? (
+                              <h2 className={styles.cardTitle}>
+                                <span className={styles.cardBrand}>{marca}</span>
+                                <span>{modelo}</span>
+                              </h2>
+                            ) : (
+                              <h2 className={styles.cardTitle}>{article.title}</h2>
+                            );
+                          })()}
+                          <div className={styles.cardMeta}>
+                            <span className={styles.cardPrice}>
+                              {formatPrice(article.price)}
+                            </span>
+                            <span className={styles.cardStock}>
+                              {article.quantity} ud.
+                            </span>
+                          </div>
+                          <div className={styles.cardActions}>
+                            <button
+                              type="button"
+                              className={styles.cardOrderButton}
+                              onClick={() => moveArticle(article.id, 'up', displayedArticles)}
+                              aria-label="Subir"
+                              title="Subir en esta categoría"
+                            >
+                              ↑
+                            </button>
+                            <button
+                              type="button"
+                              className={styles.cardOrderButton}
+                              onClick={() => moveArticle(article.id, 'down', displayedArticles)}
+                              aria-label="Bajar"
+                              title="Bajar en esta categoría"
+                            >
+                              ↓
+                            </button>
+                            <button
+                              type="button"
+                              className={styles.cardEditButton}
+                              onClick={() => startEditing(article)}
+                            >
+                              Abrir Ficha / Editar
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    </article>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className={styles.emptyState}>
-                <h2 className={styles.emptyTitle}>Catálogo vacío</h2>
-                <p className={styles.emptyText}>
-                  Aún no has añadido ningún artículo al catálogo digital.
-                </p>
-                <button
-                  type="button"
-                  className={styles.emptyButton}
-                  onClick={() => setActiveTab('create')}
-                >
-                  Crear primer artículo
-                </button>
-              </div>
-            )}
-          </div>
-        )}
+                      </article>
+                    );
+                  })}
+                </div>
+              ) : articles.length > 0 ? (
+                <div className={styles.emptyState}>
+                  <h2 className={styles.emptyTitle}>Sin artículos en esta categoría</h2>
+                  <p className={styles.emptyText}>
+                    Aún no has añadido artículos aquí. Crea uno y asígnalo a esta categoría.
+                  </p>
+                  <button
+                    type="button"
+                    className={styles.emptyButton}
+                    onClick={() => setActiveTab('create')}
+                  >
+                    Crear artículo
+                  </button>
+                </div>
+              ) : (
+                <div className={styles.emptyState}>
+                  <h2 className={styles.emptyTitle}>Catálogo vacío</h2>
+                  <p className={styles.emptyText}>
+                    Aún no has añadido ningún artículo al catálogo digital.
+                  </p>
+                  <button
+                    type="button"
+                    className={styles.emptyButton}
+                    onClick={() => setActiveTab('create')}
+                  >
+                    Crear primer artículo
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Create/Edit Form View */}
         {(activeTab === 'create' || activeTab === 'edit') && (
@@ -925,13 +962,13 @@ export default function AdminPage() {
               <label className={styles.field}>
                 <span className={styles.labelRow}>
                   <span>Descripción</span>
-                  <span className={styles.hint}>{formState.description.length}/200</span>
+                  <span className={styles.hint}>{formState.description.length}/250</span>
                 </span>
                 <textarea
                   name="description"
                   value={formState.description}
                   onChange={updateField}
-                  maxLength={200}
+                  maxLength={250}
                   rows={4}
                   placeholder="Detalles sobre el estado, edición limitada, extras incluidos, etc."
                   disabled={loading}
@@ -1176,63 +1213,54 @@ export default function AdminPage() {
               {/* List of existing categories */}
               <div className={styles.categoryListCard}>
                 <h2 className={styles.sectionTitle}>Países y Categorías Activas</h2>
+                <p className={styles.categoryInstruction}>
+                  Gestiona las categorías desde aquí. Puedes mostrar/ocultar categorías a los usuarios, y eliminar categorías enteras (no se pueden eliminar si contienen artículos asociados).
+                </p>
                 {categories.length > 0 ? (
-                  <>
-                    {!hasVisibilityColumn && (
-                      <p style={{ marginBottom: '12px', color: '#444', fontSize: '0.95rem' }}>
-                        La columna <strong>is_visible</strong> no existe en la tabla. Las categorías se muestran como visibles y la funcionalidad de ocultar/mostrar no está disponible hasta que se añada.
-                      </p>
-                    )}
-                    <div className={styles.categoryGridCompact}>
-                      {categories.map((cat) => {
-                        const linkedCount = articles.filter((a) => a.category_id === cat.id).length;
-                        const isUpdating = categoryUpdatingId === cat.id;
-                        return (
-                          <div key={cat.id} className={styles.categoryRow}>
-                            <span className={styles.categoryFlag}>
-                              {getFlagEmoji(cat.country_code)}
-                            </span>
-                            <div className={styles.categoryInfo}>
-                              <span className={styles.categoryNameText}>{cat.name}</span>
-                              <span className={styles.categoryCodeText}>{cat.country_code}</span>
-                              {linkedCount > 0 && (
-                                <span className={styles.categoryArticlesBadge}>{linkedCount} art.</span>
-                              )}
-                              {hasVisibilityColumn && cat.is_visible === false && (
-                                <span className={styles.categoryHiddenBadge}>Oculta</span>
-                              )}
-                            </div>
-                            <div className={styles.categoryActions}>
-                              {hasVisibilityColumn && (
-                                <button
-                                  type="button"
-                                  className={styles.secondaryButton}
-                                  onClick={() => handleToggleCategoryVisibility(cat.id, cat.is_visible)}
-                                  disabled={isUpdating}
-                                  title={linkedCount > 0 && cat.is_visible !== false ? `Tiene ${linkedCount} artículo${linkedCount === 1 ? '' : 's'} — elimínalos primero para ocultar` : undefined}
-                                >
-                                  {isUpdating
-                                    ? '...'
-                                    : cat.is_visible === false
-                                    ? 'Mostrar'
-                                    : 'Ocultar'}
-                                </button>
-                              )}
-                              <button
-                                type="button"
-                                className={styles.dangerButtonSmall}
-                                onClick={() => handleDeleteCategory(cat.id, cat.name)}
-                                disabled={isUpdating}
-                                title={linkedCount > 0 ? `Tiene ${linkedCount} artículo${linkedCount === 1 ? '' : 's'} — elimínalos primero` : 'Eliminar categoría'}
-                              >
-                                Eliminar
-                              </button>
-                            </div>
+                  <div className={styles.categoryGridCompact}>
+                    {categories.map((cat) => {
+                      const linkedCount = articles.filter((a) => a.category_id === cat.id).length;
+                      const isUpdating = categoryUpdatingId === cat.id;
+                      const isHidden = hasVisibilityColumn && cat.is_visible === false;
+                      return (
+                        <div key={cat.id} className={`${styles.categoryRow} ${isHidden ? styles.categoryRowHidden : ''}`}>
+                          <span className={styles.categoryFlag}>
+                            {getFlagEmoji(cat.country_code)}
+                          </span>
+                          <div className={styles.categoryInfo}>
+                            <span className={styles.categoryNameText}>{cat.name}</span>
+                            <span className={styles.categoryCodeText}>{cat.country_code}</span>
+                            {linkedCount > 0 && (
+                              <span className={styles.categoryArticlesBadge}>{linkedCount} art.</span>
+                            )}
+                            {isHidden && (
+                              <span className={styles.categoryHiddenBadge}>Oculta</span>
+                            )}
                           </div>
-                        );
-                      })}
-                    </div>
-                  </>
+                          <div className={styles.categoryActions}>
+                            <button
+                              type="button"
+                              className={styles.secondaryButton}
+                              onClick={() => handleToggleCategoryVisibility(cat.id, cat.is_visible)}
+                              disabled={isUpdating || !hasVisibilityColumn}
+                              title={!hasVisibilityColumn ? 'Añade la columna is_visible en Supabase para activar esta función' : undefined}
+                            >
+                              {isUpdating ? '...' : isHidden ? 'Mostrar' : 'Ocultar'}
+                            </button>
+                            <button
+                              type="button"
+                              className={styles.dangerButtonSmall}
+                              onClick={() => handleDeleteCategory(cat.id, cat.name)}
+                              disabled={isUpdating}
+                              title={linkedCount > 0 ? `Tiene ${linkedCount} artículo${linkedCount === 1 ? '' : 's'} — elimínalos primero` : 'Eliminar categoría'}
+                            >
+                              Eliminar
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 ) : (
                   <p className={styles.emptyText}>No hay categorías creadas.</p>
                 )}
