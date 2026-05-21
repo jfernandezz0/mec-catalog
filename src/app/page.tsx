@@ -102,7 +102,7 @@ export default async function Home() {
       </header>
 
       <section>
-        <h2 className="text-lg font-semibold mb-4 text-center text-[color:var(--text-primary)]">Listado de creaciones por país de fabricante</h2>
+        <h2 className="text-lg font-semibold mb-4 text-center text-[color:var(--text-primary)]">Listado de creaciones por origen</h2>
         {/* 2 columns on mobile, 4 on md+ */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {sorted.map((category) => (
