@@ -136,11 +136,10 @@ export default async function CategoryPage({
           )}
 
           {mecLogo === '/logo_mini.png' && (
-            <div className={styles.titleRow} style={{ marginTop: '16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', marginTop: '16px' }}>
               <span className={styles.flag}>
                 {getFlagEmoji(category.country_code)}
               </span>
-              <h1 className={styles.title}>{category.name}</h1>
             </div>
           )}
 
