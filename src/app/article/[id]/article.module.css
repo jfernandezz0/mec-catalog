@@ -11,7 +11,29 @@
 }
 
 .topBar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 40px;
   margin-bottom: 24px;
+}
+
+.topLogo {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.topLogoImage {
+  height: 28px;
+  width: auto;
+  object-fit: contain;
 }
 
 .backLink {

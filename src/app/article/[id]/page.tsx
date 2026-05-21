@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation';
 import ArticleGallery from './ArticleGallery';
 import ShareButtons from './ShareButtons';
 import styles from './article.module.css';
+import { getMECLogo } from '@/lib/utils.server';
 
 export const revalidate = 0;
 
@@ -139,6 +140,8 @@ export default async function ArticlePage({
     ? `/category/${category.country_code.toLowerCase()}`
     : '/';
 
+  const mecLogo = category ? getMECLogo(category.country_code) : null;
+
   const imageUrls = article.image_urls?.filter(Boolean) ?? [];
 
   return (
@@ -146,8 +149,13 @@ export default async function ArticlePage({
       <div className={styles.shell}>
         <div className={styles.topBar}>
           <Link href={categoryHref} className={styles.backLink}>
-            ← Volver a {category?.name ?? 'categorías'}
+            ← Volver
           </Link>
+          {mecLogo && (
+            <div className={styles.topLogo}>
+              <img src={mecLogo} alt={category?.name || "Logo"} className={styles.topLogoImage} />
+            </div>
+          )}
         </div>
 
         <div className={styles.layout}>
