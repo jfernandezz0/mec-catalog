@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
-import { getFlagEmoji, getMECLogo } from '@/lib/utils';
+import { getFlagEmoji } from '@/lib/utils';
+import { getMECLogo } from '@/lib/utils.server';
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -119,8 +120,8 @@ export default async function CategoryPage({
           </Link>
         </div>
 
-        <header className={styles.header}>
-          {mecLogo ? (
+        <header className={`${styles.header} ${mecLogo === '/logo_mini.png' ? styles.fallbackHeader : ''}`}>
+          {mecLogo && mecLogo !== '/logo_mini.png' ? (
             <div className={styles.mecLogoWrapper}>
               <Image
                 src={mecLogo}
@@ -133,12 +134,26 @@ export default async function CategoryPage({
               />
             </div>
           ) : (
-            <div className={styles.titleRow}>
-              <span className={styles.flag}>
-                {getFlagEmoji(category.country_code)}
-              </span>
-              <h1 className={styles.title}>{category.name}</h1>
-            </div>
+            <>
+              {mecLogo && (
+                <div className={styles.fallbackLogoWrapper}>
+                  <Image
+                    src={mecLogo}
+                    alt="MiniEngines Creations"
+                    width={80}
+                    height={80}
+                    className={styles.fallbackLogo}
+                    priority
+                  />
+                </div>
+              )}
+              <div className={styles.fallbackTitleRow}>
+                <span className={styles.flag}>
+                  {getFlagEmoji(category.country_code)}
+                </span>
+                <h1 className={styles.title}>{category.name}</h1>
+              </div>
+            </>
           )}
           <p className={styles.summary}>
             {availableArticles.length} artículo{availableArticles.length === 1 ? '' : 's'} disponible{availableArticles.length === 1 ? '' : 's'}
