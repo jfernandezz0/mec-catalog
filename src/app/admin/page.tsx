@@ -1035,25 +1035,24 @@ export default function AdminPage() {
                           )}
                         </div>
                         <div className={styles.cardContent}>
-                          <span className={styles.cardCategory}>{catName}</span>
-                          {(() => {
-                            const parts = article.title.split(' – ');
-                            const marca = parts[0];
-                            const modelo = parts.slice(1).join(' – ');
-                            return modelo ? (
-                              <h2 className={styles.cardTitle}>
-                                <span className={styles.cardBrand}>{marca}</span>
-                                <span>{modelo}</span>
-                              </h2>
-                            ) : (
-                              <h2 className={styles.cardTitle}>{article.title}</h2>
-                            );
-                          })()}
-                          <div className={styles.cardMeta}>
-                            <span className={styles.cardPrice}>
-                              {formatPrice(article.price)}
-                            </span>
-                            <div className="flex gap-2 items-center">
+                          <div className={styles.cardHeader}>
+                            <div className={styles.cardInfoCol}>
+                              <span className={styles.cardCategory}>{catName}</span>
+                              {(() => {
+                                const parts = article.title.split(' – ');
+                                const marca = parts[0];
+                                const modelo = parts.slice(1).join(' – ');
+                                return modelo ? (
+                                  <h2 className={styles.cardTitle}>
+                                    <span className={styles.cardBrand}>{marca}</span>
+                                    <span>{modelo}</span>
+                                  </h2>
+                                ) : (
+                                  <h2 className={styles.cardTitle}>{article.title}</h2>
+                                );
+                              })()}
+                            </div>
+                            <div className={styles.cardStatsRow}>
                               <span className={styles.cardViews} title="Visualizaciones de la ficha">
                                 👁️ {article.views ?? 0}
                               </span>
@@ -1063,6 +1062,13 @@ export default function AdminPage() {
                               <span className={styles.cardShareClicks} title="Clics de compartir recibidos">
                                 🔗 {article.share_clicks ?? 0}
                               </span>
+                            </div>
+                          </div>
+                          <div className={styles.cardMeta}>
+                            <span className={styles.cardPrice}>
+                              {formatPrice(article.price)}
+                            </span>
+                            <div className="flex gap-2 items-center">
                               <span className={styles.cardStock}>
                                 {article.quantity} ud.
                               </span>
