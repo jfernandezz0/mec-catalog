@@ -103,8 +103,10 @@ export default function ShareButtons({ id, title }: ShareButtonsProps) {
   return (
     <div className={styles.container} ref={containerRef}>
       <p className={styles.prompt}>
-        Consulta disponibilidad del MOC de bloques.<br />
-        Todos los artículos se recogen, debido a su fragilidad, si necesitas envío consúltanos.
+        Consulta disponibilidad del MOC de bloques antes del pago.<br />
+        Se confirmará existencias lo antes posible.<br />
+        Todos los artículos se recogen debido a su fragilidad.<br />
+        Si necesitas envío consúltanos antes en nuestros canales.
       </p>
       
       <div className={styles.buttonRow}>
