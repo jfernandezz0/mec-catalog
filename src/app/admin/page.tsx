@@ -813,44 +813,49 @@ export default function AdminPage() {
 
         {/* Tabs navigation */}
         <nav className={styles.tabs} aria-label="Secciones de administración">
-          <button
-            type="button"
-            className={`${styles.tab} ${activeTab === 'catalog' ? styles.tabActive : ''}`}
-            onClick={() => handleTabChange('catalog')}
-          >
-            Catálogo
-          </button>
-          <button
-            type="button"
-            className={`${styles.tab} ${activeTab === 'create' ? styles.tabActive : ''}`}
-            onClick={() => handleTabChange('create')}
-          >
-            + Nuevo Artículo
-          </button>
-          <button
-            type="button"
-            className={`${styles.tab} ${activeTab === 'categories' ? styles.tabActive : ''}`}
-            onClick={() => handleTabChange('categories')}
-          >
-            Categorías
-          </button>
-          <button
-            type="button"
-            className={`${styles.tab} ${activeTab === 'import' ? styles.tabActive : ''}`}
-            onClick={() => handleTabChange('import')}
-          >
-            ↑ Importar CSV
-          </button>
-          {activeTab === 'edit' && (
+          <div className={styles.tabsLeft}>
             <button
               type="button"
-              className={`${styles.tab} ${styles.tabActive}`}
-              disabled
+              className={`${styles.tab} ${activeTab === 'catalog' ? styles.tabActive : ''}`}
+              onClick={() => handleTabChange('catalog')}
             >
-              Ficha: {editingArticle?.title.substring(0, 20) || 'Editar'}...
+              Catálogo
             </button>
-          )}
+            <button
+              type="button"
+              className={`${styles.tab} ${activeTab === 'categories' ? styles.tabActive : ''}`}
+              onClick={() => handleTabChange('categories')}
+            >
+              Categorías
+            </button>
+            {activeTab === 'edit' && (
+              <button
+                type="button"
+                className={`${styles.tab} ${styles.tabActive}`}
+                disabled
+              >
+                Ficha: {editingArticle?.title.substring(0, 20) || 'Editar'}...
+              </button>
+            )}
+          </div>
+          <div className={styles.tabsRight}>
+            <button
+              type="button"
+              className={`${styles.actionButton} ${styles.actionButtonGreen} ${activeTab === 'create' ? styles.actionButtonActive : ''}`}
+              onClick={() => handleTabChange('create')}
+            >
+              + Nuevo Artículo
+            </button>
+            <button
+              type="button"
+              className={`${styles.actionButton} ${styles.actionButtonBlue} ${activeTab === 'import' ? styles.actionButtonActive : ''}`}
+              onClick={() => handleTabChange('import')}
+            >
+              ↑ Importar CSV
+            </button>
+          </div>
         </nav>
+
 
         {/* Catalog View */}
         {activeTab === 'catalog' && (() => {
