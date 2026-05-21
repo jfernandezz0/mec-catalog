@@ -1155,21 +1155,21 @@ export default function AdminPage() {
                               <span className={styles.categoryHiddenBadge}>Oculta</span>
                             )}
                           </div>
-                          <button
-                            type="button"
-                            className={styles.secondaryButton}
-                            onClick={() => handleToggleCategoryVisibility(cat.id, cat.is_visible)}
-                            disabled={categoryUpdatingId === cat.id || !hasVisibilityColumn}
-                            style={{ marginLeft: 'auto' }}
-                          >
-                            {categoryUpdatingId === cat.id
-                              ? 'Guardando...'
-                              : !hasVisibilityColumn
-                              ? 'No disponible'
-                              : cat.is_visible === false
-                              ? 'Mostrar'
-                              : 'Ocultar'}
-                          </button>
+                          {hasVisibilityColumn && (
+                            <button
+                              type="button"
+                              className={styles.secondaryButton}
+                              onClick={() => handleToggleCategoryVisibility(cat.id, cat.is_visible)}
+                              disabled={categoryUpdatingId === cat.id}
+                              style={{ marginLeft: 'auto' }}
+                            >
+                              {categoryUpdatingId === cat.id
+                                ? 'Guardando...'
+                                : cat.is_visible === false
+                                ? 'Mostrar'
+                                : 'Ocultar'}
+                            </button>
+                          )}
                         </div>
                       ))}
                     </div>
