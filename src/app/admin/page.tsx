@@ -514,6 +514,15 @@ export default function AdminPage() {
   }
 
   async function handleToggleCategoryVisibility(categoryId: number, currentVisibility: boolean | undefined) {
+    // Protect: can only hide if no articles are linked
+    if (currentVisibility !== false) {
+      const linkedCount = articles.filter((a) => a.category_id === categoryId).length;
+      if (linkedCount > 0) {
+        alert(`Esta categoría tiene ${linkedCount} artículo${linkedCount === 1 ? '' : 's'} asociado${linkedCount === 1 ? '' : 's'}. Elimina o mueve los artículos antes de ocultarla.`);
+        return;
+      }
+    }
+
     setCategoryUpdatingId(categoryId);
 
     try {
@@ -535,6 +544,34 @@ export default function AdminPage() {
       await reloadCategories();
     } catch (error) {
       alert(error instanceof Error ? error.message : 'Error al actualizar la visibilidad.');
+    } finally {
+      setCategoryUpdatingId(null);
+    }
+  }
+
+  async function handleDeleteCategory(categoryId: number, categoryName: string) {
+    const linkedCount = articles.filter((a) => a.category_id === categoryId).length;
+    if (linkedCount > 0) {
+      alert(`No se puede eliminar "${categoryName}" porque tiene ${linkedCount} artículo${linkedCount === 1 ? '' : 's'} asociado${linkedCount === 1 ? '' : 's'}. Elimina o mueve los artículos primero.`);
+      return;
+    }
+
+    const confirmed = confirm(`¿Eliminar permanentemente la categoría "${categoryName}"? Esta acción no se puede deshacer.`);
+    if (!confirmed) return;
+
+    setCategoryUpdatingId(categoryId);
+
+    try {
+      const { error } = await supabase
+        .from('categories')
+        .delete()
+        .eq('id', categoryId);
+
+      if (error) throw new Error(error.message);
+
+      await reloadCategories();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Error al eliminar la categoría.');
     } finally {
       setCategoryUpdatingId(null);
     }
@@ -643,6 +680,8 @@ export default function AdminPage() {
                 ? 'Gestionar Catálogo'
                 : activeTab === 'create'
                 ? 'Añadir artículo'
+                : activeTab === 'categories'
+                ? 'Categorías y Países'
                 : 'Editar artículo'}
             </h1>
             <p className={styles.subtitle}>
@@ -650,6 +689,8 @@ export default function AdminPage() {
                 ? 'Ver, editar o eliminar los artículos del catálogo digital.'
                 : activeTab === 'create'
                 ? 'Crea un artículo, sube sus fotos y asígnalo a una categoría de país.'
+                : activeTab === 'categories'
+                ? 'Crea nuevas categorías, ocúltalas o elimínalas si no tienen artículos.'
                 : 'Modifica los campos del artículo, gestiona sus imágenes o bórralo permanentemente.'}
             </p>
             </div>
@@ -1143,35 +1184,53 @@ export default function AdminPage() {
                       </p>
                     )}
                     <div className={styles.categoryGridCompact}>
-                      {categories.map((cat) => (
-                        <div key={cat.id} className={styles.categoryRow}>
-                          <span className={styles.categoryFlag}>
-                            {getFlagEmoji(cat.country_code)}
-                          </span>
-                          <div className={styles.categoryInfo}>
-                            <span className={styles.categoryNameText}>{cat.name}</span>
-                            <span className={styles.categoryCodeText}>{cat.country_code}</span>
-                            {hasVisibilityColumn && cat.is_visible === false && (
-                              <span className={styles.categoryHiddenBadge}>Oculta</span>
-                            )}
+                      {categories.map((cat) => {
+                        const linkedCount = articles.filter((a) => a.category_id === cat.id).length;
+                        const isUpdating = categoryUpdatingId === cat.id;
+                        return (
+                          <div key={cat.id} className={styles.categoryRow}>
+                            <span className={styles.categoryFlag}>
+                              {getFlagEmoji(cat.country_code)}
+                            </span>
+                            <div className={styles.categoryInfo}>
+                              <span className={styles.categoryNameText}>{cat.name}</span>
+                              <span className={styles.categoryCodeText}>{cat.country_code}</span>
+                              {linkedCount > 0 && (
+                                <span className={styles.categoryArticlesBadge}>{linkedCount} art.</span>
+                              )}
+                              {hasVisibilityColumn && cat.is_visible === false && (
+                                <span className={styles.categoryHiddenBadge}>Oculta</span>
+                              )}
+                            </div>
+                            <div className={styles.categoryActions}>
+                              {hasVisibilityColumn && (
+                                <button
+                                  type="button"
+                                  className={styles.secondaryButton}
+                                  onClick={() => handleToggleCategoryVisibility(cat.id, cat.is_visible)}
+                                  disabled={isUpdating}
+                                  title={linkedCount > 0 && cat.is_visible !== false ? `Tiene ${linkedCount} artículo${linkedCount === 1 ? '' : 's'} — elimínalos primero para ocultar` : undefined}
+                                >
+                                  {isUpdating
+                                    ? '...'
+                                    : cat.is_visible === false
+                                    ? 'Mostrar'
+                                    : 'Ocultar'}
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                className={styles.dangerButtonSmall}
+                                onClick={() => handleDeleteCategory(cat.id, cat.name)}
+                                disabled={isUpdating}
+                                title={linkedCount > 0 ? `Tiene ${linkedCount} artículo${linkedCount === 1 ? '' : 's'} — elimínalos primero` : 'Eliminar categoría'}
+                              >
+                                Eliminar
+                              </button>
+                            </div>
                           </div>
-                          {hasVisibilityColumn && (
-                            <button
-                              type="button"
-                              className={styles.secondaryButton}
-                              onClick={() => handleToggleCategoryVisibility(cat.id, cat.is_visible)}
-                              disabled={categoryUpdatingId === cat.id}
-                              style={{ marginLeft: 'auto' }}
-                            >
-                              {categoryUpdatingId === cat.id
-                                ? 'Guardando...'
-                                : cat.is_visible === false
-                                ? 'Mostrar'
-                                : 'Ocultar'}
-                            </button>
-                          )}
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </>
                 ) : (

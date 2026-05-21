@@ -789,8 +789,8 @@
 
 .categoryGridCompact {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 12px;
+  grid-template-columns: 1fr;
+  gap: 10px;
   margin-top: 16px;
 }
 
@@ -803,6 +803,7 @@
   border-radius: 8px;
   background: #fcfcfc;
   transition: all 0.2s ease;
+  flex-wrap: wrap;
 }
 
 .categoryRow:hover {
@@ -848,6 +849,57 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+}
+
+.categoryArticlesBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 4px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #e0f2fe;
+  color: #0369a1;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.categoryActions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.categoryActions .secondaryButton {
+  height: 34px;
+  font-size: 12px;
+  padding: 0 12px;
+}
+
+.dangerButtonSmall {
+  height: 34px;
+  border: 0;
+  border-radius: 6px;
+  padding: 0 12px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  background: #fee2e2;
+  color: #dc2626;
+  transition: background 150ms ease, opacity 150ms ease;
+}
+
+.dangerButtonSmall:hover:not(:disabled) {
+  background: #fecaca;
+}
+
+.dangerButtonSmall:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 
 @media (max-width: 768px) {
