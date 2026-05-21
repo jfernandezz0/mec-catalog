@@ -474,3 +474,14 @@
   transform: translateY(-1px);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
 }
+
+.paymentNote {
+  margin-top: 12px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  font-weight: 500;
+  white-space: pre-line;
+  opacity: 0.9;
+}
+

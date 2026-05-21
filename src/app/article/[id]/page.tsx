@@ -215,8 +215,13 @@ export default async function ArticlePage({
                     <rect width="20" height="14" x="2" y="5" rx="2" />
                     <line x1="2" x2="22" y1="10" y2="10" />
                   </svg>
-                  <span className="align-middle">Comprar ahora (Revolut)</span>
+                  <span className="align-middle">Comprar Ahora 💵</span>
                 </a>
+                <p className={styles.paymentNote}>
+                  * Se redirigirá a la plataforma de pago, no modifiques la cantidad ni la descripción.{"\n"}
+                  Recuerda comunicarte con el equipo de ingeniería enviándoles una captura del pago.{"\n"}
+                  Les facilitarás el trabajo ⚙️📦🧡
+                </p>
               </div>
             )}
 
