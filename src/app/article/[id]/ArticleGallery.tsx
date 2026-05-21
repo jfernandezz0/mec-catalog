@@ -2,21 +2,32 @@
 
 import Image from 'next/image';
 import { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase';
 import Lightbox from '@/app/components/Lightbox';
 import styles from './article.module.css';
 
 type ArticleGalleryProps = {
+  id: number;
   imageUrls: string[];
   title: string;
 };
 
-export default function ArticleGallery({ imageUrls, title }: ArticleGalleryProps) {
+export default function ArticleGallery({ id, imageUrls, title }: ArticleGalleryProps) {
   const [currentImage, setCurrentImage] = useState(0);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   
   useEffect(() => {
     window.scrollTo(0, 0);
-  }, []);
+    
+    const registerPageView = async () => {
+      try {
+        await supabase.rpc('increment_article_views', { article_id: id });
+      } catch (err) {
+        console.error('Error incrementing article views:', err);
+      }
+    };
+    registerPageView();
+  }, [id]);
 
   const imageUrl = imageUrls[currentImage];
   const hasMultipleImages = imageUrls.length > 1;

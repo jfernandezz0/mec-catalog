@@ -132,7 +132,7 @@ export default async function ArticlePage({
         </div>
 
         <div className={styles.layout}>
-          <ArticleGallery imageUrls={imageUrls} title={article.title} />
+          <ArticleGallery id={article.id} imageUrls={imageUrls} title={article.title} />
 
           <section className={styles.detailsCard}>
             <span className={styles.refCode}>
