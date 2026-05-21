@@ -141,11 +141,10 @@ export default async function ArticlePage({
 
   // PayPal.Me rules:
   // 1. Currency code in lowercase (eur)
-  // 2. No spaces in description (use hyphens)
-  // 3. Two decimal digits separated by a dot
-  const paypalNote = `MEC-mini-engines-ID-${article.id}`;
+  // 2. Two decimal digits separated by a dot
+  // Note: PayPal.Me does not support pre-filling a note/description in the URL, extra segments cause a 404 error.
   const paypalPrice = Number(article.price).toFixed(2);
-  const paypalPayUrl = `https://paypal.me/xcohon/${paypalPrice}eur/${paypalNote}`;
+  const paypalPayUrl = `https://paypal.me/xcohon/${paypalPrice}eur`;
 
   const categoryHref = category
     ? `/category/${category.country_code.toLowerCase()}`
