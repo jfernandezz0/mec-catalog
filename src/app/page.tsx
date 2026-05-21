@@ -101,6 +101,18 @@ export default async function Home() {
         </p>
       </header>
 
+      <section>
+        <h2 className="text-lg font-semibold mb-4 text-center text-[color:var(--text-primary)]">Listado de creaciones por país de fabricante</h2>
+        {/* 2 columns on mobile, 4 on md+ */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {sorted.map((category) => (
+            <CategoryCard key={category.id} category={category} />
+          ))}
+        </div>
+      </section>
+
+      <hr className="border-[color:var(--border-card)] my-8" />
+
       <div className="flex flex-col items-center justify-center mb-8 gap-3">
         <span className="text-lg font-semibold text-center text-[color:var(--text-primary)]">
           Síguenos en:
@@ -115,18 +127,6 @@ export default async function Home() {
           <Instagram size={56} />
         </a>
       </div>
-
-      <hr className="border-[color:var(--border-card)] my-8" />
-
-      <section>
-        <h2 className="text-lg font-semibold mb-4 text-center text-[color:var(--text-primary)]">Listado de vehículos por país de fabricante</h2>
-        {/* 2 columns on mobile, 4 on md+ */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {sorted.map((category) => (
-            <CategoryCard key={category.id} category={category} />
-          ))}
-        </div>
-      </section>
     </main>
   );
 }
