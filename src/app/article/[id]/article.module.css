@@ -435,3 +435,13 @@
     opacity: 0.55;
   }
 }
+
+.disclaimer {
+  margin-top: 24px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-tertiary);
+  font-weight: 500;
+  border-top: 1px solid var(--border-card);
+  padding-top: 16px;
+}
