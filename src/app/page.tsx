@@ -101,7 +101,7 @@ export default async function Home() {
         </p>
       </header>
 
-      <div className="flex flex-col items-center justify-center mb-12 gap-3">
+      <div className="flex flex-col items-center justify-center mb-8 gap-3">
         <span className="text-lg font-semibold text-center text-[color:var(--text-primary)]">
           Síguenos en:
         </span>
@@ -115,6 +115,8 @@ export default async function Home() {
           <Instagram size={56} />
         </a>
       </div>
+
+      <hr className="border-[color:var(--border-card)] my-8" />
 
       <section>
         <h2 className="text-lg font-semibold mb-4 text-center text-[color:var(--text-primary)]">Listado de vehículos por país de fabricante</h2>
