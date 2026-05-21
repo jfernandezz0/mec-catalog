@@ -95,7 +95,9 @@ export default async function Home() {
           />
         </div>
         <p className="text-[color:var(--text-secondary)] text-sm">
-          Catálogo digital de artículos y ediciones limitadas, de nuestros MOCs de bloques hechos a mano
+          Catálogo digital de artículos y ediciones limitadas.
+          <br />
+          Todos nuestros MOCs de bloques y diseños estan hechos a mano por ingenieros cualificados
         </p>
       </header>
 
