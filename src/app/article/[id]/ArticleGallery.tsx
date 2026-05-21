@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import { useState } from 'react';
+import Lightbox from '@/app/components/Lightbox';
 import styles from './article.module.css';
 
 type ArticleGalleryProps = {
@@ -11,6 +12,7 @@ type ArticleGalleryProps = {
 
 export default function ArticleGallery({ imageUrls, title }: ArticleGalleryProps) {
   const [currentImage, setCurrentImage] = useState(0);
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const imageUrl = imageUrls[currentImage];
   const hasMultipleImages = imageUrls.length > 1;
 
@@ -28,7 +30,10 @@ export default function ArticleGallery({ imageUrls, title }: ArticleGalleryProps
 
   return (
     <section className={styles.galleryCard}>
-      <div className={styles.heroImage}>
+      <div 
+        className={`${styles.heroImage} cursor-zoom-in`}
+        onClick={() => imageUrl && setIsLightboxOpen(true)}
+      >
         {imageUrl ? (
           <>
             <Image
@@ -45,7 +50,10 @@ export default function ArticleGallery({ imageUrls, title }: ArticleGalleryProps
                 <button
                   type="button"
                   className={`${styles.imageButton} ${styles.prevButton}`}
-                  onClick={showPreviousImage}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    showPreviousImage();
+                  }}
                   aria-label="Show previous image"
                 >
                   <svg width="10" height="16" viewBox="0 0 10 16" fill="none" aria-hidden="true">
@@ -55,14 +63,17 @@ export default function ArticleGallery({ imageUrls, title }: ArticleGalleryProps
                 <button
                   type="button"
                   className={`${styles.imageButton} ${styles.nextButton}`}
-                  onClick={showNextImage}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    showNextImage();
+                  }}
                   aria-label="Show next image"
                 >
                   <svg width="10" height="16" viewBox="0 0 10 16" fill="none" aria-hidden="true">
                     <path d="M1.5 1.5L8.5 8L1.5 14.5" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
                 </button>
-                <span className={styles.imageCount}>
+                <span className={styles.imageCount} onClick={(e) => e.stopPropagation()}>
                   {currentImage + 1}/{imageUrls.length}
                 </span>
               </>
@@ -95,6 +106,15 @@ export default function ArticleGallery({ imageUrls, title }: ArticleGalleryProps
             </button>
           ))}
         </div>
+      )}
+
+      {isLightboxOpen && (
+        <Lightbox
+          imageUrls={imageUrls}
+          initialIndex={currentImage}
+          onClose={() => setIsLightboxOpen(false)}
+          title={title}
+        />
       )}
     </section>
   );

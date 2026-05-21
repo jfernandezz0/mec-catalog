@@ -47,7 +47,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not(.light) {
     --bg-page: #0a0a0a;
     --text-primary: #f5f5f5;
     --text-secondary: #a3a3a3;
@@ -92,6 +92,52 @@
     --cc-hover-bg-SUE: rgba(250, 204, 21, 0.12);
     --cc-hover-border-SUE: #facc15;
   }
+}
+
+:root.dark {
+  --bg-page: #0a0a0a;
+  --text-primary: #f5f5f5;
+  --text-secondary: #a3a3a3;
+  --text-tertiary: #525252;
+  --bg-card: #141414;
+  --border-card: #222222;
+  --bg-input: #1f1f1f;
+  --border-input: #333333;
+  --bg-button-white: #171717;
+  --text-button-white: #e5e5e5;
+  --border-button-white: #262626;
+  --bg-button-white-hover: #262626;
+
+  --bg-button-primary: #f5f5f5;
+  --text-button-primary: #0a0a0a;
+  --bg-button-primary-hover: #e5e5e5;
+
+  /* Stock badge colors */
+  --bg-available: rgba(22, 163, 74, 0.15);
+  --text-available: #4ade80;
+  --bg-soldout: rgba(220, 38, 38, 0.15);
+  --text-soldout: #f87171;
+
+  /* Inversion of logo (inverts black text to white) */
+  --logo-invert: 1;
+
+  /* Category card hovers dark mode adaptation */
+  --cc-hover-bg-ALE: rgba(245, 158, 11, 0.12);
+  --cc-hover-border-ALE: #f59e0b;
+  --cc-hover-bg-JAP: rgba(248, 113, 113, 0.12);
+  --cc-hover-border-JAP: #f87171;
+  --cc-hover-bg-ITA: rgba(74, 222, 128, 0.12);
+  --cc-hover-border-ITA: #4ade80;
+  --cc-hover-bg-USA: rgba(96, 165, 250, 0.12);
+  --cc-hover-border-USA: #60a5fa;
+  --cc-hover-bg-FRA: rgba(59, 130, 246, 0.12);
+  --cc-hover-border-FRA: #3b82f6;
+  --cc-hover-bg-UK: rgba(129, 140, 248, 0.12);
+  --cc-hover-border-UK: #818cf8;
+  --cc-hover-bg-CRO: rgba(248, 113, 113, 0.12);
+  --cc-hover-border-CRO: #f87171;
+  --cc-hover-bg-SUE: rgba(250, 204, 21, 0.12);
+  --cc-hover-border-SUE: #facc15;
 }
 
 /* Force body styling globally */

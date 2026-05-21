@@ -1,13 +1,15 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { supabase } from '@/lib/supabase';
 import styles from './share.module.css';
 
 type ShareButtonsProps = {
+  id: number;
   title: string;
 };
 
-export default function ShareButtons({ title }: ShareButtonsProps) {
+export default function ShareButtons({ id, title }: ShareButtonsProps) {
   const [mounted, setMounted] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
@@ -45,6 +47,18 @@ export default function ShareButtons({ title }: ShareButtonsProps) {
     }
   };
 
+  // Safe click tracker
+  const registerClick = async () => {
+    try {
+      const { error } = await supabase.rpc('increment_contact_clicks', { article_id: id });
+      if (error) {
+        console.error('Error incrementing click counter:', error);
+      }
+    } catch (err) {
+      console.error('Error registering contact click:', err);
+    }
+  };
+
   // Pre-filled texts
   const contactPhoneNumber = '34619148601';
   const contactEmail = 'minienginescreations@gmail.com';
@@ -67,6 +81,7 @@ export default function ShareButtons({ title }: ShareButtonsProps) {
   // Handle Telegram contact link (auto-copy message to clipboard first)
   const handleTelegramContactClick = (e: React.MouseEvent) => {
     e.preventDefault();
+    registerClick();
     copyToClipboard(defaultContactMessage, '¡Mensaje copiado! Pégalo al abrirse Telegram.');
     setTimeout(() => {
       window.open(telegramContactUrl, '_blank', 'noopener,noreferrer');
@@ -83,6 +98,7 @@ export default function ShareButtons({ title }: ShareButtonsProps) {
           href={whatsappContactUrl}
           target="_blank"
           rel="noopener noreferrer"
+          onClick={registerClick}
           className={`${styles.circleBtn} ${styles.whatsappBtn}`}
           title="Consultar por WhatsApp"
         >
@@ -108,6 +124,7 @@ export default function ShareButtons({ title }: ShareButtonsProps) {
           href={instagramContactUrl}
           target="_blank"
           rel="noopener noreferrer"
+          onClick={registerClick}
           className={`${styles.circleBtn} ${styles.instagramBtn}`}
           title="Contacto en Instagram"
         >
@@ -119,6 +136,7 @@ export default function ShareButtons({ title }: ShareButtonsProps) {
         {/* Email Contact */}
         <a
           href={emailContactUrl}
+          onClick={registerClick}
           className={`${styles.circleBtn} ${styles.emailBtn}`}
           title="Contacto por Email"
         >
