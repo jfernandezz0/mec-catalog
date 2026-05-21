@@ -14,7 +14,7 @@ export default function ArticleError({ error, reset }: ArticleErrorProps) {
       <div className={styles.shell}>
         <div className={styles.topBar}>
           <Link href="/" className={styles.backLink}>
-            ← Volver a categorías
+            ← Principal
           </Link>
         </div>
 

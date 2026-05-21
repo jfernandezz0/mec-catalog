@@ -116,7 +116,7 @@ export default async function CategoryPage({
       <div className={styles.shell}>
         <div className={styles.topBar}>
           <Link href="/" className={styles.backLink}>
-            ← Volver a categorías
+            ← Principal
           </Link>
         </div>
 
