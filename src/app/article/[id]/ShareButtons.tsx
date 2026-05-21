@@ -59,6 +59,18 @@ export default function ShareButtons({ id, title }: ShareButtonsProps) {
     }
   };
 
+  // Safe share click tracker
+  const registerShareClick = async () => {
+    try {
+      const { error } = await supabase.rpc('increment_share_clicks', { article_id: id });
+      if (error) {
+        console.error('Error incrementing share click counter:', error);
+      }
+    } catch (err) {
+      console.error('Error registering share click:', err);
+    }
+  };
+
   // Pre-filled texts
   const contactPhoneNumber = '34619148601';
   const contactEmail = 'minienginescreations@gmail.com';
@@ -163,12 +175,15 @@ export default function ShareButtons({ id, title }: ShareButtonsProps) {
         {/* Dropdown sharing panel */}
         {isOpen && (
           <div className={styles.dropdown}>
-            {/* Share to WhatsApp */}
+             {/* Share to WhatsApp */}
             <a
               href={whatsappShareUrl}
               target="_blank"
               rel="noopener noreferrer"
-              onClick={() => setIsOpen(false)}
+              onClick={() => {
+                registerShareClick();
+                setIsOpen(false);
+              }}
               className={`${styles.dropdownItem} ${styles.itemWhatsapp}`}
             >
               <svg className={styles.iconSmall} viewBox="0 0 24 24" fill="currentColor">
@@ -182,7 +197,10 @@ export default function ShareButtons({ id, title }: ShareButtonsProps) {
               href={telegramShareUrl}
               target="_blank"
               rel="noopener noreferrer"
-              onClick={() => setIsOpen(false)}
+              onClick={() => {
+                registerShareClick();
+                setIsOpen(false);
+              }}
               className={`${styles.dropdownItem} ${styles.itemTelegram}`}
             >
               <svg className={styles.iconSmall} viewBox="0 0 24 24" fill="currentColor">
@@ -191,12 +209,13 @@ export default function ShareButtons({ id, title }: ShareButtonsProps) {
               <span>Compartir en Telegram</span>
             </a>
 
-
-
             {/* Share to Email */}
             <a
               href={emailShareUrl}
-              onClick={() => setIsOpen(false)}
+              onClick={() => {
+                registerShareClick();
+                setIsOpen(false);
+              }}
               className={`${styles.dropdownItem} ${styles.itemEmail}`}
             >
               <svg className={styles.iconSmall} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -209,6 +228,7 @@ export default function ShareButtons({ id, title }: ShareButtonsProps) {
             {/* Copy Link to clipboard */}
             <button
               onClick={() => {
+                registerShareClick();
                 setIsOpen(false);
                 copyToClipboard(shareUrl, '¡Enlace copiado al portapapeles!');
               }}

@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useState, useEffect, useRef } from 'react';
+import { supabase } from '@/lib/supabase';
 import styles from './category.module.css';
 
 type ArticleCardProps = {
@@ -33,6 +34,17 @@ export default function ArticleCard({ article, index }: ArticleCardProps) {
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
   const shareRef = useRef<HTMLDivElement>(null);
+
+  const registerShareClick = async () => {
+    try {
+      const { error } = await supabase.rpc('increment_share_clicks', { article_id: article.id });
+      if (error) {
+        console.error('Error incrementing share click counter:', error);
+      }
+    } catch (err) {
+      console.error('Error registering share click:', err);
+    }
+  };
 
   useEffect(() => {
     if (!isShareOpen) return;
@@ -178,7 +190,10 @@ export default function ArticleCard({ article, index }: ArticleCardProps) {
                   href={whatsappShareUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  onClick={() => setIsShareOpen(false)}
+                  onClick={() => {
+                    registerShareClick();
+                    setIsShareOpen(false);
+                  }}
                   className={`${styles.cardDropdownItem} ${styles.itemWhatsapp}`}
                 >
                   <svg className={styles.iconSmall} viewBox="0 0 24 24" fill="currentColor">
@@ -192,7 +207,10 @@ export default function ArticleCard({ article, index }: ArticleCardProps) {
                   href={telegramShareUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  onClick={() => setIsShareOpen(false)}
+                  onClick={() => {
+                    registerShareClick();
+                    setIsShareOpen(false);
+                  }}
                   className={`${styles.cardDropdownItem} ${styles.itemTelegram}`}
                 >
                   <svg className={styles.iconSmall} viewBox="0 0 24 24" fill="currentColor">
@@ -204,7 +222,10 @@ export default function ArticleCard({ article, index }: ArticleCardProps) {
                 {/* Share to Email */}
                 <a
                   href={emailShareUrl}
-                  onClick={() => setIsShareOpen(false)}
+                  onClick={() => {
+                    registerShareClick();
+                    setIsShareOpen(false);
+                  }}
                   className={`${styles.cardDropdownItem} ${styles.itemEmail}`}
                 >
                   <svg className={styles.iconSmall} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -217,6 +238,7 @@ export default function ArticleCard({ article, index }: ArticleCardProps) {
                 {/* Copy Link to clipboard */}
                 <button
                   onClick={() => {
+                    registerShareClick();
                     setIsShareOpen(false);
                     copyToClipboard(articleUrl, '¡Enlace copiado!');
                   }}

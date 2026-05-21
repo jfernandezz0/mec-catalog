@@ -24,6 +24,7 @@ type Article = {
   image_urls: string[] | null;
   sort_order: number;
   contact_clicks?: number;
+  share_clicks?: number;
 };
 
 type ImportRow = {
@@ -232,7 +233,7 @@ export default function AdminPage() {
     setLoadingArticles(true);
     const { data, error } = await supabase
       .from('articles')
-      .select('id, category_id, title, description, price, quantity, image_urls, sort_order, contact_clicks')
+      .select('id, category_id, title, description, price, quantity, image_urls, sort_order, contact_clicks, share_clicks')
       .order('sort_order', { ascending: true })
       .order('id', { ascending: true });
 
@@ -1054,6 +1055,9 @@ export default function AdminPage() {
                             <div className="flex gap-2 items-center">
                               <span className={styles.cardClicks} title="Clics de contacto recibidos">
                                 📞 {article.contact_clicks ?? 0}
+                              </span>
+                              <span className={styles.cardShareClicks} title="Clics de compartir recibidos">
+                                🔗 {article.share_clicks ?? 0}
                               </span>
                               <span className={styles.cardStock}>
                                 {article.quantity} ud.
