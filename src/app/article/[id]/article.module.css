@@ -88,9 +88,13 @@
   display: grid;
   height: 100%;
   place-items: center;
+  align-content: center;
+  text-align: center;
   color: var(--text-secondary);
   font-size: 14px;
-  font-weight: 800;
+  font-weight: 600;
+  line-height: 1.6;
+  padding: 20px;
 }
 
 .imageButton {
