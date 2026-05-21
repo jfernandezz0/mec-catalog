@@ -101,8 +101,8 @@ export default async function Home() {
         </p>
       </header>
 
-      <div className="flex flex-col items-center justify-center mb-12 gap-2">
-        <span className="text-xs uppercase tracking-wider text-[color:var(--text-secondary)] font-semibold">
+      <div className="flex flex-col items-center justify-center mb-12 gap-3">
+        <span className="text-lg font-semibold text-center text-[color:var(--text-primary)]">
           Síguenos en:
         </span>
         <a
@@ -117,7 +117,7 @@ export default async function Home() {
       </div>
 
       <section>
-        <h2 className="text-lg font-semibold mb-4 text-center text-[color:var(--text-primary)]">Fabricantes por país</h2>
+        <h2 className="text-lg font-semibold mb-4 text-center text-[color:var(--text-primary)]">Listado de vehículos por país de fabricante</h2>
         {/* 2 columns on mobile, 4 on md+ */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {sorted.map((category) => (
