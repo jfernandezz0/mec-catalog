@@ -4,7 +4,7 @@ import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import ArticleCard from './ArticleCard';
+import InfiniteArticleGrid from './InfiniteArticleGrid';
 import styles from './category.module.css';
 
 export const revalidate = 0;
@@ -147,11 +147,7 @@ export default async function CategoryPage({
         </header>
 
         {articleItems.length > 0 ? (
-          <section className={styles.grid}>
-            {articleItems.map((article, index) => (
-              <ArticleCard article={article} key={article.id} index={index} />
-            ))}
-          </section>
+          <InfiniteArticleGrid articles={articleItems} />
         ) : (
           <section className={styles.empty}>
             <h2 className={styles.emptyTitle}>Sin artículos aún</h2>
