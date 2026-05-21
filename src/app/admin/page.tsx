@@ -925,13 +925,13 @@ export default function AdminPage() {
               <label className={styles.field}>
                 <span className={styles.labelRow}>
                   <span>Descripción</span>
-                  <span className={styles.hint}>{formState.description.length}/250</span>
+                  <span className={styles.hint}>{formState.description.length}/200</span>
                 </span>
                 <textarea
                   name="description"
                   value={formState.description}
                   onChange={updateField}
-                  maxLength={250}
+                  maxLength={200}
                   rows={4}
                   placeholder="Detalles sobre el estado, edición limitada, extras incluidos, etc."
                   disabled={loading}
