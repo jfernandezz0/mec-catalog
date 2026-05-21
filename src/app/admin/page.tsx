@@ -143,6 +143,8 @@ export default function AdminPage() {
   // Search & Payments States
   const [searchQuery, setSearchQuery] = useState('');
   const [paymentsEnabled, setPaymentsEnabled] = useState(false);
+  const [revolutEnabled, setRevolutEnabled] = useState(true);
+  const [paypalEnabled, setPaypalEnabled] = useState(true);
   const [loadingPaymentsSetting, setLoadingPaymentsSetting] = useState(true);
   const [hasSettingsTable, setHasSettingsTable] = useState(true);
 
@@ -244,33 +246,40 @@ export default function AdminPage() {
     try {
       const { data, error } = await supabase
         .from('settings')
-        .select('value')
-        .eq('key', 'payments_enabled')
-        .maybeSingle();
+        .select('key, value');
 
       if (error) {
         if (error.code === 'PGRST116' || error.message.includes('settings')) {
           setHasSettingsTable(false);
         } else {
-          console.error('Error fetching payments setting:', error);
+          console.error('Error fetching payments settings:', error);
         }
         setPaymentsEnabled(false);
-      } else if (data) {
-        setPaymentsEnabled(data.value === 'true');
+        setRevolutEnabled(true);
+        setPaypalEnabled(true);
+      } else if (data && data.length > 0) {
+        const settingsMap = new Map(data.map((s) => [s.key, s.value]));
+        setPaymentsEnabled(settingsMap.get('payments_enabled') === 'true');
+        setRevolutEnabled(settingsMap.get('revolut_enabled') !== 'false');
+        setPaypalEnabled(settingsMap.get('paypal_enabled') !== 'false');
         setHasSettingsTable(true);
       } else {
         setPaymentsEnabled(false);
+        setRevolutEnabled(true);
+        setPaypalEnabled(true);
         setHasSettingsTable(true);
       }
     } catch (e) {
       console.error(e);
       setPaymentsEnabled(false);
+      setRevolutEnabled(true);
+      setPaypalEnabled(true);
     } finally {
       setLoadingPaymentsSetting(false);
     }
   }
 
-  async function togglePayments(enabled: boolean) {
+  async function updateSetting(key: string, value: string) {
     if (!hasSettingsTable) {
       alert("La tabla 'settings' no existe en la base de datos. Ejecuta el script SQL en Supabase para poder guardar.");
       return;
@@ -280,12 +289,14 @@ export default function AdminPage() {
     try {
       const { error } = await supabase
         .from('settings')
-        .upsert({ key: 'payments_enabled', value: String(enabled) });
+        .upsert({ key, value });
 
       if (error) {
         alert(`Error al guardar ajuste: ${error.message}`);
       } else {
-        setPaymentsEnabled(enabled);
+        if (key === 'payments_enabled') setPaymentsEnabled(value === 'true');
+        if (key === 'revolut_enabled') setRevolutEnabled(value === 'true');
+        if (key === 'paypal_enabled') setPaypalEnabled(value === 'true');
       }
     } catch (e) {
       console.error(e);
@@ -293,6 +304,18 @@ export default function AdminPage() {
     } finally {
       setLoadingPaymentsSetting(false);
     }
+  }
+
+  async function togglePayments(enabled: boolean) {
+    await updateSetting('payments_enabled', String(enabled));
+  }
+
+  async function toggleRevolut(enabled: boolean) {
+    await updateSetting('revolut_enabled', String(enabled));
+  }
+
+  async function togglePaypal(enabled: boolean) {
+    await updateSetting('paypal_enabled', String(enabled));
   }
 
   async function loadArticles() {
@@ -1839,15 +1862,13 @@ export default function AdminPage() {
         {activeTab === 'payments' && (
           <div className={styles.paymentsSection}>
             <div className={styles.paymentsCard}>
-              <h2 className={styles.paymentsCardTitle}>Pasarela de Pago Rápido (Revolut)</h2>
+              <h2 className={styles.paymentsCardTitle}>Ajustes de Métodos de Pago Online</h2>
               <p className={styles.paymentsCardDesc}>
-                Activa o desactiva la visualización de los botones de pago directo en las fichas de todos tus artículos.
-                Cuando esta opción esté activa y el artículo disponga de stock (cantidad mayor a 0),
-                se mostrará un botón <strong>"Comprar ahora (Revolut)"</strong> que redirecciona al usuario con la cantidad y la nota pre-configuradas.
+                Configura la visualización de los botones de pago directo en la ficha de los artículos con stock disponible (cantidad mayor a 0).
               </p>
 
               {loadingPaymentsSetting ? (
-                <div className={styles.paymentsLoading}>Cargando estado del ajuste...</div>
+                <div className={styles.paymentsLoading}>Cargando estado de los ajustes...</div>
               ) : !hasSettingsTable ? (
                 <div className={styles.paymentsWarning}>
                   <h3>⚠️ Configuración requerida en base de datos</h3>
@@ -1862,7 +1883,10 @@ export default function AdminPage() {
 );
 
 INSERT INTO settings (key, value)
-VALUES ('payments_enabled', 'false')
+VALUES 
+  ('payments_enabled', 'false'),
+  ('revolut_enabled', 'true'),
+  ('paypal_enabled', 'true')
 ON CONFLICT (key) DO NOTHING;`}
                   </pre>
                   <button
@@ -1874,26 +1898,73 @@ ON CONFLICT (key) DO NOTHING;`}
                   </button>
                 </div>
               ) : (
-                <div className={styles.paymentsToggleRow}>
-                  <div className={styles.paymentsToggleText}>
-                    <span className={styles.paymentsToggleLabel}>
-                      Activar botones de compra directa (Revolut)
-                    </span>
-                    <span className={styles.paymentsToggleSublabel}>
-                      {paymentsEnabled 
-                        ? 'Activo — Los artículos en stock mostrarán el botón de compra.' 
-                        : 'Inactivo — Los botones de compra están ocultos en todo el catálogo.'}
-                    </span>
+                <div className={styles.paymentsList}>
+                  {/* Master Switch */}
+                  <div className={styles.paymentsToggleRow}>
+                    <div className={styles.paymentsToggleText}>
+                      <span className={styles.paymentsToggleLabel}>
+                        Activar métodos de pago online (Global)
+                      </span>
+                      <span className={styles.paymentsToggleSublabel}>
+                        {paymentsEnabled 
+                          ? 'Activo — Se mostrarán los botones de compra seleccionados abajo.' 
+                          : 'Inactivo — Se ocultan todos los botones de pago directo en toda la web.'}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => togglePayments(!paymentsEnabled)}
+                      className={`${styles.switch} ${paymentsEnabled ? styles.switchActive : ''}`}
+                      aria-label="Alternar todos los métodos de pago"
+                      title="Alternar todos los métodos de pago"
+                    >
+                      <span className={styles.switchHandle} />
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => togglePayments(!paymentsEnabled)}
-                    className={`${styles.switch} ${paymentsEnabled ? styles.switchActive : ''}`}
-                    aria-label="Alternar botones de compra"
-                    title="Alternar botones de compra"
-                  >
-                    <span className={styles.switchHandle} />
-                  </button>
+
+                  {/* Revolut Switch */}
+                  <div className={`${styles.paymentsToggleRow} ${!paymentsEnabled ? styles.disabledRow : ''}`}>
+                    <div className={styles.paymentsToggleText}>
+                      <span className={styles.paymentsToggleLabel}>
+                        Habilitar pago directo con Revolut
+                      </span>
+                      <span className={styles.paymentsToggleSublabel}>
+                        Muestra el botón de compra que redirige al enlace de Revolut.me.
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={!paymentsEnabled}
+                      onClick={() => toggleRevolut(!revolutEnabled)}
+                      className={`${styles.switch} ${revolutEnabled && paymentsEnabled ? styles.switchActive : ''}`}
+                      aria-label="Alternar Revolut"
+                      title="Alternar Revolut"
+                    >
+                      <span className={styles.switchHandle} />
+                    </button>
+                  </div>
+
+                  {/* PayPal Switch */}
+                  <div className={`${styles.paymentsToggleRow} ${!paymentsEnabled ? styles.disabledRow : ''}`}>
+                    <div className={styles.paymentsToggleText}>
+                      <span className={styles.paymentsToggleLabel}>
+                        Habilitar pago directo con PayPal
+                      </span>
+                      <span className={styles.paymentsToggleSublabel}>
+                        Muestra el botón de compra que redirige al enlace de paypal.me.
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={!paymentsEnabled}
+                      onClick={() => togglePaypal(!paypalEnabled)}
+                      className={`${styles.switch} ${paypalEnabled && paymentsEnabled ? styles.switchActive : ''}`}
+                      aria-label="Alternar PayPal"
+                      title="Alternar PayPal"
+                    >
+                      <span className={styles.switchHandle} />
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

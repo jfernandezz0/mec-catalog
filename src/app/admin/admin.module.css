@@ -1488,8 +1488,22 @@
   align-items: center;
   justify-content: space-between;
   gap: 24px;
-  padding: 24px 0 12px;
-  border-top: 1px solid #f5f5f5;
+  padding: 20px 0;
+  border-top: 1px solid var(--border-card, #f5f5f5);
+}
+
+.paymentsToggleRow:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+.paymentsList {
+  display: flex;
+  flex-direction: column;
+}
+
+.disabledRow {
+  opacity: 0.45;
 }
 
 .paymentsToggleText {
@@ -1524,6 +1538,10 @@
   transition: background-color 200ms ease, box-shadow 150ms ease;
   outline: none;
   flex-shrink: 0;
+}
+
+.switch:disabled {
+  cursor: not-allowed;
 }
 
 .switch:focus-visible {
