@@ -156,6 +156,8 @@ export default function AdminPage() {
   const [categoryName, setCategoryName] = useState('');
   const [categoryCode, setCategoryCode] = useState('');
   const [categoryLoading, setCategoryLoading] = useState(false);
+  const [categoryLogo, setCategoryLogo] = useState<File | null>(null);
+  const [logoInputKey, setLogoInputKey] = useState(Date.now());
   const [categoryUpdatingId, setCategoryUpdatingId] = useState<number | null>(null);
 
   // Catalog filter state
@@ -610,9 +612,28 @@ export default function AdminPage() {
         }
       }
 
+      // Upload logo if one is selected
+      if (categoryLogo) {
+        const formData = new FormData();
+        formData.append('logo', categoryLogo);
+        formData.append('countryCode', codeClean);
+
+        const uploadRes = await fetch('/api/upload-category-logo', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!uploadRes.ok) {
+          const errData = await uploadRes.json();
+          throw new Error(`Categoría creada, pero falló la subida del logo: ${errData.error || uploadRes.statusText}`);
+        }
+      }
+
       alert('Categoría creada correctamente.');
       setCategoryName('');
       setCategoryCode('');
+      setCategoryLogo(null);
+      setLogoInputKey(Date.now());
       await reloadCategories();
     } catch (error) {
       alert(error instanceof Error ? error.message : 'Error al crear la categoría.');
@@ -1447,6 +1468,21 @@ export default function AdminPage() {
                       disabled={categoryLoading}
                       className={styles.control}
                       style={{ textTransform: 'uppercase' }}
+                    />
+                  </label>
+                  
+                  <label className={styles.field}>
+                    <span className={styles.labelRow}>
+                      <span>Logotipo / Bandera (Opcional)</span>
+                      <span className={styles.hint}>PNG</span>
+                    </span>
+                    <input
+                      key={logoInputKey}
+                      type="file"
+                      accept=".png"
+                      onChange={(e) => setCategoryLogo(e.target.files?.[0] || null)}
+                      disabled={categoryLoading}
+                      className={styles.control}
                     />
                   </label>
                   
