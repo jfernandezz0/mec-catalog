@@ -261,9 +261,8 @@ export default async function ArticlePage({
                   )}
                 </div>
                 <p className={styles.paymentNote}>
-                  * Se redirigirá a la plataforma de pago, no modifiques la cantidad ni la descripción.{"\n"}
-                  Recuerda comunicarte con el equipo de ingeniería enviándoles una captura del pago.{"\n"}
-                  Les facilitarás el trabajo ⚙️📦🧡
+                  *Se redirigirá a la plataforma de pago, no modifiques cantidad/descripción.{"\n"}
+                  Recuerda comunicarte con el equipo de ingeniería enviándoles una captura del pago. Les facilitarás el trabajo ⚙️📦🧡
                 </p>
               </div>
             )}
