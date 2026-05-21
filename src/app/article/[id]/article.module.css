@@ -507,3 +507,40 @@
   opacity: 0.9;
 }
 
+.paymentButtons {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.paypalButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  border-radius: 10px;
+  padding: 13px 18px;
+  font-size: 15px;
+  font-weight: 800;
+  text-decoration: none;
+  background: #0070ba;
+  color: #ffffff;
+  border: 1px solid #0070ba;
+  transition: all 200ms ease;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.paypalButton:hover {
+  background: #005ea6;
+  border-color: #005ea6;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+}
+
+@media (max-width: 560px) {
+  .paymentButtons {
+    grid-template-columns: 1fr;
+  }
+}
+
