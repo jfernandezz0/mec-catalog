@@ -261,8 +261,7 @@ export default async function ArticlePage({
                   )}
                 </div>
                 <p className={styles.paymentNote}>
-                  *Se redirigirá a la plataforma de pago, no modifiques cantidad/descripción.{"\n"}
-                  Recuerda comunicarte con el equipo de ingeniería enviándoles una captura del pago. Les facilitarás el trabajo ⚙️📦🧡
+                  *Recuerda comunicarte con el equipo de ingeniería enviándoles una captura del pago sin modificar. Les facilitarás el trabajo ⚙️📦🧡
                 </p>
               </div>
             )}
@@ -270,7 +269,7 @@ export default async function ArticlePage({
             <ShareButtons id={article.id} title={article.title} />
 
             <p className={styles.disclaimer}>
-              *Todos nuestros diseños de MOCs (montajes de bloques) son de creaccion propia e intentan reflejar de la mejor manera un vehiculo realista, la imagen del vehiculo y los datos reales son meramente informativas, y han sido extraidas de diferentes fuentes oficiales
+              Todos nuestros diseños MOCs (montajes de bloques) son de creación propia e intentan reflejar de la mejor manera un vehículo real, la imagen y los datos reales son meramente informativas, han sido extraídas de diferentes fuentes oficiales
             </p>
           </section>
         </div>
