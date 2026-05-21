@@ -132,7 +132,8 @@ export default async function ArticlePage({
   }
 
   const noteText = `MEC | mini engines - ID ${article.id}`;
-  const revolutPayUrl = `https://revolut.me/jfernandezz?currency=EUR&amount=${article.price}&note=${encodeURIComponent(noteText)}`;
+  const amountInCents = Math.round(Number(article.price) * 100);
+  const revolutPayUrl = `https://revolut.me/jfernandezz?currency=EUR&amount=${amountInCents}&note=${encodeURIComponent(noteText)}`;
 
   const categoryHref = category
     ? `/category/${category.country_code.toLowerCase()}`
