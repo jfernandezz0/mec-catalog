@@ -91,7 +91,7 @@ export default function ArticleCard({ article, index }: ArticleCardProps) {
 
   return (
     <article 
-      className={styles.card}
+      className={`${styles.card} ${isShareOpen ? styles.cardActiveShare : ''}`}
       style={index !== undefined ? { animationDelay: `${index * 60}ms` } : undefined}
     >
       <div className={styles.imageWrap}>
