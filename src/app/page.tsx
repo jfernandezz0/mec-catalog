@@ -101,7 +101,10 @@ export default async function Home() {
         </p>
       </header>
 
-      <div className="flex justify-center mb-12">
+      <div className="flex flex-col items-center justify-center mb-12 gap-2">
+        <span className="text-xs uppercase tracking-wider text-[color:var(--text-secondary)] font-semibold">
+          Síguenos en:
+        </span>
         <a
           href="https://www.instagram.com/minienginescreations"
           target="_blank"
@@ -109,12 +112,12 @@ export default async function Home() {
           className="text-[color:var(--text-primary)] opacity-85 hover:text-pink-600 transition-all"
           aria-label="Visitar Instagram de MiniEngines Creations"
         >
-          <Instagram size={28} />
+          <Instagram size={56} />
         </a>
       </div>
 
       <section>
-        <h2 className="text-lg font-semibold mb-4 text-center text-[color:var(--text-primary)]">Categorías</h2>
+        <h2 className="text-lg font-semibold mb-4 text-center text-[color:var(--text-primary)]">Fabricantes por país</h2>
         {/* 2 columns on mobile, 4 on md+ */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {sorted.map((category) => (
