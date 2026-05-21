@@ -139,12 +139,9 @@ export default async function ArticlePage({
   const amountInCents = Math.round(Number(article.price) * 100);
   const revolutPayUrl = `https://revolut.me/jfernandezz?currency=EUR&amount=${amountInCents}&note=${encodeURIComponent(noteText)}`;
 
-  // PayPal.Me rules:
-  // 1. Currency code in lowercase (eur)
-  // 2. Two decimal digits separated by a dot
-  // Note: PayPal.Me does not support pre-filling a note/description in the URL, extra segments cause a 404 error.
+  // PayPal Classic Checkout URL (with dynamic item_name and amount)
   const paypalPrice = Number(article.price).toFixed(2);
-  const paypalPayUrl = `https://paypal.me/xcohon/${paypalPrice}eur`;
+  const paypalPayUrl = `https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=javifzlvdc@gmail.com&item_name=${encodeURIComponent(noteText)}&amount=${paypalPrice}&currency_code=EUR&no_shipping=1`;
 
   const categoryHref = category
     ? `/category/${category.country_code.toLowerCase()}`

@@ -1955,7 +1955,7 @@ ON CONFLICT (key) DO NOTHING;`}
                         Habilitar pago directo con PayPal
                       </span>
                       <span className={styles.paymentsToggleSublabel}>
-                        Muestra el botón de compra que redirige al enlace de paypal.me.
+                        Muestra el botón de compra que redirige a la pasarela de PayPal con el importe y concepto del artículo.
                       </span>
                     </div>
                     <button
