@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Lightbox from '@/app/components/Lightbox';
 import styles from './article.module.css';
 
@@ -13,6 +13,11 @@ type ArticleGalleryProps = {
 export default function ArticleGallery({ imageUrls, title }: ArticleGalleryProps) {
   const [currentImage, setCurrentImage] = useState(0);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   const imageUrl = imageUrls[currentImage];
   const hasMultipleImages = imageUrls.length > 1;
 
