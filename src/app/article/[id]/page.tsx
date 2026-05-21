@@ -264,16 +264,17 @@ export default async function ArticlePage({
                 )}
 
                 <div style={{ marginTop: paymentsEnabled && (revolutEnabled || paypalEnabled) ? '18px' : '0px' }}>
-                  <p className={styles.paymentNote}>
-                    *Consulta disponibilidad del MOC de bloques antes del pago, la web podría contener errores, por eso, se confirmará el pedido lo antes posible.<br />
-                    Todos los artículos deben recogerse.<br />
-                    Si necesitas envío (no incluido), consúltanos antes en nuestros canales.
-                  </p>
                   {paymentsEnabled && (revolutEnabled || paypalEnabled) && (
-                    <p className={styles.paymentNote} style={{ marginTop: '12px' }}>
-                      Recuerda comunicarte con el equipo de ingeniería enviándoles una captura del pago sin modificar. Les facilitarás el trabajo ⚙️📦🧡
+                    <p className={styles.paymentNote}>
+                      🚨 Recuerda comunicarte con el equipo de ingeniería enviándoles una captura del pago sin modificar. Les facilitarás el trabajo ⚙️📦🧡
                     </p>
                   )}
+                  <p className={styles.paymentNote} style={{ marginTop: paymentsEnabled && (revolutEnabled || paypalEnabled) ? '12px' : '0px' }}>
+                    🔔 Consulta disponibilidad del MOC de bloques antes del pago, la web podría contener errores, por eso se confirmará el pedido lo antes posible 🏎️💨
+                  </p>
+                  <p className={styles.paymentNote} style={{ marginTop: '12px' }}>
+                    🔰 Todos los artículos deben recogerse por su fragilidad. Si necesitas envío (no incluido), consúltanos antes en nuestros canales y encontraremos una solución 🦾
+                  </p>
                 </div>
               </div>
             )}
