@@ -282,7 +282,7 @@ export default async function ArticlePage({
             <ShareButtons id={article.id} title={article.title} />
 
             <p className={styles.disclaimer}>
-              Todos nuestros diseños MOCs (montajes de bloques) son de creación propia e intentan reflejar de la mejor manera un vehículo real, la imagen y los datos reales son meramente informativas, han sido extraídas de diferentes fuentes oficiales
+              Nuestros diseños MOCs (de bloques) son de creación propia e intentan reflejar de la mejor manera un vehículo real; la imagen y los datos del vehículo son meramente informativos y han sido extraídos de diferentes fuentes oficiales.
             </p>
           </section>
         </div>
