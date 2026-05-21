@@ -131,7 +131,7 @@ export default function AdminPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [articles, setArticles] = useState<Article[]>([]);
-  const [activeTab, setActiveTab] = useState<'catalog' | 'create' | 'edit' | 'categories' | 'import'>('catalog');
+  const [activeTab, setActiveTab] = useState<'catalog' | 'create' | 'edit' | 'categories' | 'import' | 'payments'>('catalog');
   
   const [formState, setFormState] = useState<FormState>(initialFormState);
   const [files, setFiles] = useState<File[]>([]);
@@ -139,6 +139,12 @@ export default function AdminPage() {
   const [loadingCategories, setLoadingCategories] = useState(true);
   const [loadingArticles, setLoadingArticles] = useState(true);
   const [hasVisibilityColumn, setHasVisibilityColumn] = useState(true);
+
+  // Search & Payments States
+  const [searchQuery, setSearchQuery] = useState('');
+  const [paymentsEnabled, setPaymentsEnabled] = useState(false);
+  const [loadingPaymentsSetting, setLoadingPaymentsSetting] = useState(true);
+  const [hasSettingsTable, setHasSettingsTable] = useState(true);
 
   // Edit-specific states
   const [editingArticle, setEditingArticle] = useState<Article | null>(null);
@@ -230,7 +236,64 @@ export default function AdminPage() {
 
     loadCategories();
     loadArticles();
+    loadPaymentsSetting();
   }, [user]);
+
+  async function loadPaymentsSetting() {
+    setLoadingPaymentsSetting(true);
+    try {
+      const { data, error } = await supabase
+        .from('settings')
+        .select('value')
+        .eq('key', 'payments_enabled')
+        .maybeSingle();
+
+      if (error) {
+        if (error.code === 'PGRST116' || error.message.includes('settings')) {
+          setHasSettingsTable(false);
+        } else {
+          console.error('Error fetching payments setting:', error);
+        }
+        setPaymentsEnabled(false);
+      } else if (data) {
+        setPaymentsEnabled(data.value === 'true');
+        setHasSettingsTable(true);
+      } else {
+        setPaymentsEnabled(false);
+        setHasSettingsTable(true);
+      }
+    } catch (e) {
+      console.error(e);
+      setPaymentsEnabled(false);
+    } finally {
+      setLoadingPaymentsSetting(false);
+    }
+  }
+
+  async function togglePayments(enabled: boolean) {
+    if (!hasSettingsTable) {
+      alert("La tabla 'settings' no existe en la base de datos. Ejecuta el script SQL en Supabase para poder guardar.");
+      return;
+    }
+
+    setLoadingPaymentsSetting(true);
+    try {
+      const { error } = await supabase
+        .from('settings')
+        .upsert({ key: 'payments_enabled', value: String(enabled) });
+
+      if (error) {
+        alert(`Error al guardar ajuste: ${error.message}`);
+      } else {
+        setPaymentsEnabled(enabled);
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Error de red al intentar guardar.');
+    } finally {
+      setLoadingPaymentsSetting(false);
+    }
+  }
 
   async function loadArticles() {
     setLoadingArticles(true);
@@ -275,15 +338,18 @@ export default function AdminPage() {
     }
   }
 
-  function handleTabChange(tab: 'catalog' | 'create' | 'categories' | 'import') {
+  function handleTabChange(tab: 'catalog' | 'create' | 'categories' | 'import' | 'payments') {
     resetForm();
     setActiveTab(tab);
     setSelectedCatalogCategoryId(null);
+    setSearchQuery('');
     setCsvRows([]);
     setCsvFileName('');
     setCsvImportResults(null);
     if (tab === 'catalog') {
       loadArticles();
+    } else if (tab === 'payments') {
+      loadPaymentsSetting();
     }
   }
 
@@ -912,6 +978,8 @@ export default function AdminPage() {
                 ? 'Categorías y Países'
                 : activeTab === 'import'
                 ? 'Importar artículos'
+                : activeTab === 'payments'
+                ? 'Ajustes de Pago'
                 : 'Editar artículo'}
             </h1>
             <p className={styles.subtitle}>
@@ -923,6 +991,8 @@ export default function AdminPage() {
                 ? 'Gestiona las categorías desde aquí. Puedes mostrar/ocultar y eliminar categorías.'
                 : activeTab === 'import'
                 ? 'Importa múltiples artículos de golpe subiendo un archivo CSV.'
+                : activeTab === 'payments'
+                ? 'Activa o desactiva la visualización de los enlaces de pago de Revolut en los artículos.'
                 : 'Modifica los campos del artículo, gestiona sus imágenes o bórralo permanentemente.'}
             </p>
             </div>
@@ -962,6 +1032,13 @@ export default function AdminPage() {
             >
               Categorías
             </button>
+            <button
+              type="button"
+              className={`${styles.tab} ${activeTab === 'payments' ? styles.tabActive : ''}`}
+              onClick={() => handleTabChange('payments')}
+            >
+              Pagos
+            </button>
             {activeTab === 'edit' && (
               <button
                 type="button"
@@ -993,9 +1070,21 @@ export default function AdminPage() {
 
         {/* Catalog View */}
         {activeTab === 'catalog' && (() => {
-          const displayedArticles = selectedCatalogCategoryId === null
+          let displayedArticles = selectedCatalogCategoryId === null
             ? articles
             : articles.filter((a) => a.category_id === selectedCatalogCategoryId);
+
+          if (searchQuery.trim()) {
+            const query = searchQuery.trim().toLowerCase();
+            displayedArticles = displayedArticles.filter((a) => {
+              const idString = String(a.id);
+              const formattedRefCode = `mec-${idString.padStart(4, '0')}`;
+              const titleMatch = a.title.toLowerCase().includes(query);
+              const descMatch = a.description?.toLowerCase().includes(query) || false;
+              const idMatch = idString === query || formattedRefCode.includes(query) || idString.includes(query);
+              return idMatch || titleMatch || descMatch;
+            });
+          }
 
           return (
             <div>
@@ -1024,6 +1113,46 @@ export default function AdminPage() {
                       </button>
                     );
                   })}
+                </div>
+              )}
+
+              {/* Search Bar */}
+              {!loadingArticles && (
+                <div className={styles.searchBar}>
+                  <div className={styles.searchInputWrapper}>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className={styles.searchIcon}
+                    >
+                      <circle cx="11" cy="11" r="8" />
+                      <path d="m21 21-4.3-4.3" />
+                    </svg>
+                    <input
+                      type="text"
+                      placeholder="Buscar por ID (ej. 42), marca o modelo..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className={styles.searchInput}
+                    />
+                    {searchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => setSearchQuery('')}
+                        className={styles.searchClear}
+                        title="Limpiar búsqueda"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -1058,7 +1187,9 @@ export default function AdminPage() {
                         <div className={styles.cardContent}>
                           <div className={styles.cardHeader}>
                             <div className={styles.cardInfoCol}>
-                              <span className={styles.cardCategory}>{catName}</span>
+                              <span className={styles.cardCategory}>
+                                {catName} <span className={styles.cardIdBadge}>ID: {article.id}</span>
+                              </span>
                               {(() => {
                                 const parts = article.title.split(' – ');
                                 const marca = parts[0];
@@ -1701,6 +1832,71 @@ export default function AdminPage() {
                 )}
               </>
             )}
+          </div>
+        )}
+
+        {/* Payments View */}
+        {activeTab === 'payments' && (
+          <div className={styles.paymentsSection}>
+            <div className={styles.paymentsCard}>
+              <h2 className={styles.paymentsCardTitle}>Pasarela de Pago Rápido (Revolut)</h2>
+              <p className={styles.paymentsCardDesc}>
+                Activa o desactiva la visualización de los botones de pago directo en las fichas de todos tus artículos.
+                Cuando esta opción esté activa y el artículo disponga de stock (cantidad mayor a 0),
+                se mostrará un botón <strong>"Comprar ahora (Revolut)"</strong> que redirecciona al usuario con la cantidad y la nota pre-configuradas.
+              </p>
+
+              {loadingPaymentsSetting ? (
+                <div className={styles.paymentsLoading}>Cargando estado del ajuste...</div>
+              ) : !hasSettingsTable ? (
+                <div className={styles.paymentsWarning}>
+                  <h3>⚠️ Configuración requerida en base de datos</h3>
+                  <p>
+                    La tabla <code>settings</code> no existe todavía en tu base de datos de Supabase.
+                    Para activar esta funcionalidad, copia y ejecuta el siguiente código en el <strong>SQL Editor</strong> de tu panel de Supabase:
+                  </p>
+                  <pre className={styles.paymentsSqlBlock}>
+{`CREATE TABLE IF NOT EXISTS settings (
+  key VARCHAR(255) PRIMARY KEY,
+  value VARCHAR(255) NOT NULL
+);
+
+INSERT INTO settings (key, value)
+VALUES ('payments_enabled', 'false')
+ON CONFLICT (key) DO NOTHING;`}
+                  </pre>
+                  <button
+                    type="button"
+                    onClick={loadPaymentsSetting}
+                    className={styles.paymentsRetryButton}
+                  >
+                    Recargar ajuste
+                  </button>
+                </div>
+              ) : (
+                <div className={styles.paymentsToggleRow}>
+                  <div className={styles.paymentsToggleText}>
+                    <span className={styles.paymentsToggleLabel}>
+                      Activar botones de compra directa (Revolut)
+                    </span>
+                    <span className={styles.paymentsToggleSublabel}>
+                      {paymentsEnabled 
+                        ? 'Activo — Los artículos en stock mostrarán el botón de compra.' 
+                        : 'Inactivo — Los botones de compra están ocultos en todo el catálogo.'}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => togglePayments(!paymentsEnabled)}
+                    className={`${styles.switch} ${paymentsEnabled ? styles.switchActive : ''}`}
+                    aria-label="Alternar botones de compra"
+                    title="Alternar botones de compra"
+                  >
+                    <span className={styles.switchHandle} />
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </section>
