@@ -75,7 +75,7 @@ export default function ShareButtons({ title }: ShareButtonsProps) {
 
   return (
     <div className={styles.container} ref={containerRef}>
-      <p className={styles.prompt}>Consulta disponibilidad y costes de envío aquí:</p>
+      <p className={styles.prompt}>Consulta disponibilidad del MOC de bloques y costes de envío aquí:</p>
       
       <div className={styles.buttonRow}>
         {/* WhatsApp Contact */}
