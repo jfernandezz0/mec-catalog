@@ -138,7 +138,14 @@ export default async function ArticlePage({
   const noteText = `MEC | mini engines - ID ${article.id}`;
   const amountInCents = Math.round(Number(article.price) * 100);
   const revolutPayUrl = `https://revolut.me/jfernandezz?currency=EUR&amount=${amountInCents}&note=${encodeURIComponent(noteText)}`;
-  const paypalPayUrl = `https://paypal.me/xcohon/${Number(article.price)}eur/${encodeURIComponent(noteText)}`;
+
+  // PayPal.Me rules:
+  // 1. Currency code in lowercase (eur)
+  // 2. No spaces in description (use hyphens)
+  // 3. Two decimal digits separated by a dot
+  const paypalNote = `MEC-mini-engines-ID-${article.id}`;
+  const paypalPrice = Number(article.price).toFixed(2);
+  const paypalPayUrl = `https://paypal.me/xcohon/${paypalPrice}eur/${paypalNote}`;
 
   const categoryHref = category
     ? `/category/${category.country_code.toLowerCase()}`
