@@ -120,8 +120,8 @@ export default async function CategoryPage({
           </Link>
         </div>
 
-        <header className={`${styles.header} ${mecLogo === '/logo_mini.png' ? styles.fallbackHeader : ''}`}>
-          {mecLogo && mecLogo !== '/logo_mini.png' ? (
+        <header className={styles.header}>
+          {mecLogo && (
             <div className={styles.mecLogoWrapper}>
               <Image
                 src={mecLogo}
@@ -133,28 +133,17 @@ export default async function CategoryPage({
                 style={{ width: '100%', height: 'auto', objectFit: 'contain' }}
               />
             </div>
-          ) : (
-            <>
-              {mecLogo && (
-                <div className={styles.fallbackLogoWrapper}>
-                  <Image
-                    src={mecLogo}
-                    alt="MiniEngines Creations"
-                    width={80}
-                    height={80}
-                    className={styles.fallbackLogo}
-                    priority
-                  />
-                </div>
-              )}
-              <div className={styles.fallbackTitleRow}>
-                <span className={styles.flag}>
-                  {getFlagEmoji(category.country_code)}
-                </span>
-                <h1 className={styles.title}>{category.name}</h1>
-              </div>
-            </>
           )}
+
+          {mecLogo === '/logo_mini.png' && (
+            <div className={styles.titleRow} style={{ marginTop: '16px' }}>
+              <span className={styles.flag}>
+                {getFlagEmoji(category.country_code)}
+              </span>
+              <h1 className={styles.title}>{category.name}</h1>
+            </div>
+          )}
+
           <p className={styles.summary}>
             {availableArticles.length} artículo{availableArticles.length === 1 ? '' : 's'} disponible{availableArticles.length === 1 ? '' : 's'}
             {soldOutArticles.length > 0 && ` · ${soldOutArticles.length} agotado${soldOutArticles.length === 1 ? '' : 's'}`}.
