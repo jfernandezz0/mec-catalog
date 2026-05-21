@@ -177,7 +177,8 @@ export default function AdminPage() {
     const { data, error } = await supabase
       .from('articles')
       .select('id, category_id, title, description, price, quantity, image_urls, sort_order')
-      .order('sort_order', { ascending: true });
+      .order('sort_order', { ascending: true })
+      .order('id', { ascending: true });
 
     if (error) {
       alert(`Could not load articles: ${error.message}`);
@@ -266,23 +267,76 @@ export default function AdminPage() {
     const a = contextArticles[idx];
     const b = contextArticles[swapIdx];
 
-    // Swap sort_order values
-    const [orderA, orderB] = [a.sort_order, b.sort_order];
+    // Check if there are any null/undefined or duplicate sort_orders in contextArticles
+    const hasNullOrDuplicate = contextArticles.some((art, index) => 
+      art.sort_order === null || 
+      art.sort_order === undefined || 
+      contextArticles.findIndex(o => o.sort_order === art.sort_order) !== index
+    );
 
-    await Promise.all([
-      supabase.from('articles').update({ sort_order: orderB }).eq('id', a.id),
-      supabase.from('articles').update({ sort_order: orderA }).eq('id', b.id),
-    ]);
-
-    // Update local state immediately
-    setArticles((current) => {
-      const updated = current.map((art) => {
-        if (art.id === a.id) return { ...art, sort_order: orderB };
-        if (art.id === b.id) return { ...art, sort_order: orderA };
-        return art;
+    if (hasNullOrDuplicate) {
+      // Re-sequence all contextArticles, swapping the sort_orders of idx and swapIdx
+      const updates = contextArticles.map((art, index) => {
+        let targetOrder = index;
+        if (index === idx) {
+          targetOrder = swapIdx;
+        } else if (index === swapIdx) {
+          targetOrder = idx;
+        }
+        return {
+          id: art.id,
+          sort_order: targetOrder
+        };
       });
-      return updated.sort((x, y) => x.sort_order - y.sort_order);
-    });
+
+      // Update Supabase
+      await Promise.all(
+        updates.map((upd) =>
+          supabase.from('articles').update({ sort_order: upd.sort_order }).eq('id', upd.id)
+        )
+      );
+
+      // Update local state
+      setArticles((current) => {
+        const updated = current.map((art) => {
+          const upd = updates.find((u) => u.id === art.id);
+          if (upd) {
+            return { ...art, sort_order: upd.sort_order };
+          }
+          return art;
+        });
+        return updated.sort((x, y) => {
+          const ox = x.sort_order ?? 0;
+          const oy = y.sort_order ?? 0;
+          if (ox !== oy) return ox - oy;
+          return x.id - y.id;
+        });
+      });
+    } else {
+      // Simple swap of existing distinct, non-null sort_orders
+      const orderA = a.sort_order;
+      const orderB = b.sort_order;
+
+      await Promise.all([
+        supabase.from('articles').update({ sort_order: orderB }).eq('id', a.id),
+        supabase.from('articles').update({ sort_order: orderA }).eq('id', b.id),
+      ]);
+
+      // Update local state immediately
+      setArticles((current) => {
+        const updated = current.map((art) => {
+          if (art.id === a.id) return { ...art, sort_order: orderB };
+          if (art.id === b.id) return { ...art, sort_order: orderA };
+          return art;
+        });
+        return updated.sort((x, y) => {
+          const ox = x.sort_order ?? 0;
+          const oy = y.sort_order ?? 0;
+          if (ox !== oy) return ox - oy;
+          return x.id - y.id;
+        });
+      });
+    }
   }
 
   async function deleteStorageImages(urls: string[]) {

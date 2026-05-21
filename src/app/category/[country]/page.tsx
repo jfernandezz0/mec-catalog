@@ -96,6 +96,7 @@ export default async function CategoryPage({
     .select('id, title, description, price, quantity, image_urls')
     .eq('category_id', category.id)
     .order('sort_order', { ascending: true })
+    .order('id', { ascending: true })
     .returns<Article[]>();
 
   if (articlesError) {
