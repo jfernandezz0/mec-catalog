@@ -147,11 +147,6 @@ export default async function CategoryPage({
               ← Principal
             </Link>
           </div>
-
-          <p className={styles.summary}>
-            {availableArticles.length} artículo{availableArticles.length === 1 ? '' : 's'} disponible{availableArticles.length === 1 ? '' : 's'}
-            {soldOutArticles.length > 0 && ` · ${soldOutArticles.length} agotado${soldOutArticles.length === 1 ? '' : 's'}`}.
-          </p>
         </header>
 
         {articleItems.length > 0 ? (
