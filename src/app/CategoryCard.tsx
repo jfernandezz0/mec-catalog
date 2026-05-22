@@ -14,6 +14,10 @@ const hoverStyles: Record<string, { bg: string; border: string }> = {
   UK:  { bg: 'var(--cc-hover-bg-UK, #eef2ff)',  border: 'var(--cc-hover-border-UK, #818cf8)' },    // UK
   CRO: { bg: 'var(--cc-hover-bg-CRO, #fef2f2)', border: 'var(--cc-hover-border-CRO, #f87171)' },   // Croatia
   SUE: { bg: 'var(--cc-hover-bg-SUE, #fefce8)', border: 'var(--cc-hover-border-SUE, #facc15)' },   // Sweden
+  ES:  { bg: 'var(--cc-hover-bg-ES, #fff7ed)',  border: 'var(--cc-hover-border-ES, #ea580c)' },    // Spain
+  ESP: { bg: 'var(--cc-hover-bg-ES, #fff7ed)',  border: 'var(--cc-hover-border-ES, #ea580c)' },    // Spain (Alias)
+  KR:  { bg: 'var(--cc-hover-bg-KR, #f0f9ff)',  border: 'var(--cc-hover-border-KR, #0284c7)' },    // Korea
+  KOR: { bg: 'var(--cc-hover-bg-KR, #f0f9ff)',  border: 'var(--cc-hover-border-KR, #0284c7)' },    // Korea (Alias)
 };
 
 const defaultStyle = { bg: 'var(--bg-page, #f9fafb)', border: 'var(--border-card, #d1d5db)' };

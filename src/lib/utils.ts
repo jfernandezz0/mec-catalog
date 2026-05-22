@@ -12,7 +12,9 @@ export function getFlagEmoji(countryCode: string): string {
     'FRA': '🇫🇷',
     'UK':  '🇬🇧',
     'CRO': '🇭🇷',
-    'SUE': '🇸🇪'
+    'SUE': '🇸🇪',
+    'ESP': '🇪🇸',
+    'KOR': '🇰🇷'
   };
 
   if (legacyMap[code]) {

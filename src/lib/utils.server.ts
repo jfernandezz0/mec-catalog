@@ -15,6 +15,8 @@ export function getMECLogo(countryCode: string): string {
   const aliases: Record<string, string> = {
     'JAP': 'JP',
     'FRA': 'FR',
+    'ESP': 'ES',
+    'KOR': 'KR',
   };
 
   const targetCode = aliases[code] ?? code;

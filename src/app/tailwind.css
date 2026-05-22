@@ -44,6 +44,10 @@
   --cc-hover-border-CRO: #f87171;
   --cc-hover-bg-SUE: #fefce8;
   --cc-hover-border-SUE: #facc15;
+  --cc-hover-bg-ES: #fff7ed;
+  --cc-hover-border-ES: #ea580c;
+  --cc-hover-bg-KR: #f0f9ff;
+  --cc-hover-border-KR: #0284c7;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -91,6 +95,10 @@
     --cc-hover-border-CRO: #f87171;
     --cc-hover-bg-SUE: rgba(250, 204, 21, 0.12);
     --cc-hover-border-SUE: #facc15;
+    --cc-hover-bg-ES: rgba(234, 88, 12, 0.12);
+    --cc-hover-border-ES: #ea580c;
+    --cc-hover-bg-KR: rgba(2, 132, 199, 0.12);
+    --cc-hover-border-KR: #0284c7;
   }
 }
 
@@ -138,6 +146,10 @@
   --cc-hover-border-CRO: #f87171;
   --cc-hover-bg-SUE: rgba(250, 204, 21, 0.12);
   --cc-hover-border-SUE: #facc15;
+  --cc-hover-bg-ES: rgba(234, 88, 12, 0.12);
+  --cc-hover-border-ES: #ea580c;
+  --cc-hover-bg-KR: rgba(2, 132, 199, 0.12);
+  --cc-hover-border-KR: #0284c7;
 }
 
 /* Force body styling globally */
