@@ -1728,8 +1728,17 @@ export default function AdminPage() {
                 </p>
                 {categories.length > 0 ? (
                   <div className={styles.categoryGridCompact}>
-                    {categories.map((cat) => {
-                      const linkedCount = articles.filter((a) => a.category_id === cat.id).length;
+                    {[...categories]
+                      .sort((a, b) => {
+                        const countA = articles.filter((art) => art.category_id === a.id).length;
+                        const countB = articles.filter((art) => art.category_id === b.id).length;
+                        if (countB !== countA) {
+                          return countB - countA;
+                        }
+                        return a.id - b.id;
+                      })
+                      .map((cat) => {
+                        const linkedCount = articles.filter((a) => a.category_id === cat.id).length;
                       const isUpdating = categoryUpdatingId === cat.id;
                       const isHidden = hasVisibilityColumn && cat.is_visible === false;
                       return (
