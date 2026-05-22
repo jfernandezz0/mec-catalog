@@ -65,27 +65,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 4. Validar el formato del nombre del archivo: debe ser MEX_[codigo ISO].png (por ejemplo: MEX_ES.png)
+    // 4. Validar el formato del nombre del archivo: debe ser MEC_[codigo ISO].png (por ejemplo: MEC_ES.png)
     const fileNameClean = file.name.toUpperCase().trim();
-    const expectedNameMEX = `MEX_${code}.PNG`;
+    const expectedNameMEC = `MEC_${code}.PNG`;
     
-    if (fileNameClean !== expectedNameMEX) {
+    if (fileNameClean !== expectedNameMEC) {
       return NextResponse.json(
-        { error: `El nombre del archivo debe ser exactamente "MEX_${code.toLowerCase()}.png" (ej. MEX_${code}.png).` },
+        { error: `El nombre del archivo debe ser exactamente "MEC_${code.toLowerCase()}.png" (ej. MEC_${code}.png).` },
         { status: 400 }
       );
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    // Guardamos usando una marca de tiempo única para evitar errores de actualización de RLS en Supabase
-    const fileName = `MEX_${code}_${Date.now()}.png`;
+    const fileName = `MEC_${code}.png`;
 
     // 5. Subir a Supabase Storage en la carpeta 'logos' usando el cliente autenticado
     const { error: uploadError } = await supabaseClient.storage
       .from('product-images')
       .upload(`logos/${fileName}`, buffer, {
         contentType: 'image/png',
-        upsert: false, // No es necesario upsert ya que el nombre es único por la marca de tiempo
+        upsert: true, // Permite sobreescribir el archivo existente
       });
 
     if (uploadError) {

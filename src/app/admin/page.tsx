@@ -1698,7 +1698,7 @@ export default function AdminPage() {
                   <label className={styles.field}>
                     <span className={styles.labelRow}>
                       <span>Logotipo / Bandera (Opcional)</span>
-                      <span className={styles.hint}>PNG (Debe llamarse MEX_[ISO].png)</span>
+                      <span className={styles.hint}>PNG (Debe llamarse MEC_[ISO].png)</span>
                     </span>
                     <input
                       key={logoInputKey}

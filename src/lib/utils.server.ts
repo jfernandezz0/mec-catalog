@@ -28,28 +28,16 @@ export async function getMECLogo(countryCode: string): Promise<string> {
     const { data, error } = await supabase.storage
       .from('product-images')
       .list('logos', {
-        search: `MEX_${targetCode}`,
+        limit: 5,
+        search: fileName,
       });
 
     if (!error && data && data.length > 0) {
-      // Filtrar exactamente archivos que coincidan con MEX_ISO.png o MEX_ISO_timestamp.png (insensible a mayúsculas)
-      const regex = new RegExp(`^MEX_${targetCode}(_\\d+)?\\.png$`, 'i');
-      const matches = data.filter((f) => regex.test(f.name));
-
-      if (matches.length > 0) {
-        // Ordenar por fecha de creación descendente (el más reciente primero)
-        matches.sort((a, b) => {
-          const aTime = a.created_at ? new Date(a.created_at).getTime() : 0;
-          const bTime = b.created_at ? new Date(b.created_at).getTime() : 0;
-          if (aTime !== bTime) return bTime - aTime;
-          // Si no tienen fecha o es igual, ordenar por nombre alfabéticamente descendente (ya que el timestamp en el nombre es numérico)
-          return b.name.localeCompare(a.name);
-        });
-
-        const latestFile = matches[0].name;
+      const match = data.find((f) => f.name.toLowerCase() === fileName.toLowerCase());
+      if (match) {
         const { data: urlData } = supabase.storage
           .from('product-images')
-          .getPublicUrl(`logos/${latestFile}`);
+          .getPublicUrl(`logos/${match.name}`);
         return urlData.publicUrl;
       }
     }
@@ -59,18 +47,9 @@ export async function getMECLogo(countryCode: string): Promise<string> {
 
   // 2. Fallback check in local directory
   try {
-    // Intentar primero con MEX_
-    const fileNameMEX = `MEX_${targetCode}.png`;
-    const filePathMEX = path.join(process.cwd(), 'public', fileNameMEX);
-    if (fs.existsSync(filePathMEX)) {
-      return `/${fileNameMEX}`;
-    }
-
-    // Intentar segundo con MEC_ (compatibilidad anterior)
-    const fileNameMEC = `MEC_${targetCode}.png`;
-    const filePathMEC = path.join(process.cwd(), 'public', fileNameMEC);
-    if (fs.existsSync(filePathMEC)) {
-      return `/${fileNameMEC}`;
+    const filePath = path.join(process.cwd(), 'public', fileName);
+    if (fs.existsSync(filePath)) {
+      return `/${fileName}`;
     }
   } catch (err) {
     console.error(`Error checking local logo file for country ${code}:`, err);
