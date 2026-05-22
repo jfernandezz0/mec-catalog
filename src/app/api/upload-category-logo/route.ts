@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 import { isValidISOCode } from '@/lib/utils';
 
 export async function POST(request: NextRequest) {
@@ -14,7 +14,19 @@ export async function POST(request: NextRequest) {
     }
 
     const token = authHeader.substring(7);
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+
+    // Inicializar cliente de Supabase específico para esta petición usando el JWT del usuario
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+    const supabaseClient = createClient(supabaseUrl, supabaseKey, {
+      global: {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      },
+    });
+
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
     
     if (authError || !user) {
       return NextResponse.json(
@@ -53,15 +65,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const fileName = `MEC_${code}.png`;
+    // 4. Validar el formato del nombre del archivo: debe ser MEX_[codigo ISO].png (por ejemplo: MEX_ES.png)
+    const fileNameClean = file.name.toUpperCase().trim();
+    const expectedNameMEX = `MEX_${code}.PNG`;
+    
+    if (fileNameClean !== expectedNameMEX) {
+      return NextResponse.json(
+        { error: `El nombre del archivo debe ser exactamente "MEX_${code.toLowerCase()}.png" (ej. MEX_${code}.png).` },
+        { status: 400 }
+      );
+    }
 
-    // 4. Subir a Supabase Storage en la carpeta 'logos'
-    const { error: uploadError } = await supabase.storage
+    const buffer = Buffer.from(await file.arrayBuffer());
+    // Guardamos usando una marca de tiempo única para evitar errores de actualización de RLS en Supabase
+    const fileName = `MEX_${code}_${Date.now()}.png`;
+
+    // 5. Subir a Supabase Storage en la carpeta 'logos' usando el cliente autenticado
+    const { error: uploadError } = await supabaseClient.storage
       .from('product-images')
       .upload(`logos/${fileName}`, buffer, {
         contentType: 'image/png',
-        upsert: true, // Permite sobreescribir
+        upsert: false, // No es necesario upsert ya que el nombre es único por la marca de tiempo
       });
 
     if (uploadError) {

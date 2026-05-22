@@ -789,11 +789,7 @@ export default function AdminPage() {
       }
 
       alert('Categoría creada correctamente.');
-      setCategoryName('');
-      setCategoryCode('');
-      setCategoryLogo(null);
-      setLogoInputKey(Date.now());
-      await reloadCategories();
+      window.location.reload();
     } catch (error) {
       alert(error instanceof Error ? error.message : 'Error al crear la categoría.');
     } finally {
@@ -1702,7 +1698,7 @@ export default function AdminPage() {
                   <label className={styles.field}>
                     <span className={styles.labelRow}>
                       <span>Logotipo / Bandera (Opcional)</span>
-                      <span className={styles.hint}>PNG</span>
+                      <span className={styles.hint}>PNG (Debe llamarse MEX_[ISO].png)</span>
                     </span>
                     <input
                       key={logoInputKey}
