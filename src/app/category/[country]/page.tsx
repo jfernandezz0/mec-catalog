@@ -114,24 +114,23 @@ export default async function CategoryPage({
   return (
     <main className={styles.page}>
       <div className={styles.shell}>
-        <div className={styles.topBar}>
-          <Link href="/" className={styles.backLink}>
-            ← Principal
-          </Link>
-        </div>
-
         <header className={styles.header}>
           {mecLogo && (
             <div className={styles.mecLogoWrapper}>
-              <Image
-                src={mecLogo}
-                alt={`MEC ${category.name}`}
-                width={320}
-                height={200}
-                className={styles.mecLogoHeader}
-                priority
-                style={{ width: '100%', height: 'auto', objectFit: 'contain' }}
-              />
+              <div className={styles.logoContainer}>
+                <Image
+                  src={mecLogo}
+                  alt={`MEC ${category.name}`}
+                  width={320}
+                  height={200}
+                  className={styles.mecLogoHeader}
+                  priority
+                  style={{ width: '100%', height: 'auto', objectFit: 'contain' }}
+                />
+                <span className={styles.availableBadge}>
+                  {availableArticles.length}
+                </span>
+              </div>
             </div>
           )}
 
@@ -142,6 +141,12 @@ export default async function CategoryPage({
               </span>
             </div>
           )}
+
+          <div className={styles.topBar}>
+            <Link href="/" className={styles.backLink}>
+              ← Principal
+            </Link>
+          </div>
 
           <p className={styles.summary}>
             {availableArticles.length} artículo{availableArticles.length === 1 ? '' : 's'} disponible{availableArticles.length === 1 ? '' : 's'}
