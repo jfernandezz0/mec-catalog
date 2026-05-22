@@ -38,15 +38,17 @@
 
 .backLink {
   display: inline-flex;
-  border: 1px solid var(--border-card);
+  border: 1px solid var(--border-card-glass);
   border-radius: 999px;
-  background: var(--bg-card);
+  background: var(--bg-card-glass);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   color: var(--text-primary);
   padding: 9px 13px;
   font-size: 14px;
   font-weight: 800;
   text-decoration: none;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--shadow-glass);
 }
 
 .layout {
@@ -58,10 +60,12 @@
 
 .galleryCard,
 .detailsCard {
-  border: 1px solid var(--border-card);
+  border: 1px solid var(--border-card-glass);
   border-radius: 14px;
-  background: var(--bg-card);
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.07);
+  background: var(--bg-card-glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-glass);
 }
 
 .galleryCard {
@@ -223,9 +227,11 @@
 }
 
 .fact {
-  border: 1px solid var(--border-card);
+  border: 1px solid var(--border-card-glass);
   border-radius: 10px;
-  background: var(--bg-page);
+  background: var(--bg-card-glass);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   padding: 14px;
 }
 

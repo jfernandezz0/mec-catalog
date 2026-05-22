@@ -35,14 +35,14 @@ export default function CategoryCard({ category }: { category: Category }) {
   return (
     <Link
       href={`/category/${category.country_code.toLowerCase()}`}
-      className="p-4 h-28 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm text-center border transition-all duration-200"
+      className="p-4 h-28 rounded-xl flex flex-col items-center justify-center gap-2 text-center border transition-all duration-200"
       style={{
-        backgroundColor: hovered ? style.bg : 'var(--bg-card, #ffffff)',
-        borderColor: hovered ? style.border : 'var(--border-card, #e5e7eb)',
+        backgroundColor: hovered ? style.bg : 'var(--bg-card-glass)',
+        borderColor: hovered ? style.border : 'var(--border-card-glass)',
+        backdropFilter: hovered ? 'none' : 'blur(12px)',
+        WebkitBackdropFilter: hovered ? 'none' : 'blur(12px)',
         transform: hovered ? 'translateY(-2px) scale(1.03)' : 'translateY(0) scale(1)',
-        boxShadow: hovered
-          ? '0 8px 24px -4px rgba(0,0,0,0.12)'
-          : '0 1px 3px rgba(0,0,0,0.06)',
+        boxShadow: hovered ? 'var(--shadow-hover)' : 'var(--shadow-glass)',
       }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}

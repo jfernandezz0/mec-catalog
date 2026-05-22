@@ -48,6 +48,12 @@
   --cc-hover-border-ES: #ea580c;
   --cc-hover-bg-KR: #f0f9ff;
   --cc-hover-border-KR: #0284c7;
+
+  /* Glassmorphism light mode */
+  --bg-card-glass: rgba(255, 255, 255, 0.55);
+  --border-card-glass: rgba(229, 229, 229, 0.4);
+  --shadow-glass: 0 4px 30px rgba(0, 0, 0, 0.03), inset 0 1px 1px rgba(255, 255, 255, 0.7);
+  --shadow-hover: 0 12px 28px rgba(0, 0, 0, 0.07);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -99,6 +105,12 @@
     --cc-hover-border-ES: #ea580c;
     --cc-hover-bg-KR: rgba(2, 132, 199, 0.12);
     --cc-hover-border-KR: #0284c7;
+
+    /* Glassmorphism dark mode */
+    --bg-card-glass: rgba(20, 20, 20, 0.5);
+    --border-card-glass: rgba(34, 34, 34, 0.4);
+    --shadow-glass: 0 4px 30px rgba(0, 0, 0, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.05);
+    --shadow-hover: 0 12px 28px rgba(0, 0, 0, 0.25);
   }
 }
 
@@ -150,10 +162,41 @@
   --cc-hover-border-ES: #ea580c;
   --cc-hover-bg-KR: rgba(2, 132, 199, 0.12);
   --cc-hover-border-KR: #0284c7;
+
+  /* Glassmorphism dark mode */
+  --bg-card-glass: rgba(20, 20, 20, 0.5);
+  --border-card-glass: rgba(34, 34, 34, 0.4);
+  --shadow-glass: 0 4px 30px rgba(0, 0, 0, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.05);
+  --shadow-hover: 0 12px 28px rgba(0, 0, 0, 0.25);
 }
 
 /* Force body styling globally */
 body {
   background-color: var(--bg-page) !important;
   color: var(--text-primary) !important;
+}
+
+/* Transiciones suaves de tema (modo oscuro / claro) */
+body, 
+main, 
+header, 
+footer, 
+section,
+h1, h2, h3, h4, h5, h6, 
+p, 
+span, 
+label,
+hr,
+button, 
+input, 
+select, 
+textarea,
+a {
+  transition: background-color 0.4s cubic-bezier(0.4, 0, 0.2, 1), 
+              color 0.4s cubic-bezier(0.4, 0, 0.2, 1), 
+              border-color 0.4s cubic-bezier(0.4, 0, 0.2, 1), 
+              box-shadow 0.4s cubic-bezier(0.4, 0, 0.2, 1), 
+              filter 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+              backdrop-filter 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+              -webkit-backdrop-filter 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
