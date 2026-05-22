@@ -147,7 +147,7 @@ export default async function ArticlePage({
     ? `/category/${category.country_code.toLowerCase()}`
     : '/';
 
-  const mecLogo = category ? getMECLogo(category.country_code) : null;
+  const mecLogo = category ? await getMECLogo(category.country_code) : null;
 
   const imageUrls = article.image_urls?.filter(Boolean) ?? [];
 

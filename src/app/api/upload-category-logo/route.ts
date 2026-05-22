@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
+import { supabase } from '@/lib/supabase';
 
 export async function POST(request: NextRequest) {
   try {
@@ -18,16 +17,21 @@ export async function POST(request: NextRequest) {
     const buffer = Buffer.from(await file.arrayBuffer());
     const code = countryCode.toUpperCase().trim();
     const fileName = `MEC_${code}.png`;
-    const publicDir = path.join(process.cwd(), 'public');
-    const filePath = path.join(publicDir, fileName);
 
-    // Ensure the public directory exists
-    if (!fs.existsSync(publicDir)) {
-      fs.mkdirSync(publicDir, { recursive: true });
+    // Upload to Supabase Storage inside 'logos' folder
+    const { error: uploadError } = await supabase.storage
+      .from('product-images')
+      .upload(`logos/${fileName}`, buffer, {
+        contentType: file.type || 'image/png',
+        upsert: true, // Permits overwriting
+      });
+
+    if (uploadError) {
+      return NextResponse.json(
+        { error: `Error al subir a Supabase Storage: ${uploadError.message}` },
+        { status: 500 }
+      );
     }
-
-    // Save the file
-    fs.writeFileSync(filePath, buffer);
 
     return NextResponse.json({ success: true, fileName });
   } catch (error: any) {

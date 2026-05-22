@@ -1,12 +1,13 @@
 import fs from 'fs';
 import path from 'path';
+import { supabase } from './supabase';
 
 /**
  * Returns the path to the custom MEC country logo for a given country code,
  * or the default fallback /logo_mini.png if no custom logo exists.
- * Files are stored in /public as MEC_<CODE>.png
+ * Files are checked first locally in public, and if not found, in Supabase Storage.
  */
-export function getMECLogo(countryCode: string): string {
+export async function getMECLogo(countryCode: string): Promise<string> {
   if (!countryCode) return '/logo_mini.png';
 
   const code = countryCode.toUpperCase().trim();
@@ -22,6 +23,7 @@ export function getMECLogo(countryCode: string): string {
   const targetCode = aliases[code] ?? code;
   const fileName = `MEC_${targetCode}.png`;
 
+  // 1. Check local directory
   try {
     const filePath = path.join(process.cwd(), 'public', fileName);
     if (fs.existsSync(filePath)) {
@@ -29,6 +31,28 @@ export function getMECLogo(countryCode: string): string {
     }
   } catch (err) {
     console.error(`Error checking logo file for country ${code}:`, err);
+  }
+
+  // 2. Check Supabase Storage
+  try {
+    const { data, error } = await supabase.storage
+      .from('product-images')
+      .list('logos', {
+        limit: 1,
+        search: fileName,
+      });
+
+    if (!error && data && data.length > 0) {
+      const match = data.find((f) => f.name === fileName);
+      if (match) {
+        const { data: urlData } = supabase.storage
+          .from('product-images')
+          .getPublicUrl(`logos/${fileName}`);
+        return urlData.publicUrl;
+      }
+    }
+  } catch (err) {
+    console.error(`Error checking Supabase Storage for country ${code}:`, err);
   }
 
   // Fallback to the mini logo as requested

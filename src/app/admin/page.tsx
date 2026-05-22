@@ -1646,14 +1646,9 @@ export default function AdminPage() {
                       type="file"
                       accept=".png"
                       onChange={(e) => setCategoryLogo(e.target.files?.[0] || null)}
-                      disabled={categoryLoading || isProduction}
+                      disabled={categoryLoading}
                       className={styles.control}
                     />
-                    {isProduction && (
-                      <p className={styles.hint} style={{ color: '#e59866', marginTop: '4px', fontSize: '12px', lineHeight: '1.4' }}>
-                        ⚠️ En producción (Vercel), debes subir el archivo de imagen (ej. <code>MEC_ES.png</code>) a la carpeta <code>public</code> mediante Git. Este campo está deshabilitado en la web desplegada.
-                      </p>
-                    )}
                   </label>
                   
                   <button
