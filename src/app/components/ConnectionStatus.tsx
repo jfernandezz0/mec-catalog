@@ -6,7 +6,10 @@ export default function ConnectionStatus() {
   const [status, setStatus] = useState<'online' | 'offline' | 'reconnecting'>('online');
 
   useEffect(() => {
-    setStatus(typeof navigator !== 'undefined' ? (navigator.onLine ? 'online' : 'offline') : 'online');
+    const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
+    if (isOffline) {
+      setTimeout(() => setStatus('offline'), 0);
+    }
 
     let reloadTimeout: number;
 

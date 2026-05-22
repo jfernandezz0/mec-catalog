@@ -25,7 +25,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const visibleCategoryIds: number[] = [];
 
     if (categories) {
-      categories.forEach((cat: any) => {
+      categories.forEach((cat) => {
         if (cat.is_visible !== false) {
           visibleCategoryIds.push(cat.id);
           routes.push({

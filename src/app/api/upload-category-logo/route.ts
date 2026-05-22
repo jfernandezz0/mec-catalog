@@ -95,10 +95,11 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ success: true, fileName });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error al subir el logo de la categoría:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Error al procesar la subida del logo.';
     return NextResponse.json(
-      { error: error.message || 'Error al procesar la subida del logo.' },
+      { error: errorMessage },
       { status: 500 }
     );
   }

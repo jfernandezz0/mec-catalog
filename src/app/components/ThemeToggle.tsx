@@ -7,13 +7,15 @@ export default function ThemeToggle() {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
     // Find current active theme on client
     const isDark = document.documentElement.classList.contains('dark') ||
       (!document.documentElement.classList.contains('light') && 
        window.matchMedia('(prefers-color-scheme: dark)').matches);
     
-    setTheme(isDark ? 'dark' : 'light');
+    setTimeout(() => {
+      setMounted(true);
+      setTheme(isDark ? 'dark' : 'light');
+    }, 0);
   }, []);
 
   const toggleTheme = () => {
