@@ -1,8 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { isValidISOCode } from '@/lib/utils';
 
 export async function POST(request: NextRequest) {
   try {
+    // 1. Verificar autenticación del usuario mediante token Bearer
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json(
+        { error: 'No autorizado. Debes iniciar sesión como administrador.' },
+        { status: 401 }
+      );
+    }
+
+    const token = authHeader.substring(7);
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: 'Sesión no válida o expirada. Por favor, inicia sesión de nuevo.' },
+        { status: 401 }
+      );
+    }
+
+    // 2. Extraer y validar el formulario
     const formData = await request.formData();
     const file = formData.get('logo') as File | null;
     const countryCode = formData.get('countryCode') as string | null;
@@ -14,16 +35,33 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const buffer = Buffer.from(await file.arrayBuffer());
+    // Validar tipo de archivo
+    const isPng = file.type === 'image/png' || file.name.toLowerCase().endsWith('.png');
+    if (!isPng) {
+      return NextResponse.json(
+        { error: 'El logotipo debe ser una imagen en formato PNG.' },
+        { status: 400 }
+      );
+    }
+
+    // 3. Validar el código de país
     const code = countryCode.toUpperCase().trim();
+    if (!isValidISOCode(code)) {
+      return NextResponse.json(
+        { error: `El código de país "${code}" no es un código ISO válido.` },
+        { status: 400 }
+      );
+    }
+
+    const buffer = Buffer.from(await file.arrayBuffer());
     const fileName = `MEC_${code}.png`;
 
-    // Upload to Supabase Storage inside 'logos' folder
+    // 4. Subir a Supabase Storage en la carpeta 'logos'
     const { error: uploadError } = await supabase.storage
       .from('product-images')
       .upload(`logos/${fileName}`, buffer, {
-        contentType: file.type || 'image/png',
-        upsert: true, // Permits overwriting
+        contentType: 'image/png',
+        upsert: true, // Permite sobreescribir
       });
 
     if (uploadError) {
@@ -42,3 +80,4 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+

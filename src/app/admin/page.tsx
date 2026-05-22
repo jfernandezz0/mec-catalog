@@ -1,7 +1,7 @@
 'use client';
 
 import { supabase } from '@/lib/supabase';
-import { getFlagEmoji } from '@/lib/utils';
+import { getFlagEmoji, isValidISOCode } from '@/lib/utils';
 import { User } from '@supabase/supabase-js';
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react';
 import styles from './admin.module.css';
@@ -663,21 +663,75 @@ export default function AdminPage() {
 
   async function handleCreateCategory(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!user) {
+      alert('Debes iniciar sesión para realizar esta acción.');
+      return;
+    }
+
     if (!categoryName.trim() || !categoryCode.trim()) {
       alert('Por favor, rellena todos los campos.');
+      return;
+    }
+
+    const codeClean = categoryCode.toUpperCase().trim();
+    const nameClean = categoryName.trim();
+
+    // 1. Validar que el código ISO sea correcto
+    if (!isValidISOCode(codeClean)) {
+      alert('El código ISO no es válido (ej. ES, KR, USA). Revisa el código ingresado.');
+      return;
+    }
+
+    // 2. Validar localmente si el código ISO o nombre ya está en uso (rápido)
+    const codeExistsLocally = categories.some(
+      (c) => c.country_code?.toUpperCase().trim() === codeClean
+    );
+    if (codeExistsLocally) {
+      alert(`El código ISO "${codeClean}" ya está en uso por otra categoría.`);
+      return;
+    }
+
+    const nameExistsLocally = categories.some(
+      (c) => c.name?.toUpperCase().trim() === nameClean.toUpperCase()
+    );
+    if (nameExistsLocally) {
+      alert(`El nombre del país "${nameClean}" ya está en uso por otra categoría.`);
       return;
     }
 
     setCategoryLoading(true);
 
     try {
-      const codeClean = categoryCode.toUpperCase().trim();
-      const categoryRecord: Record<string, unknown> = {
-        name: categoryName.trim(),
-        country_code: codeClean,
-      };
+      // 3. Validar en base de datos en tiempo real (seguridad ante cambios concurrentes)
+      const { data: dbCodeData, error: dbCodeError } = await supabase
+        .from('categories')
+        .select('id')
+        .ilike('country_code', codeClean);
 
-      categoryRecord.is_visible = true;
+      if (dbCodeError) {
+        throw new Error(`Error al verificar el código ISO en la base de datos: ${dbCodeError.message}`);
+      }
+      if (dbCodeData && dbCodeData.length > 0) {
+        throw new Error(`El código ISO "${codeClean}" ya está registrado en la base de datos.`);
+      }
+
+      const { data: dbNameData, error: dbNameError } = await supabase
+        .from('categories')
+        .select('id')
+        .ilike('name', nameClean);
+
+      if (dbNameError) {
+        throw new Error(`Error al verificar el nombre en la base de datos: ${dbNameError.message}`);
+      }
+      if (dbNameData && dbNameData.length > 0) {
+        throw new Error(`El nombre de país "${nameClean}" ya está registrado en la base de datos.`);
+      }
+
+      const categoryRecord: Record<string, unknown> = {
+        name: nameClean,
+        country_code: codeClean,
+        is_visible: true,
+      };
 
       const { error } = await supabase
         .from('categories')
@@ -689,7 +743,7 @@ export default function AdminPage() {
             .from('categories')
             .insert([
               {
-                name: categoryName.trim(),
+                name: nameClean,
                 country_code: codeClean,
               },
             ]);
@@ -710,13 +764,22 @@ export default function AdminPage() {
 
       // Upload logo if one is selected
       if (categoryLogo) {
+        const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.access_token;
+
         const formData = new FormData();
         formData.append('logo', categoryLogo);
         formData.append('countryCode', codeClean);
 
+        const headers: Record<string, string> = {};
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+
         const uploadRes = await fetch('/api/upload-category-logo', {
           method: 'POST',
           body: formData,
+          headers,
         });
 
         if (!uploadRes.ok) {
