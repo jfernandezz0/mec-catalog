@@ -15,7 +15,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 40px;
+  min-height: 48px;
   margin-bottom: 24px;
 }
 
@@ -31,7 +31,7 @@
 }
 
 .topLogoImage {
-  height: 28px;
+  height: 42px;
   width: auto;
   object-fit: contain;
 }
@@ -358,6 +358,10 @@
 
   .thumbs {
     grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .topLogoImage {
+    height: 36px;
   }
 }
 
