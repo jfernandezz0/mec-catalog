@@ -128,6 +128,7 @@ function formatPrice(value: number | string) {
 }
 
 export default function AdminPage() {
+  const isProduction = typeof window !== 'undefined' && window.location.hostname !== 'localhost' && !window.location.hostname.includes('127.0.0.1');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [articles, setArticles] = useState<Article[]>([]);
@@ -694,9 +695,15 @@ export default function AdminPage() {
             ]);
 
           if (fallbackError) {
+            if (fallbackError.message.includes('duplicate key') || fallbackError.message.includes('unique constraint')) {
+              throw new Error('Ya existe una categoría con ese nombre o código ISO.');
+            }
             throw new Error(fallbackError.message);
           }
         } else {
+          if (error.message.includes('duplicate key') || error.message.includes('unique constraint')) {
+            throw new Error('Ya existe una categoría con ese nombre o código ISO.');
+          }
           throw new Error(error.message);
         }
       }
@@ -1639,9 +1646,14 @@ export default function AdminPage() {
                       type="file"
                       accept=".png"
                       onChange={(e) => setCategoryLogo(e.target.files?.[0] || null)}
-                      disabled={categoryLoading}
+                      disabled={categoryLoading || isProduction}
                       className={styles.control}
                     />
+                    {isProduction && (
+                      <p className={styles.hint} style={{ color: '#e59866', marginTop: '4px', fontSize: '12px', lineHeight: '1.4' }}>
+                        ⚠️ En producción (Vercel), debes subir el archivo de imagen (ej. <code>MEC_ES.png</code>) a la carpeta <code>public</code> mediante Git. Este campo está deshabilitado en la web desplegada.
+                      </p>
+                    )}
                   </label>
                   
                   <button
