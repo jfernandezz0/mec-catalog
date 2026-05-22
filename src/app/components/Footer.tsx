@@ -19,20 +19,20 @@ export default function Footer() {
           href="https://revolut.me/jfernandezz?currency=EUR&amount=0100&note=MEC%20%7C%20MINIENGINES%20-%20ALPISTE%20PARA%20EL%20INGENIERO"
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center justify-center p-3 rounded-full bg-[color:var(--bg-card)] hover:bg-red-500/10 border border-[color:var(--border-card)] hover:border-red-500 text-[color:var(--text-primary)] hover:text-red-500 transition-all hover:scale-110 shadow-sm hover:shadow-md hover:shadow-red-500/20"
+          className="inline-flex items-center justify-center p-3.5 rounded-full bg-[color:var(--bg-card)] hover:bg-red-500/10 border border-[color:var(--border-card)] hover:border-red-500 text-[color:var(--text-primary)] hover:text-red-500 transition-all hover:scale-110 shadow-sm hover:shadow-md hover:shadow-red-500/20"
           title="Colaborar con el equipo de ingeniería"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            width="20"
-            height="20"
+            width="24"
+            height="24"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
             strokeWidth="2"
             strokeLinecap="round"
             strokeLinejoin="round"
-            className="w-5 h-5"
+            className="w-6 h-6"
           >
             <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
           </svg>
