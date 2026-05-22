@@ -125,8 +125,7 @@ export default function Lightbox({ imageUrls, initialIndex, onClose, title }: Li
         ) : (
           <div className="text-white text-center font-semibold text-sm leading-relaxed max-w-sm">
             El fotógrafo se está tomando unos días libres.<br />
-            🏖️☀️🍹<br />
-            Le adoramos. 😒
+            🏖️☀️🍹
           </div>
         )}
       </div>

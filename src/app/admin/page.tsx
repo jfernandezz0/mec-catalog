@@ -1272,8 +1272,7 @@ export default function AdminPage() {
                           ) : (
                             <div className={styles.cardNoImage}>
                               El fotógrafo se está tomando unos días libres.<br />
-                              🏖️☀️🍹<br />
-                              Le adoramos. 😒
+                              🏖️☀️🍹
                             </div>
                           )}
                         </div>

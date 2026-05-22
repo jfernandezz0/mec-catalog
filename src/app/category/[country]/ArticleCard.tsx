@@ -152,8 +152,7 @@ export default function ArticleCard({ article, index }: ArticleCardProps) {
         ) : (
           <div className={styles.noImage}>
             El fotógrafo se está tomando unos días libres.<br />
-            🏖️☀️🍹<br />
-            Le adoramos. 😒
+            🏖️☀️🍹
           </div>
         )}
       </div>

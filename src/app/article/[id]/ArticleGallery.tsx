@@ -98,8 +98,7 @@ export default function ArticleGallery({ id, imageUrls, title }: ArticleGalleryP
         ) : (
           <div className={styles.noImage}>
             El fotógrafo se está tomando unos días libres.<br />
-            🏖️☀️🍹<br />
-            Le adoramos. 😒
+            🏖️☀️🍹
           </div>
         )}
       </div>
