@@ -16,6 +16,8 @@ type ArticleCardProps = {
     image_urls: string[] | null;
   };
   index?: number;
+  hidePrices?: boolean;
+  hideAvailability?: boolean;
 };
 
 function formatPrice(value: number | string) {
@@ -25,7 +27,12 @@ function formatPrice(value: number | string) {
   }).format(Number(value));
 }
 
-export default function ArticleCard({ article, index }: ArticleCardProps) {
+export default function ArticleCard({ 
+  article, 
+  index, 
+  hidePrices = false, 
+  hideAvailability = false 
+}: ArticleCardProps) {
   const imageUrls = article.image_urls?.filter(Boolean) ?? [];
   const [currentImage, setCurrentImage] = useState(0);
   const imageUrl = imageUrls[currentImage];
@@ -258,12 +265,16 @@ export default function ArticleCard({ article, index }: ArticleCardProps) {
           </div>
         </div>
 
-        <div className={styles.metaRow}>
-          <span className={styles.price}>{formatPrice(article.price)}</span>
-          <span className={article.quantity === 0 ? styles.stockOut : styles.stockIn}>
-            {article.quantity === 0 ? 'Agotado' : 'Disponible'}
-          </span>
-        </div>
+        {(!hidePrices || !hideAvailability) && (
+          <div className={styles.metaRow}>
+            {!hidePrices && <span className={styles.price}>{formatPrice(article.price)}</span>}
+            {!hideAvailability && (
+              <span className={article.quantity === 0 ? styles.stockOut : styles.stockIn}>
+                {article.quantity === 0 ? 'Agotado' : 'Disponible'}
+              </span>
+            )}
+          </div>
+        )}
         <Link href={`/article/${article.id}`} className={styles.detailLink}>
           Ver ficha
         </Link>

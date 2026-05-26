@@ -15,9 +15,15 @@ type Article = {
 
 type InfiniteArticleGridProps = {
   articles: Article[];
+  hidePrices?: boolean;
+  hideAvailability?: boolean;
 };
 
-export default function InfiniteArticleGrid({ articles }: InfiniteArticleGridProps) {
+export default function InfiniteArticleGrid({ 
+  articles, 
+  hidePrices = false, 
+  hideAvailability = false 
+}: InfiniteArticleGridProps) {
   const [visibleCount, setVisibleCount] = useState(12);
   const observerTargetRef = useRef<HTMLDivElement>(null);
 
@@ -52,7 +58,13 @@ export default function InfiniteArticleGrid({ articles }: InfiniteArticleGridPro
     <>
       <section className={styles.grid}>
         {visibleArticles.map((article, index) => (
-          <ArticleCard article={article} key={article.id} index={index} />
+          <ArticleCard 
+            article={article} 
+            key={article.id} 
+            index={index} 
+            hidePrices={hidePrices} 
+            hideAvailability={hideAvailability} 
+          />
         ))}
       </section>
 

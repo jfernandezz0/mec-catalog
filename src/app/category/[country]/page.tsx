@@ -105,6 +105,22 @@ export default async function CategoryPage({
     throw new Error('No se pudo cargar los artículos de la categoría.');
   }
 
+  let hidePrices = false;
+  let hideAvailability = false;
+  try {
+    const { data: settingsData, error: settingsError } = await supabase
+      .from('settings')
+      .select('key, value');
+
+    if (!settingsError && settingsData) {
+      const settingsMap = new Map(settingsData.map((s) => [s.key, s.value]));
+      hidePrices = settingsMap.get('hide_prices') === 'true';
+      hideAvailability = settingsMap.get('hide_availability') === 'true';
+    }
+  } catch (e) {
+    console.error('Error loading settings:', e);
+  }
+
   const allArticles = articles ?? [];
   const availableArticles = allArticles.filter((a) => a.quantity > 0);
   const soldOutArticles = allArticles.filter((a) => a.quantity === 0);
@@ -150,7 +166,11 @@ export default async function CategoryPage({
         </header>
 
         {articleItems.length > 0 ? (
-          <InfiniteArticleGrid articles={articleItems} />
+          <InfiniteArticleGrid 
+            articles={articleItems} 
+            hidePrices={hidePrices} 
+            hideAvailability={hideAvailability} 
+          />
         ) : (
           <section className={styles.empty}>
             <h2 className={styles.emptyTitle}>Sin artículos aún</h2>

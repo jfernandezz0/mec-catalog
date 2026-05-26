@@ -120,6 +120,8 @@ export default async function ArticlePage({
   let paymentsEnabled = false;
   let revolutEnabled = true;
   let paypalEnabled = true;
+  let hidePrices = false;
+  let hideAvailability = false;
   try {
     const { data: settingsData, error: settingsError } = await supabase
       .from('settings')
@@ -130,6 +132,8 @@ export default async function ArticlePage({
       paymentsEnabled = settingsMap.get('payments_enabled') === 'true';
       revolutEnabled = settingsMap.get('revolut_enabled') !== 'false';
       paypalEnabled = settingsMap.get('paypal_enabled') !== 'false';
+      hidePrices = settingsMap.get('hide_prices') === 'true';
+      hideAvailability = settingsMap.get('hide_availability') === 'true';
     }
   } catch (e) {
     console.error('Error loading settings:', e);
@@ -192,20 +196,26 @@ export default async function ArticlePage({
               {article.description || 'Sin descripción disponible.'}
             </p>
 
-            <div className={styles.facts}>
-              <div className={styles.fact}>
-                <span className={styles.factLabel}>Precio</span>
-                <span className={styles.factValue}>
-                  {formatPrice(article.price)}
-                </span>
+            {(!hidePrices || !hideAvailability) && (
+              <div className={styles.facts}>
+                {!hidePrices && (
+                  <div className={styles.fact}>
+                    <span className={styles.factLabel}>Precio</span>
+                    <span className={styles.factValue}>
+                      {formatPrice(article.price)}
+                    </span>
+                  </div>
+                )}
+                {!hideAvailability && (
+                  <div className={styles.fact}>
+                    <span className={styles.factLabel}>Estado</span>
+                    <span className={article.quantity === 0 ? styles.stockOut : styles.stockIn}>
+                      {article.quantity === 0 ? 'Agotado' : 'Disponible'}
+                    </span>
+                  </div>
+                )}
               </div>
-              <div className={styles.fact}>
-                <span className={styles.factLabel}>Estado</span>
-                <span className={article.quantity === 0 ? styles.stockOut : styles.stockIn}>
-                  {article.quantity === 0 ? 'Agotado' : 'Disponible'}
-                </span>
-              </div>
-            </div>
+            )}
 
             {article.quantity > 0 && (
               <div className={styles.paymentAction}>

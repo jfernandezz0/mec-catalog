@@ -132,7 +132,7 @@ export default function AdminPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [articles, setArticles] = useState<Article[]>([]);
-  const [activeTab, setActiveTab] = useState<'catalog' | 'create' | 'edit' | 'categories' | 'import' | 'payments'>('catalog');
+  const [activeTab, setActiveTab] = useState<'catalog' | 'create' | 'edit' | 'categories' | 'import' | 'payments' | 'config'>('catalog');
   
   const [formState, setFormState] = useState<FormState>(initialFormState);
   const [files, setFiles] = useState<File[]>([]);
@@ -146,6 +146,8 @@ export default function AdminPage() {
   const [paymentsEnabled, setPaymentsEnabled] = useState(false);
   const [revolutEnabled, setRevolutEnabled] = useState(true);
   const [paypalEnabled, setPaypalEnabled] = useState(true);
+  const [hidePrices, setHidePrices] = useState(false);
+  const [hideAvailability, setHideAvailability] = useState(false);
   const [loadingPaymentsSetting, setLoadingPaymentsSetting] = useState(true);
   const [hasSettingsTable, setHasSettingsTable] = useState(true);
 
@@ -258,16 +260,22 @@ export default function AdminPage() {
         setPaymentsEnabled(false);
         setRevolutEnabled(true);
         setPaypalEnabled(true);
+        setHidePrices(false);
+        setHideAvailability(false);
       } else if (data && data.length > 0) {
         const settingsMap = new Map(data.map((s) => [s.key, s.value]));
         setPaymentsEnabled(settingsMap.get('payments_enabled') === 'true');
         setRevolutEnabled(settingsMap.get('revolut_enabled') !== 'false');
         setPaypalEnabled(settingsMap.get('paypal_enabled') !== 'false');
+        setHidePrices(settingsMap.get('hide_prices') === 'true');
+        setHideAvailability(settingsMap.get('hide_availability') === 'true');
         setHasSettingsTable(true);
       } else {
         setPaymentsEnabled(false);
         setRevolutEnabled(true);
         setPaypalEnabled(true);
+        setHidePrices(false);
+        setHideAvailability(false);
         setHasSettingsTable(true);
       }
     } catch (e) {
@@ -275,6 +283,8 @@ export default function AdminPage() {
       setPaymentsEnabled(false);
       setRevolutEnabled(true);
       setPaypalEnabled(true);
+      setHidePrices(false);
+      setHideAvailability(false);
     } finally {
       setLoadingPaymentsSetting(false);
     }
@@ -298,6 +308,8 @@ export default function AdminPage() {
         if (key === 'payments_enabled') setPaymentsEnabled(value === 'true');
         if (key === 'revolut_enabled') setRevolutEnabled(value === 'true');
         if (key === 'paypal_enabled') setPaypalEnabled(value === 'true');
+        if (key === 'hide_prices') setHidePrices(value === 'true');
+        if (key === 'hide_availability') setHideAvailability(value === 'true');
       }
     } catch (e) {
       console.error(e);
@@ -317,6 +329,14 @@ export default function AdminPage() {
 
   async function togglePaypal(enabled: boolean) {
     await updateSetting('paypal_enabled', String(enabled));
+  }
+
+  async function toggleHidePrices(enabled: boolean) {
+    await updateSetting('hide_prices', String(enabled));
+  }
+
+  async function toggleHideAvailability(enabled: boolean) {
+    await updateSetting('hide_availability', String(enabled));
   }
 
   async function loadArticles() {
@@ -362,7 +382,7 @@ export default function AdminPage() {
     }
   }
 
-  function handleTabChange(tab: 'catalog' | 'create' | 'categories' | 'import' | 'payments') {
+  function handleTabChange(tab: 'catalog' | 'create' | 'categories' | 'import' | 'payments' | 'config') {
     resetForm();
     setActiveTab(tab);
     setSelectedCatalogCategoryId(null);
@@ -372,7 +392,7 @@ export default function AdminPage() {
     setCsvImportResults(null);
     if (tab === 'catalog') {
       loadArticles();
-    } else if (tab === 'payments') {
+    } else if (tab === 'payments' || tab === 'config') {
       loadPaymentsSetting();
     }
   }
@@ -1069,6 +1089,8 @@ export default function AdminPage() {
                 ? 'Importar artículos'
                 : activeTab === 'payments'
                 ? 'Ajustes de Pago'
+                : activeTab === 'config'
+                ? 'Configuración'
                 : 'Editar artículo'}
             </h1>
             <p className={styles.subtitle}>
@@ -1082,6 +1104,8 @@ export default function AdminPage() {
                 ? 'Importa múltiples artículos de golpe subiendo un archivo CSV.'
                 : activeTab === 'payments'
                 ? 'Activa o desactiva la visualización de los enlaces de pago de Revolut en los artículos.'
+                : activeTab === 'config'
+                ? 'Configura opciones globales del catálogo, como ocultar precios o disponibilidad.'
                 : 'Modifica los campos del artículo, gestiona sus imágenes o bórralo permanentemente.'}
             </p>
             </div>
@@ -1127,6 +1151,13 @@ export default function AdminPage() {
               onClick={() => handleTabChange('payments')}
             >
               Pagos
+            </button>
+            <button
+              type="button"
+              className={`${styles.tab} ${activeTab === 'config' ? styles.tabActive : ''}`}
+              onClick={() => handleTabChange('config')}
+            >
+              Configuración
             </button>
             {activeTab === 'edit' && (
               <button
@@ -2039,6 +2070,97 @@ ON CONFLICT (key) DO NOTHING;`}
                       className={`${styles.switch} ${paypalEnabled && paymentsEnabled ? styles.switchActive : ''}`}
                       aria-label="Alternar PayPal"
                       title="Alternar PayPal"
+                    >
+                      <span className={styles.switchHandle} />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Config View */}
+        {activeTab === 'config' && (
+          <div className={styles.paymentsSection}>
+            <div className={styles.paymentsCard}>
+              <h2 className={styles.paymentsCardTitle}>Configuración General</h2>
+              <p className={styles.paymentsCardDesc}>
+                Configura las opciones de visualización de precios y disponibilidad en el catálogo.
+              </p>
+
+              {loadingPaymentsSetting ? (
+                <div className={styles.paymentsLoading}>Cargando estado de los ajustes...</div>
+              ) : !hasSettingsTable ? (
+                <div className={styles.paymentsWarning}>
+                  <h3>⚠️ Configuración requerida en base de datos</h3>
+                  <p>
+                    La tabla <code>settings</code> no existe todavía en tu base de datos de Supabase.
+                    Para activar esta funcionalidad, copia y ejecuta el siguiente código en el <strong>SQL Editor</strong> de tu panel de Supabase:
+                  </p>
+                  <pre className={styles.paymentsSqlBlock}>
+{`CREATE TABLE IF NOT EXISTS settings (
+  key VARCHAR(255) PRIMARY KEY,
+  value VARCHAR(255) NOT NULL
+);
+
+INSERT INTO settings (key, value)
+VALUES 
+  ('hide_prices', 'false'),
+  ('hide_availability', 'false')
+ON CONFLICT (key) DO NOTHING;`}
+                  </pre>
+                  <button
+                    type="button"
+                    onClick={loadPaymentsSetting}
+                    className={styles.paymentsRetryButton}
+                  >
+                    Recargar ajuste
+                  </button>
+                </div>
+              ) : (
+                <div className={styles.paymentsList}>
+                  {/* Hide Prices Switch */}
+                  <div className={styles.paymentsToggleRow}>
+                    <div className={styles.paymentsToggleText}>
+                      <span className={styles.paymentsToggleLabel}>
+                        Ocultar precios de artículos
+                      </span>
+                      <span className={styles.paymentsToggleSublabel}>
+                        {hidePrices
+                          ? 'Activo — Los precios no se mostrarán en la ficha ni en el listado de artículos.'
+                          : 'Inactivo — Los precios son visibles para todos los usuarios.'}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => toggleHidePrices(!hidePrices)}
+                      className={`${styles.switch} ${hidePrices ? styles.switchActive : ''}`}
+                      aria-label="Alternar ocultar precios de artículos"
+                      title="Alternar ocultar precios de artículos"
+                    >
+                      <span className={styles.switchHandle} />
+                    </button>
+                  </div>
+
+                  {/* Hide Availability Switch */}
+                  <div className={styles.paymentsToggleRow}>
+                    <div className={styles.paymentsToggleText}>
+                      <span className={styles.paymentsToggleLabel}>
+                        Ocultar información de disponibilidad
+                      </span>
+                      <span className={styles.paymentsToggleSublabel}>
+                        {hideAvailability
+                          ? 'Activo — La disponibilidad de stock no se mostrará en la ficha del artículo.'
+                          : 'Inactivo — La disponibilidad de stock es visible en la ficha del artículo.'}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => toggleHideAvailability(!hideAvailability)}
+                      className={`${styles.switch} ${hideAvailability ? styles.switchActive : ''}`}
+                      aria-label="Alternar ocultar información de disponibilidad"
+                      title="Alternar ocultar información de disponibilidad"
                     >
                       <span className={styles.switchHandle} />
                     </button>
