@@ -59,8 +59,21 @@ const initialFormState: FormState = {
 };
 
 function getSafeFilePath(file: File) {
-  const extension = file.name.split('.').pop() || 'jpg';
-  const fileName = `${crypto.randomUUID()}.${extension.toLowerCase()}`;
+  const parts = file.name.split('.');
+  const extension = parts.pop() || 'jpg';
+  const baseName = parts.join('.');
+  
+  // Normalizar y limpiar caracteres no permitidos en URLs, pero manteniendo el nombre original
+  const cleanName = baseName
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // Eliminar acentos
+    .replace(/[^a-zA-Z0-9-_]/g, '_') // Reemplazar caracteres especiales y espacios por guiones bajos
+    .replace(/_+/g, '_'); // Evitar guiones bajos duplicados
+    
+  // Para evitar errores por nombres duplicados al subir imágenes de diferentes artículos (ej: frontal.jpg),
+  // se le añade un prefijo único con la marca de tiempo (timestamp).
+  const timestamp = Date.now();
+  const fileName = `${timestamp}_${cleanName}.${extension.toLowerCase()}`;
 
   return `articles/${fileName}`;
 }
