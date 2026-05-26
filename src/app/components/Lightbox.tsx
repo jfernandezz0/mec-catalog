@@ -75,13 +75,19 @@ export default function Lightbox({ imageUrls, initialIndex, onClose, title }: Li
       onClick={onClose}
     >
       {/* Top bar (Title and Close button) */}
-      <div className="absolute top-0 inset-x-0 flex items-center justify-between p-4 bg-gradient-to-b from-black/50 to-transparent text-white">
+      <div
+        className="absolute top-0 inset-x-0 z-10 flex items-center justify-between p-4 bg-gradient-to-b from-black/50 to-transparent text-white"
+        onClick={(e) => e.stopPropagation()}
+      >
         <span className="text-sm font-medium truncate max-w-[70%]">
           {title} {hasMultiple && `(${activeIndex + 1}/${imageUrls.length})`}
         </span>
         <button
           type="button"
-          onClick={onClose}
+          onClick={(e) => {
+            e.stopPropagation();
+            onClose();
+          }}
           className="flex items-center justify-center w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
           aria-label="Cerrar visor"
           title="Cerrar (Esc)"
