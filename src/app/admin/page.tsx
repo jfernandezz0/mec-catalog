@@ -2101,20 +2101,20 @@ ON CONFLICT (key) DO NOTHING;`}
                   <div className={styles.paymentsToggleRow}>
                     <div className={styles.paymentsToggleText}>
                       <span className={styles.paymentsToggleLabel}>
-                        Ocultar precios de artículos
+                        Mostrar precios de artículos
                       </span>
                       <span className={styles.paymentsToggleSublabel}>
-                        {hidePrices
-                          ? 'Activo — Los precios no se mostrarán en la ficha ni en el listado de artículos.'
-                          : 'Inactivo — Los precios son visibles para todos los usuarios.'}
+                        {!hidePrices
+                          ? 'Activo — Los precios se mostrarán en la ficha y en el listado de artículos.'
+                          : 'Inactivo — Los precios no se mostrarán en la ficha ni en el listado de artículos.'}
                       </span>
                     </div>
                     <button
                       type="button"
                       onClick={() => toggleHidePrices(!hidePrices)}
-                      className={`${styles.switch} ${hidePrices ? styles.switchActive : ''}`}
-                      aria-label="Alternar ocultar precios de artículos"
-                      title="Alternar ocultar precios de artículos"
+                      className={`${styles.switch} ${!hidePrices ? styles.switchActive : ''}`}
+                      aria-label="Alternar mostrar precios de artículos"
+                      title="Alternar mostrar precios de artículos"
                     >
                       <span className={styles.switchHandle} />
                     </button>
@@ -2124,20 +2124,20 @@ ON CONFLICT (key) DO NOTHING;`}
                   <div className={styles.paymentsToggleRow}>
                     <div className={styles.paymentsToggleText}>
                       <span className={styles.paymentsToggleLabel}>
-                        Ocultar información de disponibilidad
+                        Mostrar información de disponibilidad
                       </span>
                       <span className={styles.paymentsToggleSublabel}>
-                        {hideAvailability
-                          ? 'Activo — La disponibilidad de stock no se mostrará en la ficha del artículo.'
-                          : 'Inactivo — La disponibilidad de stock es visible en la ficha del artículo.'}
+                        {!hideAvailability
+                          ? 'Activo — La disponibilidad de stock se mostrará en la ficha del artículo.'
+                          : 'Inactivo — La disponibilidad de stock no se mostrará en la ficha del artículo.'}
                       </span>
                     </div>
                     <button
                       type="button"
                       onClick={() => toggleHideAvailability(!hideAvailability)}
-                      className={`${styles.switch} ${hideAvailability ? styles.switchActive : ''}`}
-                      aria-label="Alternar ocultar información de disponibilidad"
-                      title="Alternar ocultar información de disponibilidad"
+                      className={`${styles.switch} ${!hideAvailability ? styles.switchActive : ''}`}
+                      aria-label="Alternar mostrar información de disponibilidad"
+                      title="Alternar mostrar información de disponibilidad"
                     >
                       <span className={styles.switchHandle} />
                     </button>
