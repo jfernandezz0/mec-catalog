@@ -132,7 +132,7 @@ export default function AdminPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [articles, setArticles] = useState<Article[]>([]);
-  const [activeTab, setActiveTab] = useState<'catalog' | 'create' | 'edit' | 'categories' | 'import' | 'payments' | 'config'>('catalog');
+  const [activeTab, setActiveTab] = useState<'catalog' | 'create' | 'edit' | 'categories' | 'import' | 'config'>('catalog');
   
   const [formState, setFormState] = useState<FormState>(initialFormState);
   const [files, setFiles] = useState<File[]>([]);
@@ -382,7 +382,7 @@ export default function AdminPage() {
     }
   }
 
-  function handleTabChange(tab: 'catalog' | 'create' | 'categories' | 'import' | 'payments' | 'config') {
+  function handleTabChange(tab: 'catalog' | 'create' | 'categories' | 'import' | 'config') {
     resetForm();
     setActiveTab(tab);
     setSelectedCatalogCategoryId(null);
@@ -392,7 +392,7 @@ export default function AdminPage() {
     setCsvImportResults(null);
     if (tab === 'catalog') {
       loadArticles();
-    } else if (tab === 'payments' || tab === 'config') {
+    } else if (tab === 'config') {
       loadPaymentsSetting();
     }
   }
@@ -1087,8 +1087,6 @@ export default function AdminPage() {
                 ? 'Categorías y Países'
                 : activeTab === 'import'
                 ? 'Importar artículos'
-                : activeTab === 'payments'
-                ? 'Ajustes de Pago'
                 : activeTab === 'config'
                 ? 'Configuración'
                 : 'Editar artículo'}
@@ -1102,8 +1100,6 @@ export default function AdminPage() {
                 ? 'Gestiona las categorías desde aquí. Puedes mostrar/ocultar y eliminar categorías.'
                 : activeTab === 'import'
                 ? 'Importa múltiples artículos de golpe subiendo un archivo CSV.'
-                : activeTab === 'payments'
-                ? 'Activa o desactiva la visualización de los enlaces de pago de Revolut en los artículos.'
                 : activeTab === 'config'
                 ? 'Configura opciones globales del catálogo, como ocultar precios o disponibilidad.'
                 : 'Modifica los campos del artículo, gestiona sus imágenes o bórralo permanentemente.'}
@@ -1144,13 +1140,6 @@ export default function AdminPage() {
               onClick={() => handleTabChange('categories')}
             >
               Categorías
-            </button>
-            <button
-              type="button"
-              className={`${styles.tab} ${activeTab === 'payments' ? styles.tabActive : ''}`}
-              onClick={() => handleTabChange('payments')}
-            >
-              Pagos
             </button>
             <button
               type="button"
@@ -1967,13 +1956,14 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* Payments View */}
-        {activeTab === 'payments' && (
-          <div className={styles.paymentsSection}>
+        {/* Config View */}
+        {activeTab === 'config' && (
+          <div className={styles.paymentsSection} style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
+            {/* Sección 1: Pagos */}
             <div className={styles.paymentsCard}>
-              <h2 className={styles.paymentsCardTitle}>Ajustes de Métodos de Pago Online</h2>
+              <h2 className={styles.paymentsCardTitle}>Pagos</h2>
               <p className={styles.paymentsCardDesc}>
-                Configura la visualización de los botones de pago directo en la ficha de los artículos con stock disponible (cantidad mayor a 0).
+                Ajustes de Métodos de Pago Online
               </p>
 
               {loadingPaymentsSetting ? (
@@ -1995,7 +1985,9 @@ INSERT INTO settings (key, value)
 VALUES 
   ('payments_enabled', 'false'),
   ('revolut_enabled', 'true'),
-  ('paypal_enabled', 'true')
+  ('paypal_enabled', 'true'),
+  ('hide_prices', 'false'),
+  ('hide_availability', 'false')
 ON CONFLICT (key) DO NOTHING;`}
                   </pre>
                   <button
@@ -2012,7 +2004,7 @@ ON CONFLICT (key) DO NOTHING;`}
                   <div className={`${styles.paymentsToggleRow} ${hidePrices ? styles.disabledRow : ''}`}>
                     <div className={styles.paymentsToggleText}>
                       <span className={styles.paymentsToggleLabel}>
-                        Activar métodos de pago online (Global)
+                        General - Metodos de pago online
                       </span>
                       <span className={styles.paymentsToggleSublabel}>
                         {hidePrices
@@ -2038,7 +2030,7 @@ ON CONFLICT (key) DO NOTHING;`}
                   <div className={`${styles.paymentsToggleRow} ${(!paymentsEnabled || hidePrices) ? styles.disabledRow : ''}`}>
                     <div className={styles.paymentsToggleText}>
                       <span className={styles.paymentsToggleLabel}>
-                        Habilitar pago directo con Revolut
+                        Pago Online Revolut
                       </span>
                       <span className={styles.paymentsToggleSublabel}>
                         Muestra el botón de compra que redirige al enlace de Revolut.me.
@@ -2060,7 +2052,7 @@ ON CONFLICT (key) DO NOTHING;`}
                   <div className={`${styles.paymentsToggleRow} ${(!paymentsEnabled || hidePrices) ? styles.disabledRow : ''}`}>
                     <div className={styles.paymentsToggleText}>
                       <span className={styles.paymentsToggleLabel}>
-                        Habilitar pago directo con PayPal
+                        Pago Online PayPal
                       </span>
                       <span className={styles.paymentsToggleSublabel}>
                         Muestra el botón de compra que redirige a la pasarela de PayPal con el importe y concepto del artículo.
@@ -2080,47 +2072,16 @@ ON CONFLICT (key) DO NOTHING;`}
                 </div>
               )}
             </div>
-          </div>
-        )}
 
-        {/* Config View */}
-        {activeTab === 'config' && (
-          <div className={styles.paymentsSection}>
+            {/* Sección 2: Visibilidad */}
             <div className={styles.paymentsCard}>
-              <h2 className={styles.paymentsCardTitle}>Configuración General</h2>
+              <h2 className={styles.paymentsCardTitle}>Visibilidad</h2>
               <p className={styles.paymentsCardDesc}>
-                Configura las opciones de visualización de precios y disponibilidad en el catálogo.
+                Opciones de visualización de precios y disponibilidad
               </p>
 
               {loadingPaymentsSetting ? (
                 <div className={styles.paymentsLoading}>Cargando estado de los ajustes...</div>
-              ) : !hasSettingsTable ? (
-                <div className={styles.paymentsWarning}>
-                  <h3>⚠️ Configuración requerida en base de datos</h3>
-                  <p>
-                    La tabla <code>settings</code> no existe todavía en tu base de datos de Supabase.
-                    Para activar esta funcionalidad, copia y ejecuta el siguiente código en el <strong>SQL Editor</strong> de tu panel de Supabase:
-                  </p>
-                  <pre className={styles.paymentsSqlBlock}>
-{`CREATE TABLE IF NOT EXISTS settings (
-  key VARCHAR(255) PRIMARY KEY,
-  value VARCHAR(255) NOT NULL
-);
-
-INSERT INTO settings (key, value)
-VALUES 
-  ('hide_prices', 'false'),
-  ('hide_availability', 'false')
-ON CONFLICT (key) DO NOTHING;`}
-                  </pre>
-                  <button
-                    type="button"
-                    onClick={loadPaymentsSetting}
-                    className={styles.paymentsRetryButton}
-                  >
-                    Recargar ajuste
-                  </button>
-                </div>
               ) : (
                 <div className={styles.paymentsList}>
                   {/* Hide Prices Switch */}
