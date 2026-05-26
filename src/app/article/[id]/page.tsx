@@ -217,7 +217,7 @@ export default async function ArticlePage({
               </div>
             )}
 
-            {article.quantity > 0 && (
+            {article.quantity > 0 && !hidePrices && (
               <div className={styles.paymentAction}>
                 {paymentsEnabled && (revolutEnabled || paypalEnabled) && (
                   <div className={styles.paymentButtons}>

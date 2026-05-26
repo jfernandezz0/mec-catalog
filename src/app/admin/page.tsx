@@ -2009,21 +2009,24 @@ ON CONFLICT (key) DO NOTHING;`}
               ) : (
                 <div className={styles.paymentsList}>
                   {/* Master Switch */}
-                  <div className={styles.paymentsToggleRow}>
+                  <div className={`${styles.paymentsToggleRow} ${hidePrices ? styles.disabledRow : ''}`}>
                     <div className={styles.paymentsToggleText}>
                       <span className={styles.paymentsToggleLabel}>
                         Activar métodos de pago online (Global)
                       </span>
                       <span className={styles.paymentsToggleSublabel}>
-                        {paymentsEnabled 
+                        {hidePrices
+                          ? 'Inhabilitado — Los precios de los artículos están ocultos.'
+                          : paymentsEnabled 
                           ? 'Activo — Se mostrarán los botones de compra seleccionados abajo.' 
                           : 'Inactivo — Se ocultan todos los botones de pago directo en toda la web.'}
                       </span>
                     </div>
                     <button
                       type="button"
+                      disabled={hidePrices}
                       onClick={() => togglePayments(!paymentsEnabled)}
-                      className={`${styles.switch} ${paymentsEnabled ? styles.switchActive : ''}`}
+                      className={`${styles.switch} ${paymentsEnabled && !hidePrices ? styles.switchActive : ''}`}
                       aria-label="Alternar todos los métodos de pago"
                       title="Alternar todos los métodos de pago"
                     >
@@ -2032,7 +2035,7 @@ ON CONFLICT (key) DO NOTHING;`}
                   </div>
 
                   {/* Revolut Switch */}
-                  <div className={`${styles.paymentsToggleRow} ${!paymentsEnabled ? styles.disabledRow : ''}`}>
+                  <div className={`${styles.paymentsToggleRow} ${(!paymentsEnabled || hidePrices) ? styles.disabledRow : ''}`}>
                     <div className={styles.paymentsToggleText}>
                       <span className={styles.paymentsToggleLabel}>
                         Habilitar pago directo con Revolut
@@ -2043,9 +2046,9 @@ ON CONFLICT (key) DO NOTHING;`}
                     </div>
                     <button
                       type="button"
-                      disabled={!paymentsEnabled}
+                      disabled={!paymentsEnabled || hidePrices}
                       onClick={() => toggleRevolut(!revolutEnabled)}
-                      className={`${styles.switch} ${revolutEnabled && paymentsEnabled ? styles.switchActive : ''}`}
+                      className={`${styles.switch} ${revolutEnabled && paymentsEnabled && !hidePrices ? styles.switchActive : ''}`}
                       aria-label="Alternar Revolut"
                       title="Alternar Revolut"
                     >
@@ -2054,7 +2057,7 @@ ON CONFLICT (key) DO NOTHING;`}
                   </div>
 
                   {/* PayPal Switch */}
-                  <div className={`${styles.paymentsToggleRow} ${!paymentsEnabled ? styles.disabledRow : ''}`}>
+                  <div className={`${styles.paymentsToggleRow} ${(!paymentsEnabled || hidePrices) ? styles.disabledRow : ''}`}>
                     <div className={styles.paymentsToggleText}>
                       <span className={styles.paymentsToggleLabel}>
                         Habilitar pago directo con PayPal
@@ -2065,9 +2068,9 @@ ON CONFLICT (key) DO NOTHING;`}
                     </div>
                     <button
                       type="button"
-                      disabled={!paymentsEnabled}
+                      disabled={!paymentsEnabled || hidePrices}
                       onClick={() => togglePaypal(!paypalEnabled)}
-                      className={`${styles.switch} ${paypalEnabled && paymentsEnabled ? styles.switchActive : ''}`}
+                      className={`${styles.switch} ${paypalEnabled && paymentsEnabled && !hidePrices ? styles.switchActive : ''}`}
                       aria-label="Alternar PayPal"
                       title="Alternar PayPal"
                     >
