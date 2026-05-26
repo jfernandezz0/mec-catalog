@@ -33,6 +33,7 @@ export default function ArticleCard({
   hidePrices = false, 
   hideAvailability = false 
 }: ArticleCardProps) {
+  const isPriceHidden = hidePrices || article.quantity === 0;
   const imageUrls = article.image_urls?.filter(Boolean) ?? [];
   const [currentImage, setCurrentImage] = useState(0);
   const imageUrl = imageUrls[currentImage];
@@ -265,9 +266,9 @@ export default function ArticleCard({
           </div>
         </div>
 
-        {(!hidePrices || !hideAvailability) && (
+        {(!isPriceHidden || !hideAvailability) && (
           <div className={styles.metaRow}>
-            {!hidePrices && <span className={styles.price}>{formatPrice(article.price)}</span>}
+            {!isPriceHidden && <span className={styles.price}>{formatPrice(article.price)}</span>}
             {!hideAvailability && (
               <span className={article.quantity === 0 ? styles.stockOut : styles.stockIn}>
                 {article.quantity === 0 ? 'Agotado' : 'Disponible'}

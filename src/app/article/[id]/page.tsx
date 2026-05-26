@@ -139,6 +139,8 @@ export default async function ArticlePage({
     console.error('Error loading settings:', e);
   }
 
+  const isPriceHidden = hidePrices || article.quantity === 0;
+
   const noteText = `MEC | mini engines - ID ${article.id}`;
   const amountInCents = Math.round(Number(article.price) * 100);
   const revolutPayUrl = `https://revolut.me/jfernandezz?currency=EUR&amount=${amountInCents}&note=${encodeURIComponent(noteText)}`;
@@ -196,9 +198,9 @@ export default async function ArticlePage({
               {article.description || 'Sin descripción disponible.'}
             </p>
 
-            {(!hidePrices || !hideAvailability) && (
+            {(!isPriceHidden || !hideAvailability) && (
               <div className={styles.facts}>
-                {!hidePrices && (
+                {!isPriceHidden && (
                   <div className={styles.fact}>
                     <span className={styles.factLabel}>Precio</span>
                     <span className={styles.factValue}>
@@ -217,7 +219,7 @@ export default async function ArticlePage({
               </div>
             )}
 
-            {article.quantity > 0 && !hidePrices && (
+            {article.quantity > 0 && !isPriceHidden && (
               <div className={styles.paymentAction}>
                 {paymentsEnabled && (revolutEnabled || paypalEnabled) && (
                   <div className={styles.paymentButtons}>
