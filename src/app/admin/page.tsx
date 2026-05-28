@@ -1641,6 +1641,35 @@ export default function AdminPage() {
           </div>
         </header>
 
+        {/* Action buttons (above tabs) */}
+        <div className={styles.actionBar}>
+          <div className={styles.actionBarLeft}>
+            <button
+              type="button"
+              className={`${styles.actionButton} ${styles.actionButtonBlue} ${activeTab === 'sales-create' ? styles.actionButtonActive : ''}`}
+              onClick={() => handleTabChange('sales-create')}
+            >
+              Registrar nueva venta
+            </button>
+          </div>
+          <div className={styles.actionBarRight}>
+            <button
+              type="button"
+              className={`${styles.actionButton} ${styles.actionButtonGreen} ${activeTab === 'create' ? styles.actionButtonActive : ''}`}
+              onClick={() => handleTabChange('create')}
+            >
+              + Nuevo Artículo
+            </button>
+            <button
+              type="button"
+              className={`${styles.actionButton} ${styles.actionButtonYellow} ${activeTab === 'import' ? styles.actionButtonActive : ''}`}
+              onClick={() => handleTabChange('import')}
+            >
+              ↑ Importar CSV
+            </button>
+          </div>
+        </div>
+
         {/* Tabs navigation */}
         <nav className={styles.tabs} aria-label="Secciones de administración">
           <div className={styles.tabsLeft}>
@@ -1681,29 +1710,6 @@ export default function AdminPage() {
                 Ficha: {editingArticle?.title.substring(0, 20) || 'Editar'}...
               </button>
             )}
-          </div>
-          <div className={styles.tabsRight}>
-            <button
-              type="button"
-              className={`${styles.actionButton} ${styles.actionButtonBlue} ${activeTab === 'sales-create' ? styles.actionButtonActive : ''}`}
-              onClick={() => handleTabChange('sales-create')}
-            >
-              Registrar nueva venta
-            </button>
-            <button
-              type="button"
-              className={`${styles.actionButton} ${styles.actionButtonGreen} ${activeTab === 'create' ? styles.actionButtonActive : ''}`}
-              onClick={() => handleTabChange('create')}
-            >
-              + Nuevo Artículo
-            </button>
-            <button
-              type="button"
-              className={`${styles.actionButton} ${styles.actionButtonBlue} ${activeTab === 'import' ? styles.actionButtonActive : ''}`}
-              onClick={() => handleTabChange('import')}
-            >
-              ↑ Importar CSV
-            </button>
           </div>
         </nav>
 

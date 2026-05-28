@@ -163,6 +163,33 @@
   background: #bfdbfe;
 }
 
+.actionButtonYellow {
+  background: #fef08a;
+  color: #854d0e;
+}
+
+.actionButtonYellow:hover {
+  background: #fde047;
+}
+
+.actionBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  width: 100%;
+}
+
+.actionBarLeft {
+  display: flex;
+  gap: 12px;
+}
+
+.actionBarRight {
+  display: flex;
+  gap: 12px;
+}
+
 .actionButtonActive {
   opacity: 1;
   box-shadow: inset 0 0 0 2px currentColor;
