@@ -40,7 +40,7 @@ export default function ArticleCard({
   categoryDiscountPercent = null,
   generalDiscountPercent = ''
 }: ArticleCardProps) {
-  const isPriceHidden = hidePrices || article.quantity === 0;
+  const isPriceHidden = hidePrices || article.quantity <= 0;
   const imageUrls = article.image_urls?.filter(Boolean) ?? [];
   const [currentImage, setCurrentImage] = useState(0);
   const imageUrl = imageUrls[currentImage];
@@ -356,8 +356,8 @@ export default function ArticleCard({
                 </div>
               )}
               {!hideAvailability && (
-                <span className={article.quantity === 0 ? styles.stockOut : styles.stockIn}>
-                  {article.quantity === 0 ? 'Agotado' : 'Disponible'}
+                <span className={article.quantity <= 0 ? styles.stockOut : styles.stockIn}>
+                  {article.quantity <= 0 ? 'Agotado' : 'Disponible'}
                 </span>
               )}
             </div>

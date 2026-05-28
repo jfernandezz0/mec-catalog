@@ -1599,5 +1599,554 @@
   background: #525252;
 }
 
+.solidBlueButton {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.solidBlueButton:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+/* --- ESTILOS DE GESTIÓN DE VENTAS --- */
+
+.salesTabContainer {
+  margin-top: 16px;
+  animation: fadeIn 0.4s ease;
+}
+
+.salesSubmenuBar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--border-card-glass);
+  padding-bottom: 12px;
+}
+
+.salesSubmenuButton {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-secondary);
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.salesSubmenuButton:hover {
+  background: var(--bg-card-glass);
+  color: var(--text-primary);
+}
+
+.salesSubmenuActive {
+  background: var(--text-primary) !important;
+  color: var(--bg-page) !important;
+  border-color: var(--text-primary);
+}
+
+.salesFiltersBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 20px;
+  background: var(--bg-card-glass);
+  border: 1px solid var(--border-card-glass);
+  padding: 12px 16px;
+  border-radius: 12px;
+  align-items: center;
+}
+
+.salesSearchInput {
+  flex: 1;
+  min-width: 240px;
+  height: 38px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-input);
+  border-radius: 8px;
+  padding: 0 12px;
+  color: var(--text-primary);
+  font-size: 13px;
+  outline: none;
+  transition: all 150ms ease;
+}
+
+.salesSearchInput:focus {
+  border-color: var(--text-primary);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.05);
+}
+
+.salesSelectFilter {
+  height: 38px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-input);
+  border-radius: 8px;
+  padding: 0 8px;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
+  outline: none;
+  cursor: pointer;
+  min-width: 140px;
+}
+
+.salesSelectFilter:focus {
+  border-color: var(--text-primary);
+}
+
+.salesEmptyState {
+  text-align: center;
+  padding: 48px 16px;
+  background: var(--bg-card-glass);
+  border: 1px dashed var(--border-card-glass);
+  border-radius: 12px;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.salesTableWrapper {
+  overflow-x: auto;
+  border: 1px solid var(--border-card-glass);
+  border-radius: 12px;
+  background: var(--bg-card-glass);
+}
+
+.salesTable {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 13px;
+}
+
+.salesTable th {
+  padding: 12px 16px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  border-bottom: 1.5px solid var(--border-card-glass);
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+}
+
+.salesTable td {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border-card-glass);
+  color: var(--text-primary);
+  vertical-align: middle;
+}
+
+.salesTable tr:last-child td {
+  border-bottom: none;
+}
+
+.salesTable tr:hover td {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.paymentBadge {
+  display: inline-block;
+  padding: 2px 6px;
+  background: var(--border-card-glass);
+  color: var(--text-primary);
+  font-weight: 700;
+  font-size: 10px;
+  border-radius: 4px;
+}
+
+.statusBadge {
+  display: inline-block;
+  padding: 3px 8px;
+  font-size: 10px;
+  font-weight: 800;
+  border-radius: 6px;
+  text-transform: uppercase;
+}
+
+.statusBadgePrepurchase {
+  background: rgba(234, 88, 12, 0.15);
+  color: #ea580c;
+}
+
+.statusBadgeCompleted {
+  background: var(--bg-available);
+  color: var(--text-available);
+}
+
+.viewDetailBtn {
+  background: var(--bg-input);
+  border: 1px solid var(--border-input);
+  color: var(--text-primary);
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.viewDetailBtn:hover {
+  background: var(--text-primary);
+  color: var(--bg-page);
+  border-color: var(--text-primary);
+}
+
+/* --- REGISTRO DE NUEVA VENTA --- */
+
+.salesCreateContainer {
+  margin-top: 16px;
+  animation: fadeIn 0.4s ease;
+}
+
+.salesCreateGrid {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 24px;
+}
+
+@media (max-width: 900px) {
+  .salesCreateGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.salesCreateCard {
+  background: var(--bg-card-glass);
+  border: 1px solid var(--border-card-glass);
+  box-shadow: var(--shadow-glass);
+  border-radius: 16px;
+  padding: 24px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  display: flex;
+  flex-direction: column;
+}
+
+.salesCardTitle {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--border-card-glass);
+  padding-bottom: 8px;
+}
+
+.salesArticleSelectList {
+  max-height: 480px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-right: 4px;
+}
+
+.salesArticleSelectRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--border-card-glass);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 150ms ease;
+  user-select: none;
+}
+
+.salesArticleSelectRow:hover {
+  border-color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.rowChecked {
+  border-color: var(--text-primary) !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  box-shadow: 0 0 0 1px var(--text-primary);
+}
+
+.salesCheckbox {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--text-primary);
+}
+
+.selectRowThumb {
+  width: 44px;
+  height: 44px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid var(--border-card-glass);
+}
+
+.selectedItemsConfigList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 320px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.configItemRow {
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  border: 1px solid var(--border-card-glass);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.05);
+  gap: 8px;
+}
+
+.configItemInfo {
+  flex: 1;
+}
+
+.prepurchaseBadge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  color: #e11d48;
+  margin-top: 4px;
+}
+
+.configItemInputs {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.inputFieldCompact {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.inputFieldCompact label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.compactNumberInput {
+  width: 80px;
+  height: 30px;
+  border-radius: 6px;
+  border: 1px solid var(--border-input);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font-size: 13px;
+  padding: 0 6px;
+  outline: none;
+  font-weight: 600;
+}
+
+.customPriceActive {
+  border-color: #ea580c !important;
+  color: #ea580c !important;
+}
+
+.removeItemBtn {
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  border: 1px solid rgba(220, 38, 38, 0.3);
+  background: rgba(220, 38, 38, 0.05);
+  color: #dc2626;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 150ms ease;
+}
+
+.removeItemBtn:hover {
+  background: #dc2626;
+  color: #ffffff;
+}
+
+.priceWarningBanner {
+  font-size: 10.5px;
+  color: #ea580c;
+  font-weight: 600;
+  background: rgba(234, 88, 12, 0.06);
+  padding: 4px 8px;
+  border-radius: 4px;
+  border-left: 2px solid #ea580c;
+}
+
+.formLabel {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.salesPrefixSelect {
+  height: 38px;
+  border-radius: 8px;
+  border: 1px solid var(--border-input);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 0 6px;
+  outline: none;
+}
+
+.salesTextInput {
+  height: 38px;
+  border-radius: 8px;
+  border: 1px solid var(--border-input);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font-size: 13px;
+  padding: 0 12px;
+  outline: none;
+  width: 100%;
+}
+
+.salesTextInput:focus {
+  border-color: var(--text-primary);
+}
+
+.createSaleTotalPanel {
+  background: var(--border-card-glass);
+  border-radius: 8px;
+  padding: 12px;
+  margin-top: 10px;
+}
+
+.summaryRow {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.summaryRow strong {
+  color: var(--text-primary);
+}
+
+.reviewSaleBtn {
+  background: #2563eb;
+  color: #ffffff;
+  height: 42px;
+  border: none;
+  border-radius: 8px;
+  font-weight: 800;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 150ms ease;
+  width: 100%;
+}
+
+.reviewSaleBtn:hover {
+  background: #1d4ed8;
+  transform: translateY(-1px);
+}
+
+/* --- DIÁLOGOS Y MODALES DE CONFIRMACIÓN --- */
+
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 16px;
+  backdrop-filter: blur(4px);
+}
+
+.salesConfirmModal {
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  border-radius: 16px;
+  padding: 24px;
+  max-width: 520px;
+  width: 100%;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+}
+
+.modalTitle {
+  margin: 0 0 10px 0;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.confirmSummaryInfo {
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 8px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.completeItemBtn {
+  background: #16a34a;
+  color: #ffffff;
+  border: none;
+  font-size: 11px;
+  font-weight: bold;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.completeItemBtn:hover {
+  background: #15803d;
+}
+
+.shareLink {
+  flex: 1;
+  padding: 10px;
+  border-radius: 8px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.waShare {
+  background: rgba(37, 211, 102, 0.15);
+  color: #25d366 !important;
+}
+.waShare:hover {
+  background: #25d366;
+  color: #ffffff !important;
+}
+
+.tgShare {
+  background: rgba(0, 136, 204, 0.15);
+  color: #0088cc !important;
+}
+.tgShare:hover {
+  background: #0088cc;
+  color: #ffffff !important;
+}
+
+.emailShare {
+  background: var(--border-card-glass);
+  color: var(--text-primary) !important;
+}
+.emailShare:hover {
+  background: var(--text-primary);
+  color: var(--bg-page) !important;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 
 

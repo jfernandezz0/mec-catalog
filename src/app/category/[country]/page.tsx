@@ -176,7 +176,7 @@ export default async function CategoryPage({
 
   const allArticles = articles ?? [];
   const availableArticles = allArticles.filter((a) => a.quantity > 0);
-  const soldOutArticles = allArticles.filter((a) => a.quantity === 0);
+  const soldOutArticles = allArticles.filter((a) => a.quantity <= 0);
   const articleItems = [...availableArticles, ...soldOutArticles];
   const mecLogo = await getMECLogo(category.country_code);
 

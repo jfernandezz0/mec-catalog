@@ -192,7 +192,7 @@ export default async function ArticlePage({
     console.error('Error loading settings:', e);
   }
 
-  const isPriceHidden = hidePrices || article.quantity === 0;
+  const isPriceHidden = hidePrices || article.quantity <= 0;
 
   const discountInfo = calculateDiscount(
     article.price,
@@ -290,8 +290,8 @@ export default async function ArticlePage({
                 {!hideAvailability && (
                   <div className={styles.fact}>
                     <span className={styles.factLabel}>Estado</span>
-                    <span className={article.quantity === 0 ? styles.stockOut : styles.stockIn}>
-                      {article.quantity === 0 ? 'Agotado' : 'Disponible'}
+                    <span className={article.quantity <= 0 ? styles.stockOut : styles.stockIn}>
+                      {article.quantity <= 0 ? 'Agotado' : 'Disponible'}
                     </span>
                   </div>
                 )}

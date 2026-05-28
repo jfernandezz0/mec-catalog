@@ -6,6 +6,7 @@ import { User } from '@supabase/supabase-js';
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react';
 import styles from './admin.module.css';
 import Image from 'next/image';
+import { calculateDiscount } from '@/lib/discounts';
 
 type Category = {
   id: number;
@@ -152,7 +153,34 @@ export default function AdminPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [articles, setArticles] = useState<Article[]>([]);
-  const [activeTab, setActiveTab] = useState<'catalog' | 'create' | 'edit' | 'categories' | 'import' | 'config'>('catalog');
+  const [activeTab, setActiveTab] = useState<'catalog' | 'create' | 'edit' | 'categories' | 'import' | 'config' | 'sales' | 'sales-create'>('catalog');
+  
+  // Sales management states
+  const [sales, setSales] = useState<any[]>([]);
+  const [loadingSales, setLoadingSales] = useState(false);
+  const [salesSubmenu, setSalesSubmenu] = useState<'all' | 'prepurchase' | 'completed'>('all');
+  const [salesSearch, setSalesSearch] = useState('');
+  const [salesFilterPayment, setSalesFilterPayment] = useState<'all' | 'REVOLUT' | 'PAYPAL' | 'EFECTIVO'>('all');
+  const [salesFilterStatus, setSalesFilterStatus] = useState<'all' | 'COMPLETADA' | 'PRECOMPRA'>('all');
+  const [salesFilterDate, setSalesFilterDate] = useState<'all' | 'today' | 'week' | 'month'>('all');
+  
+  // Sale detail viewer modal
+  const [selectedSaleDetail, setSelectedSaleDetail] = useState<any | null>(null);
+  const [saleDetailItems, setSaleDetailItems] = useState<any[]>([]);
+  const [loadingSaleItems, setLoadingSaleItems] = useState(false);
+
+  // Sales creation states
+  const [selectedArticleIds, setSelectedArticleIds] = useState<number[]>([]);
+  const [saleItemQuantities, setSaleItemQuantities] = useState<Map<number, number>>(new Map());
+  const [saleItemPrices, setSaleItemPrices] = useState<Map<number, number>>(new Map());
+  const [saleBuyerPhoneCode, setSaleBuyerPhoneCode] = useState('+34');
+  const [saleBuyerPhone, setSaleBuyerPhone] = useState('');
+  const [saleBuyerEmail, setSaleBuyerEmail] = useState('');
+  const [saleLocation, setSaleLocation] = useState('online');
+  const [salePaymentType, setSalePaymentType] = useState<'REVOLUT' | 'PAYPAL' | 'EFECTIVO'>('REVOLUT');
+  const [showSaleSummary, setShowSaleSummary] = useState(false);
+  const [registeringSale, setRegisteringSale] = useState(false);
+  const [salesCreateSearch, setSalesCreateSearch] = useState('');
   
   const [formState, setFormState] = useState<FormState>(initialFormState);
   const [files, setFiles] = useState<File[]>([]);
@@ -381,6 +409,236 @@ export default function AdminPage() {
     }
   }
 
+  function getFinalPriceForArticle(article: Article) {
+    const category = categories.find((c) => c.id === article.category_id);
+    return calculateDiscount(
+      article.price,
+      article.discount_type,
+      article.discount_value,
+      category?.discount_percent,
+      generalDiscountPercent
+    ).finalPrice;
+  }
+
+  async function loadSales() {
+    setLoadingSales(true);
+    try {
+      const { data, error } = await supabase
+        .from('sales')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error loading sales:', error);
+      } else {
+        setSales(data ?? []);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingSales(false);
+    }
+  }
+
+  async function fetchSaleItems(saleId: string) {
+    setLoadingSaleItems(true);
+    try {
+      const { data, error } = await supabase
+        .from('sale_items')
+        .select('*')
+        .eq('sale_id', saleId);
+
+      if (error) {
+        console.error('Error fetching sale items:', error);
+      } else {
+        setSaleDetailItems(data ?? []);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingSaleItems(false);
+    }
+  }
+
+  function viewSaleDetail(sale: any) {
+    setSelectedSaleDetail(sale);
+    fetchSaleItems(sale.id);
+  }
+
+  async function completePrepurchaseItem(item: any) {
+    try {
+      const { error: itemError } = await supabase
+        .from('sale_items')
+        .update({ is_prepurchase: false })
+        .eq('id', item.id);
+
+      if (itemError) throw itemError;
+
+      if (item.article_id) {
+        const { data: artData } = await supabase
+          .from('articles')
+          .select('quantity')
+          .eq('id', item.article_id)
+          .single();
+
+        const currentQty = artData ? artData.quantity : 0;
+
+        const { error: stockError } = await supabase
+          .from('articles')
+          .update({ quantity: currentQty + 1 })
+          .eq('id', item.article_id);
+
+        if (stockError) {
+          console.error('Error updating stock on prepurchase completion:', stockError);
+        }
+      }
+
+      const updatedItems = saleDetailItems.map((it) =>
+        it.id === item.id ? { ...it, is_prepurchase: false } : it
+      );
+      setSaleDetailItems(updatedItems);
+
+      const anyRemainingPrepurchase = updatedItems.some((it) => it.is_prepurchase);
+
+      if (!anyRemainingPrepurchase) {
+        const { error: saleError } = await supabase
+          .from('sales')
+          .update({ status: 'COMPLETADA' })
+          .eq('id', selectedSaleDetail.id);
+
+        if (saleError) {
+          console.error('Error updating sale status to COMPLETADA:', saleError);
+        } else {
+          setSelectedSaleDetail({ ...selectedSaleDetail, status: 'COMPLETADA' });
+          alert('¡El artículo ha sido completado y la venta ha sido marcada como COMPLETADA!');
+        }
+      } else {
+        alert('Artículo completado. Aún quedan otros artículos en precompra para este pedido.');
+      }
+
+      await loadSales();
+      await loadArticles();
+    } catch (e: any) {
+      alert(`Error al completar el artículo: ${e.message || e}`);
+    }
+  }
+
+  async function handleRegisterSale() {
+    if (selectedArticleIds.length === 0) {
+      alert('Debes seleccionar al menos un artículo.');
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (saleBuyerEmail.trim() && !emailRegex.test(saleBuyerEmail.trim())) {
+      alert('Por favor introduce un email válido.');
+      return;
+    }
+
+    const phoneRegex = /^[0-9\s\-()+]+$/;
+    if (saleBuyerPhone.trim() && !phoneRegex.test(saleBuyerPhone.trim())) {
+      alert('Por favor introduce un teléfono válido (solo números y espacios).');
+      return;
+    }
+
+    setRegisteringSale(true);
+    try {
+      let totalPrice = 0;
+      let totalArticlesCount = 0;
+      let hasPrepurchase = false;
+
+      const itemsToInsert: any[] = [];
+      const stockUpdates: Array<{ id: number; quantity: number }> = [];
+
+      for (const id of selectedArticleIds) {
+        const article = articles.find((a) => a.id === id);
+        if (!article) continue;
+
+        const qty = saleItemQuantities.get(id) || 1;
+        const customPrice = saleItemPrices.has(id)
+          ? (saleItemPrices.get(id) ?? 0)
+          : getFinalPriceForArticle(article);
+
+        const isPrepurchase = qty > article.quantity;
+        if (isPrepurchase) {
+          hasPrepurchase = true;
+        }
+
+        totalPrice += customPrice * qty;
+        totalArticlesCount += qty;
+
+        itemsToInsert.push({
+          article_id: id,
+          title: article.title,
+          quantity: qty,
+          price: customPrice,
+          is_prepurchase: isPrepurchase,
+        });
+
+        stockUpdates.push({
+          id,
+          quantity: article.quantity - qty,
+        });
+      }
+
+      const fullPhoneNumber = saleBuyerPhone.trim()
+        ? `${saleBuyerPhoneCode}${saleBuyerPhone.trim()}`
+        : '';
+
+      const { data: saleData, error: saleError } = await supabase
+        .from('sales')
+        .insert({
+          buyer_phone: fullPhoneNumber || null,
+          buyer_email: saleBuyerEmail.trim() || null,
+          location: saleLocation.trim() || 'online',
+          payment_type: salePaymentType,
+          total_price: totalPrice,
+          total_articles: totalArticlesCount,
+          status: hasPrepurchase ? 'PRECOMPRA' : 'COMPLETADA',
+        })
+        .select()
+        .single();
+
+      if (saleError || !saleData) {
+        throw new Error(`Error al registrar la venta: ${saleError?.message}`);
+      }
+
+      const itemsWithSaleId = itemsToInsert.map((item) => ({
+        ...item,
+        sale_id: saleData.id,
+      }));
+
+      const { error: itemsError } = await supabase
+        .from('sale_items')
+        .insert(itemsWithSaleId);
+
+      if (itemsError) {
+        throw new Error(`Error al registrar los detalles de la venta: ${itemsError.message}`);
+      }
+
+      for (const update of stockUpdates) {
+        const { error: stockError } = await supabase
+          .from('articles')
+          .update({ quantity: update.quantity })
+          .eq('id', update.id);
+
+        if (stockError) {
+          console.error(`Error updating stock for article ID ${update.id}:`, stockError);
+        }
+      }
+
+      alert('¡Venta registrada con éxito!');
+      setShowSaleSummary(false);
+      
+      await loadArticles();
+      handleTabChange('sales');
+    } catch (e: any) {
+      alert(e.message || 'Error al guardar la venta.');
+    } finally {
+      setRegisteringSale(false);
+    }
+  }
+
   async function togglePayments(enabled: boolean) {
     await updateSetting('payments_enabled', String(enabled));
   }
@@ -458,7 +716,7 @@ export default function AdminPage() {
     }
   }
 
-  function handleTabChange(tab: 'catalog' | 'create' | 'categories' | 'import' | 'config') {
+  function handleTabChange(tab: 'catalog' | 'create' | 'categories' | 'import' | 'config' | 'sales' | 'sales-create') {
     resetForm();
     setActiveTab(tab);
     setSelectedCatalogCategoryId(null);
@@ -472,6 +730,17 @@ export default function AdminPage() {
       loadArticles();
     } else if (tab === 'config') {
       loadPaymentsSetting();
+    } else if (tab === 'sales') {
+      loadSales();
+    } else if (tab === 'sales-create') {
+      setSelectedArticleIds([]);
+      setSaleItemQuantities(new Map());
+      setSaleItemPrices(new Map());
+      setSaleBuyerPhone('');
+      setSaleBuyerEmail('');
+      setSaleLocation('online');
+      setSalePaymentType('REVOLUT');
+      setSalesCreateSearch('');
     }
   }
 
@@ -1329,6 +1598,10 @@ export default function AdminPage() {
                 ? 'Importar artículos'
                 : activeTab === 'config'
                 ? 'Configuración'
+                : activeTab === 'sales'
+                ? 'Historial de Ventas'
+                : activeTab === 'sales-create'
+                ? 'Registrar Nueva Venta'
                 : 'Editar artículo'}
             </h1>
             <p className={styles.subtitle}>
@@ -1342,6 +1615,10 @@ export default function AdminPage() {
                 ? 'Importa múltiples artículos de golpe subiendo un archivo CSV.'
                 : activeTab === 'config'
                 ? 'Configura opciones globales del catálogo, como ocultar precios o disponibilidad.'
+                : activeTab === 'sales'
+                ? 'Consulta las ventas realizadas, gestiona precompras y visualiza o descarga facturas.'
+                : activeTab === 'sales-create'
+                ? 'Registra una venta manual indicando los artículos, cantidades, precios y detalles de pago.'
                 : 'Modifica los campos del artículo, gestiona sus imágenes o bórralo permanentemente.'}
             </p>
             </div>
@@ -1388,6 +1665,13 @@ export default function AdminPage() {
             >
               Configuración
             </button>
+            <button
+              type="button"
+              className={`${styles.tab} ${activeTab === 'sales' ? styles.tabActive : ''}`}
+              onClick={() => handleTabChange('sales')}
+            >
+              Ventas
+            </button>
             {activeTab === 'edit' && (
               <button
                 type="button"
@@ -1399,6 +1683,13 @@ export default function AdminPage() {
             )}
           </div>
           <div className={styles.tabsRight}>
+            <button
+              type="button"
+              className={`${styles.actionButton} ${styles.actionButtonBlue} ${activeTab === 'sales-create' ? styles.actionButtonActive : ''}`}
+              onClick={() => handleTabChange('sales-create')}
+            >
+              Registrar nueva venta
+            </button>
             <button
               type="button"
               className={`${styles.actionButton} ${styles.actionButtonGreen} ${activeTab === 'create' ? styles.actionButtonActive : ''}`}
@@ -2740,6 +3031,744 @@ ALTER TABLE categories ADD COLUMN IF NOT EXISTS discount_percent INTEGER CHECK (
             </div>
           </div>
         )}
+
+        {/* --- VISTAS DE GESTIÓN DE VENTAS --- */}
+        {activeTab === 'sales' && (() => {
+          let filteredSales = sales;
+          
+          if (salesSubmenu === 'prepurchase') {
+            filteredSales = filteredSales.filter(s => s.status === 'PRECOMPRA');
+          } else if (salesSubmenu === 'completed') {
+            filteredSales = filteredSales.filter(s => s.status === 'COMPLETADA');
+          }
+
+          if (salesSearch.trim()) {
+            const query = salesSearch.toLowerCase().trim();
+            filteredSales = filteredSales.filter(s => 
+              s.id.toLowerCase().includes(query) ||
+              (s.buyer_email && s.buyer_email.toLowerCase().includes(query)) ||
+              (s.buyer_phone && s.buyer_phone.toLowerCase().includes(query)) ||
+              (s.location && s.location.toLowerCase().includes(query))
+            );
+          }
+
+          if (salesFilterPayment !== 'all') {
+            filteredSales = filteredSales.filter(s => s.payment_type === salesFilterPayment);
+          }
+
+          if (salesFilterStatus !== 'all') {
+            filteredSales = filteredSales.filter(s => s.status === salesFilterStatus);
+          }
+
+          if (salesFilterDate !== 'all') {
+            const now = new Date();
+            filteredSales = filteredSales.filter(s => {
+              const date = new Date(s.created_at);
+              if (salesFilterDate === 'today') {
+                return date.toDateString() === now.toDateString();
+              } else if (salesFilterDate === 'week') {
+                const diffTime = Math.abs(now.getTime() - date.getTime());
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                return diffDays <= 7;
+              } else if (salesFilterDate === 'month') {
+                return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+              }
+              return true;
+            });
+          }
+
+          return (
+            <div className={styles.salesTabContainer}>
+              <div className={styles.salesSubmenuBar}>
+                <button
+                  type="button"
+                  onClick={() => setSalesSubmenu('all')}
+                  className={`${styles.salesSubmenuButton} ${salesSubmenu === 'all' ? styles.salesSubmenuActive : ''}`}
+                >
+                  Todas las Ventas
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSalesSubmenu('prepurchase')}
+                  className={`${styles.salesSubmenuButton} ${salesSubmenu === 'prepurchase' ? styles.salesSubmenuActive : ''}`}
+                >
+                  Precompras Activas ⚠️
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSalesSubmenu('completed')}
+                  className={`${styles.salesSubmenuButton} ${salesSubmenu === 'completed' ? styles.salesSubmenuActive : ''}`}
+                >
+                  Ventas Completadas ✓
+                </button>
+              </div>
+
+              <div className={styles.salesFiltersBar}>
+                <input
+                  type="text"
+                  placeholder="Buscar por Email, Teléfono, Lugar o ID..."
+                  value={salesSearch}
+                  onChange={(e) => setSalesSearch(e.target.value)}
+                  className={styles.salesSearchInput}
+                />
+                
+                <select
+                  value={salesFilterPayment}
+                  onChange={(e: any) => setSalesFilterPayment(e.target.value)}
+                  className={styles.salesSelectFilter}
+                >
+                  <option value="all">Todos los Pagos</option>
+                  <option value="REVOLUT">Revolut</option>
+                  <option value="PAYPAL">PayPal</option>
+                  <option value="EFECTIVO">Efectivo</option>
+                </select>
+
+                <select
+                  value={salesFilterStatus}
+                  onChange={(e: any) => setSalesFilterStatus(e.target.value)}
+                  className={styles.salesSelectFilter}
+                >
+                  <option value="all">Todos los Estados</option>
+                  <option value="COMPLETADA">Completada</option>
+                  <option value="PRECOMPRA">Precompra</option>
+                </select>
+
+                <select
+                  value={salesFilterDate}
+                  onChange={(e: any) => setSalesFilterDate(e.target.value)}
+                  className={styles.salesSelectFilter}
+                >
+                  <option value="all">Cualquier Fecha</option>
+                  <option value="today">Hoy</option>
+                  <option value="week">Últimos 7 días</option>
+                  <option value="month">Este mes</option>
+                </select>
+              </div>
+
+              {loadingSales ? (
+                <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-secondary)' }}>Cargando ventas...</div>
+              ) : filteredSales.length === 0 ? (
+                <div className={styles.salesEmptyState}>
+                  <p>No se encontraron registros de ventas con los filtros actuales.</p>
+                </div>
+              ) : (
+                <div className={styles.salesTableWrapper}>
+                  <table className={styles.salesTable}>
+                    <thead>
+                      <tr>
+                        <th>ID Venta</th>
+                        <th>Fecha</th>
+                        <th>Comprador</th>
+                        <th>Ubicación</th>
+                        <th>Pago</th>
+                        <th style={{ textAlign: 'center' }}>Artículos</th>
+                        <th style={{ textAlign: 'right' }}>Total</th>
+                        <th style={{ textAlign: 'center' }}>Estado</th>
+                        <th style={{ textAlign: 'center' }}>Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredSales.map((sale) => (
+                        <tr key={sale.id}>
+                          <td style={{ fontFamily: 'monospace', fontWeight: 600 }}>
+                            {sale.id.substring(0, 8).toUpperCase()}
+                          </td>
+                          <td>
+                            {new Date(sale.created_at).toLocaleDateString('es-ES', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </td>
+                          <td>
+                            {sale.buyer_email || sale.buyer_phone ? (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                {sale.buyer_email && <span style={{ fontSize: '13px' }}>{sale.buyer_email}</span>}
+                                {sale.buyer_phone && <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{sale.buyer_phone}</span>}
+                              </div>
+                            ) : (
+                              <span style={{ fontStyle: 'italic', color: 'var(--text-tertiary)' }}>Directa</span>
+                            )}
+                          </td>
+                          <td>{sale.location}</td>
+                          <td>
+                            <span className={styles.paymentBadge}>{sale.payment_type}</span>
+                          </td>
+                          <td style={{ textAlign: 'center', fontWeight: 'bold' }}>
+                            {sale.total_articles}
+                          </td>
+                          <td style={{ textAlign: 'right', fontWeight: 'bold', fontFamily: 'monospace' }}>
+                            {formatPrice(sale.total_price)}
+                          </td>
+                          <td style={{ textAlign: 'center' }}>
+                            <span className={`${styles.statusBadge} ${sale.status === 'PRECOMPRA' ? styles.statusBadgePrepurchase : styles.statusBadgeCompleted}`}>
+                              {sale.status}
+                            </span>
+                          </td>
+                          <td style={{ textAlign: 'center' }}>
+                            <button
+                              type="button"
+                              onClick={() => viewSaleDetail(sale)}
+                              className={styles.viewDetailBtn}
+                            >
+                              Ver Detalle
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
+        {activeTab === 'sales-create' && (() => {
+          let selectArticles = articles;
+          if (salesCreateSearch.trim()) {
+            const query = salesCreateSearch.toLowerCase().trim();
+            selectArticles = selectArticles.filter(a => 
+              a.title.toLowerCase().includes(query) ||
+              String(a.id).includes(query)
+            );
+          }
+
+          let summaryTotal = 0;
+          let summaryCount = 0;
+          selectedArticleIds.forEach(id => {
+            const art = articles.find(a => a.id === id);
+            if (!art) return;
+            const qty = saleItemQuantities.get(id) || 1;
+            const price = saleItemPrices.has(id)
+              ? (saleItemPrices.get(id) ?? 0)
+              : getFinalPriceForArticle(art);
+            summaryTotal += price * qty;
+            summaryCount += qty;
+          });
+
+          return (
+            <div className={styles.salesCreateContainer}>
+              <div className={styles.salesCreateGrid}>
+                <div className={styles.salesCreateCard}>
+                  <h2 className={styles.salesCardTitle}>1. Seleccionar Artículos</h2>
+                  
+                  <input
+                    type="text"
+                    placeholder="Buscar por marca, modelo o ID..."
+                    value={salesCreateSearch}
+                    onChange={(e) => setSalesCreateSearch(e.target.value)}
+                    className={styles.salesSearchInput}
+                    style={{ marginBottom: '16px' }}
+                  />
+
+                  <div className={styles.salesArticleSelectList}>
+                    {selectArticles.length === 0 ? (
+                      <p style={{ color: 'var(--text-tertiary)', textAlign: 'center', padding: '20px' }}>No hay artículos que coincidan.</p>
+                    ) : (
+                      selectArticles.map(art => {
+                        const finalPrice = getFinalPriceForArticle(art);
+                        const isChecked = selectedArticleIds.includes(art.id);
+                        
+                        return (
+                          <div 
+                            key={art.id} 
+                            className={`${styles.salesArticleSelectRow} ${isChecked ? styles.rowChecked : ''}`}
+                            onClick={() => {
+                              if (isChecked) {
+                                setSelectedArticleIds(prev => prev.filter(id => id !== art.id));
+                              } else {
+                                setSelectedArticleIds(prev => [...prev, art.id]);
+                                setSaleItemQuantities(prev => {
+                                  const n = new Map(prev);
+                                  n.set(art.id, 1);
+                                  return n;
+                                });
+                              }
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              readOnly
+                              className={styles.salesCheckbox}
+                            />
+                            
+                            {art.image_urls && art.image_urls[0] && (
+                              <img 
+                                src={art.image_urls[0]} 
+                                alt={art.title} 
+                                className={styles.selectRowThumb} 
+                              />
+                            )}
+
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontWeight: 'bold', fontSize: '13px' }}>{art.title}</div>
+                              <div style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'flex', gap: '10px', marginTop: '2px' }}>
+                                <span>Ref ID: MEC-{String(art.id).padStart(4, '0')}</span>
+                                <span style={{ fontWeight: 'bold', color: art.quantity <= 0 ? 'var(--text-soldout)' : 'var(--text-available)' }}>
+                                  Stock: {art.quantity <= 0 ? `0 (Agotado)` : art.quantity}
+                                </span>
+                              </div>
+                            </div>
+                            
+                            <div style={{ fontWeight: 'bold', fontSize: '14px', fontFamily: 'monospace' }}>
+                              {formatPrice(finalPrice)}
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+
+                <div className={styles.salesCreateCard}>
+                  <h2 className={styles.salesCardTitle}>2. Detalles de Venta</h2>
+                  
+                  {selectedArticleIds.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-tertiary)', border: '1px dashed var(--border-card-glass)', borderRadius: '8px' }}>
+                      Selecciona artículos en el panel izquierdo para agregarlos a la venta.
+                    </div>
+                  ) : (
+                    <>
+                      <div className={styles.selectedItemsConfigList}>
+                        {selectedArticleIds.map(id => {
+                          const art = articles.find(a => a.id === id);
+                          if (!art) return null;
+
+                          const qty = saleItemQuantities.get(id) || 1;
+                          const officialPrice = getFinalPriceForArticle(art);
+                          const customPrice = saleItemPrices.has(id) ? (saleItemPrices.get(id) ?? 0) : officialPrice;
+                          const isCustomPrice = saleItemPrices.has(id) && saleItemPrices.get(id) !== officialPrice;
+                          const isPrepurchase = qty > art.quantity;
+
+                          return (
+                            <div key={id} className={styles.configItemRow}>
+                              <div className={styles.configItemInfo}>
+                                <div style={{ fontWeight: 'bold', fontSize: '13px' }}>{art.title}</div>
+                                <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                                  Ref ID: MEC-{String(art.id).padStart(4, '0')} | Precio oficial: {formatPrice(officialPrice)}
+                                </div>
+                                {isPrepurchase && (
+                                  <span className={styles.prepurchaseBadge}>
+                                    PRECOMPRA* (Falta stock. Disponible: {art.quantity})
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className={styles.configItemInputs}>
+                                <div className={styles.inputFieldCompact}>
+                                  <label>Cant.</label>
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    value={qty}
+                                    onChange={(e) => {
+                                      const val = Math.max(1, parseInt(e.target.value, 10) || 1);
+                                      setSaleItemQuantities(prev => {
+                                        const n = new Map(prev);
+                                        n.set(id, val);
+                                        return n;
+                                      });
+                                    }}
+                                    className={styles.compactNumberInput}
+                                  />
+                                </div>
+
+                                <div className={styles.inputFieldCompact}>
+                                  <label>Precio €</label>
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    value={customPrice}
+                                    placeholder={String(officialPrice)}
+                                    onChange={(e) => {
+                                      const val = Math.max(0, parseFloat(e.target.value) || 0);
+                                      setSaleItemPrices(prev => {
+                                        const n = new Map(prev);
+                                        n.set(id, val);
+                                        return n;
+                                      });
+                                    }}
+                                    className={`${styles.compactNumberInput} ${isCustomPrice ? styles.customPriceActive : ''}`}
+                                  />
+                                </div>
+
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedArticleIds(prev => prev.filter(aid => aid !== id))}
+                                  className={styles.removeItemBtn}
+                                  title="Quitar artículo"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                              {isCustomPrice && (
+                                <div className={styles.priceWarningBanner}>
+                                  Aviso: El precio fijado ({formatPrice(customPrice)}) es {customPrice > officialPrice ? 'superior' : 'inferior'} al registrado ({formatPrice(officialPrice)})
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '24px', borderTop: '1px solid var(--border-card-glass)', paddingTop: '20px' }}>
+                        <div style={{ display: 'flex', gap: '12px' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
+                            <label className={styles.formLabel}>Teléfono Comprador (Opcional)</label>
+                            <div style={{ display: 'flex', gap: '6px' }}>
+                              <select
+                                value={saleBuyerPhoneCode}
+                                onChange={(e) => setSaleBuyerPhoneCode(e.target.value)}
+                                className={styles.salesPrefixSelect}
+                              >
+                                <option value="+34">🇪🇸 +34</option>
+                                <option value="+33">🇫🇷 +33</option>
+                                <option value="+49">🇩🇪 +49</option>
+                                <option value="+39">🇮🇹 +39</option>
+                                <option value="+44">🇬🇧 +44</option>
+                                <option value="+351">🇵🇹 +351</option>
+                                <option value="+1">🇺🇸 +1</option>
+                              </select>
+                              <input
+                                type="text"
+                                placeholder="600000000"
+                                value={saleBuyerPhone}
+                                onChange={(e) => setSaleBuyerPhone(e.target.value)}
+                                className={styles.salesTextInput}
+                                style={{ flex: 1 }}
+                              />
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
+                            <label className={styles.formLabel}>Email Comprador (Opcional)</label>
+                            <input
+                              type="email"
+                              placeholder="cliente@email.com"
+                              value={saleBuyerEmail}
+                              onChange={(e) => setSaleBuyerEmail(e.target.value)}
+                              className={styles.salesTextInput}
+                            />
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '12px' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
+                            <label className={styles.formLabel}>Localidad de venta</label>
+                            <input
+                              type="text"
+                              value={saleLocation}
+                              placeholder="online"
+                              onChange={(e) => setSaleLocation(e.target.value)}
+                              className={styles.salesTextInput}
+                            />
+                          </div>
+
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
+                            <label className={styles.formLabel}>Tipo de Pago</label>
+                            <select
+                              value={salePaymentType}
+                              onChange={(e: any) => setSalePaymentType(e.target.value)}
+                              className={styles.salesTextInput}
+                            >
+                              <option value="REVOLUT">Revolut</option>
+                              <option value="PAYPAL">PayPal</option>
+                              <option value="EFECTIVO">Efectivo</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        <div className={styles.createSaleTotalPanel}>
+                          <div className={styles.summaryRow}>
+                            <span>Total Artículos:</span>
+                            <strong>{summaryCount} uds.</strong>
+                          </div>
+                          <div className={styles.summaryRow} style={{ fontSize: '16px', borderTop: '1px solid var(--border-card-glass)', paddingTop: '10px', marginTop: '6px' }}>
+                            <span>Total Final:</span>
+                            <strong style={{ fontFamily: 'monospace' }}>{formatPrice(summaryTotal)}</strong>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => setShowSaleSummary(true)}
+                          className={styles.reviewSaleBtn}
+                        >
+                          Revisar Venta
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+        {showSaleSummary && (() => {
+          let summaryTotal = 0;
+          let summaryCount = 0;
+          let hasPrepurchase = false;
+          const chosenItems: any[] = [];
+
+          selectedArticleIds.forEach(id => {
+            const art = articles.find(a => a.id === id);
+            if (!art) return;
+            const qty = saleItemQuantities.get(id) || 1;
+            const price = saleItemPrices.has(id)
+              ? (saleItemPrices.get(id) ?? 0)
+              : getFinalPriceForArticle(art);
+            
+            const isPrepurchase = qty > art.quantity;
+            if (isPrepurchase) hasPrepurchase = true;
+
+            summaryTotal += price * qty;
+            summaryCount += qty;
+
+            chosenItems.push({
+              art,
+              qty,
+              price,
+              isPrepurchase
+            });
+          });
+
+          return (
+            <div className={styles.modalOverlay}>
+              <div className={styles.salesConfirmModal}>
+                <h3 className={styles.modalTitle}>Confirmar Registro de Venta</h3>
+                
+                <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
+                  Por favor, revisa detalladamente el desglose antes de registrar la venta en el sistema.
+                </p>
+
+                <div style={{ maxHeight: '200px', overflowY: 'auto', border: '1px solid var(--border-card-glass)', borderRadius: '8px', marginBottom: '16px' }}>
+                  {chosenItems.map(({ art, qty, price, isPrepurchase }) => (
+                    <div key={art.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 12px', borderBottom: '1px solid var(--border-card-glass)', alignItems: 'center' }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: '13px', fontWeight: 'bold' }}>{art.title}</div>
+                        <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>ID Ref: MEC-{String(art.id).padStart(4, '0')}</div>
+                      </div>
+                      
+                      <div style={{ textWrap: 'nowrap', display: 'flex', gap: '14px', alignItems: 'center' }}>
+                        <span style={{ fontSize: '12px' }}>
+                          ud: <strong>{qty}</strong>{' '}
+                          {isPrepurchase ? (
+                            <span style={{ color: 'var(--text-soldout)', fontSize: '11px', fontWeight: 'bold' }}>(Precompra*)</span>
+                          ) : (
+                            <span style={{ color: 'var(--text-available)', fontSize: '11px' }}>(Stock OK)</span>
+                          )}
+                        </span>
+                        
+                        <span style={{ fontWeight: 'bold', fontFamily: 'monospace', fontSize: '13px' }}>
+                          {formatPrice(price * qty)}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className={styles.confirmSummaryInfo}>
+                  <div className={styles.summaryRow}>
+                    <span>Nº Artículos:</span>
+                    <strong>{summaryCount} uds.</strong>
+                  </div>
+                  <div className={styles.summaryRow}>
+                    <span>Lugar de venta:</span>
+                    <strong>{saleLocation || 'online'}</strong>
+                  </div>
+                  <div className={styles.summaryRow}>
+                    <span>Tipo de pago:</span>
+                    <strong>{salePaymentType}</strong>
+                  </div>
+                  <div className={styles.summaryRow}>
+                    <span>Comprador:</span>
+                    <strong>
+                      {saleBuyerEmail || saleBuyerPhone
+                        ? `${saleBuyerEmail} ${saleBuyerPhone ? `(${saleBuyerPhoneCode}${saleBuyerPhone})` : ''}`
+                        : 'Venta Directa'}
+                    </strong>
+                  </div>
+                  <div className={styles.summaryRow}>
+                    <span>Estado venta:</span>
+                    <strong style={{ color: hasPrepurchase ? 'var(--text-soldout)' : 'var(--text-available)' }}>
+                      {hasPrepurchase ? 'PRECOMPRA' : 'COMPLETADA'}
+                    </strong>
+                  </div>
+                  
+                  <div className={styles.summaryRow} style={{ fontSize: '16px', borderTop: '2px solid var(--text-primary)', paddingTop: '10px', marginTop: '8px' }}>
+                    <span>Total Venta:</span>
+                    <strong style={{ fontFamily: 'monospace' }}>{formatPrice(summaryTotal)}</strong>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
+                  <button
+                    type="button"
+                    onClick={handleRegisterSale}
+                    disabled={registeringSale}
+                    className={`${styles.primaryButton} ${styles.solidGreenButton}`}
+                    style={{ flex: 1, padding: '12px', borderRadius: '8px', border: 'none', fontWeight: 'bold', cursor: 'pointer' }}
+                  >
+                    {registeringSale ? 'Procesando...' : 'Registrar Venta'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowSaleSummary(false)}
+                    className={`${styles.dangerButton} ${styles.solidRedButton}`}
+                    style={{ flex: 1, padding: '12px', borderRadius: '8px', border: 'none', fontWeight: 'bold', cursor: 'pointer' }}
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+        {selectedSaleDetail && (() => {
+          const origin = typeof window !== 'undefined' ? window.location.origin : '';
+          const invoiceUrl = `${origin}/invoice/${selectedSaleDetail.id}`;
+          const sharingText = `Recibo de Venta - MiniEngines Creations (ID: ${selectedSaleDetail.id.substring(0, 8)})`;
+          
+          const encodedText = encodeURIComponent(sharingText);
+          const encodedUrl = encodeURIComponent(invoiceUrl);
+          
+          const whatsappUrl = `https://api.whatsapp.com/send?text=${encodedText}%20${encodedUrl}`;
+          const telegramUrl = `https://t.me/share/url?url=${encodedUrl}&text=${encodedText}`;
+          const emailUrl = `mailto:?subject=${encodeURIComponent(sharingText)}&body=Enlace%20a%20tu%20recibo%20de%20compra:%20${encodedUrl}`;
+
+          return (
+            <div className={styles.modalOverlay}>
+              <div className={styles.salesConfirmModal} style={{ maxWidth: '640px' }}>
+                <h3 className={styles.modalTitle}>Detalle de Venta</h3>
+                
+                <div className={styles.confirmSummaryInfo} style={{ background: 'none', padding: 0, gap: '6px' }}>
+                  <div className={styles.summaryRow}>
+                    <span>Factura ID:</span>
+                    <strong style={{ fontFamily: 'monospace' }}>MEC-{selectedSaleDetail.id.toUpperCase()}</strong>
+                  </div>
+                  <div className={styles.summaryRow}>
+                    <span>Fecha:</span>
+                    <strong>{new Date(selectedSaleDetail.created_at).toLocaleString('es-ES')}</strong>
+                  </div>
+                  <div className={styles.summaryRow}>
+                    <span>Pago:</span>
+                    <strong>{selectedSaleDetail.payment_type}</strong>
+                  </div>
+                  <div className={styles.summaryRow}>
+                    <span>Lugar:</span>
+                    <strong>{selectedSaleDetail.location}</strong>
+                  </div>
+                  <div className={styles.summaryRow}>
+                    <span>Cliente:</span>
+                    <strong>
+                      {selectedSaleDetail.buyer_email || selectedSaleDetail.buyer_phone
+                        ? `${selectedSaleDetail.buyer_email || ''} ${selectedSaleDetail.buyer_phone || ''}`
+                        : 'Venta Directa'}
+                    </strong>
+                  </div>
+                  <div className={styles.summaryRow}>
+                    <span>Estado:</span>
+                    <strong style={{ color: selectedSaleDetail.status === 'PRECOMPRA' ? 'var(--text-soldout)' : 'var(--text-available)' }}>
+                      {selectedSaleDetail.status}
+                    </strong>
+                  </div>
+                </div>
+
+                <h4 style={{ fontSize: '13px', fontWeight: 'bold', margin: '16px 0 8px 0', borderBottom: '1px solid var(--border-card-glass)', paddingBottom: '4px' }}>Artículos Vendidos</h4>
+                <div style={{ maxHeight: '180px', overflowY: 'auto', border: '1px solid var(--border-card-glass)', borderRadius: '8px', marginBottom: '16px' }}>
+                  {loadingSaleItems ? (
+                    <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-secondary)' }}>Cargando artículos...</div>
+                  ) : saleDetailItems.length === 0 ? (
+                    <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-tertiary)' }}>No hay artículos vinculados a esta venta.</div>
+                  ) : (
+                    saleDetailItems.map((item) => (
+                      <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 12px', borderBottom: '1px solid var(--border-card-glass)', alignItems: 'center' }}>
+                        <div>
+                          <div style={{ fontSize: '13px', fontWeight: 'bold' }}>{item.title}</div>
+                          <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>ID Ref: MEC-{String(item.article_id).padStart(4, '0')}</div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
+                          <span style={{ fontSize: '12px' }}>
+                            Cant: <strong>{item.quantity}</strong>{' '}
+                            {item.is_prepurchase ? (
+                              <span style={{ color: 'var(--text-soldout)', fontSize: '11px', fontWeight: 'bold' }}>(Precompra)</span>
+                            ) : (
+                              <span style={{ color: 'var(--text-available)', fontSize: '11px' }}>(Completado)</span>
+                            )}
+                          </span>
+                          <span style={{ fontWeight: 'bold', fontFamily: 'monospace', fontSize: '13px' }}>
+                            {formatPrice(item.price * item.quantity)}
+                          </span>
+
+                          {item.is_prepurchase && (
+                            <button
+                              type="button"
+                              onClick={() => completePrepurchaseItem(item)}
+                              className={styles.completeItemBtn}
+                              title="Marcar como listo y subir stock en 1"
+                            >
+                              ✓ Completar
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <div className={styles.summaryRow} style={{ fontSize: '16px', fontWeight: 'bold', borderTop: '1px solid var(--border-card-glass)', paddingTop: '10px' }}>
+                  <span>Total Facturado:</span>
+                  <span style={{ fontFamily: 'monospace' }}>{formatPrice(selectedSaleDetail.total_price)}</span>
+                </div>
+
+                <div style={{ borderTop: '1px solid var(--border-card-glass)', marginTop: '20px', paddingTop: '16px' }}>
+                  <span style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-secondary)' }}>Compartir Factura:</span>
+                  <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
+                    <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className={`${styles.shareLink} ${styles.waShare}`} style={{ flex: 1, textDecoration: 'none', padding: '10px', borderRadius: '8px', textAlign: 'center', fontSize: '12px', fontWeight: 'bold' }}>
+                      WhatsApp
+                    </a>
+                    <a href={telegramUrl} target="_blank" rel="noopener noreferrer" className={`${styles.shareLink} ${styles.tgShare}`} style={{ flex: 1, textDecoration: 'none', padding: '10px', borderRadius: '8px', textAlign: 'center', fontSize: '12px', fontWeight: 'bold' }}>
+                      Telegram
+                    </a>
+                    <a href={emailUrl} className={`${styles.shareLink} ${styles.emailShare}`} style={{ flex: 1, textDecoration: 'none', padding: '10px', borderRadius: '8px', textAlign: 'center', fontSize: '12px', fontWeight: 'bold' }}>
+                      Email
+                    </a>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '12px', marginTop: '20px', borderTop: '1px solid var(--border-card-glass)', paddingTop: '16px' }}>
+                  <a
+                    href={invoiceUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`${styles.primaryButton} ${styles.solidBlueButton}`}
+                    style={{ flex: 1, padding: '12px', borderRadius: '8px', border: 'none', fontWeight: 'bold', textDecoration: 'none', textAlign: 'center', fontSize: '13px' }}
+                  >
+                    Ver Online / PDF 📄
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedSaleDetail(null);
+                      setSaleDetailItems([]);
+                    }}
+                    className={`${styles.secondaryButton} ${styles.solidGrayButton}`}
+                    style={{ flex: 1, padding: '12px', borderRadius: '8px', border: 'none', fontWeight: 'bold', cursor: 'pointer', fontSize: '13px' }}
+                  >
+                    Cerrar
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
 
         {(() => {
           if (!showDiscountWarnModal || !pendingSubmitData) return null;
