@@ -152,7 +152,7 @@ export default function AdminPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [articles, setArticles] = useState<Article[]>([]);
-  const [activeTab, setActiveTab] = useState<'catalog' | 'create' | 'edit' | 'categories' | 'import' | 'config' | 'discounts'>('catalog');
+  const [activeTab, setActiveTab] = useState<'catalog' | 'create' | 'edit' | 'categories' | 'import' | 'config'>('catalog');
   
   const [formState, setFormState] = useState<FormState>(initialFormState);
   const [files, setFiles] = useState<File[]>([]);
@@ -458,7 +458,7 @@ export default function AdminPage() {
     }
   }
 
-  function handleTabChange(tab: 'catalog' | 'create' | 'categories' | 'import' | 'config' | 'discounts') {
+  function handleTabChange(tab: 'catalog' | 'create' | 'categories' | 'import' | 'config') {
     resetForm();
     setActiveTab(tab);
     setSelectedCatalogCategoryId(null);
@@ -471,8 +471,6 @@ export default function AdminPage() {
     if (tab === 'catalog') {
       loadArticles();
     } else if (tab === 'config') {
-      loadPaymentsSetting();
-    } else if (tab === 'discounts') {
       loadPaymentsSetting();
     }
   }
@@ -1331,8 +1329,6 @@ export default function AdminPage() {
                 ? 'Importar artículos'
                 : activeTab === 'config'
                 ? 'Configuración'
-                : activeTab === 'discounts'
-                ? 'Gestionar Descuentos'
                 : 'Editar artículo'}
             </h1>
             <p className={styles.subtitle}>
@@ -1346,8 +1342,6 @@ export default function AdminPage() {
                 ? 'Importa múltiples artículos de golpe subiendo un archivo CSV.'
                 : activeTab === 'config'
                 ? 'Configura opciones globales del catálogo, como ocultar precios o disponibilidad.'
-                : activeTab === 'discounts'
-                ? 'Configura descuentos para toda la web o para categorías específicas de forma masiva.'
                 : 'Modifica los campos del artículo, gestiona sus imágenes o bórralo permanentemente.'}
             </p>
             </div>
@@ -1386,13 +1380,6 @@ export default function AdminPage() {
               onClick={() => handleTabChange('categories')}
             >
               Categorías
-            </button>
-            <button
-              type="button"
-              className={`${styles.tab} ${activeTab === 'discounts' ? styles.tabActive : ''}`}
-              onClick={() => handleTabChange('discounts')}
-            >
-              Descuentos
             </button>
             <button
               type="button"
@@ -2508,12 +2495,8 @@ ON CONFLICT (key) DO NOTHING;`}
                 </div>
               )}
             </div>
-          </div>
-        )}
 
-        {/* Discounts View */}
-        {activeTab === 'discounts' && (
-          <div className={styles.paymentsSection} style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
+            {/* Sección 3: Descuentos Masivos */}
             <div className={styles.paymentsCard}>
               <h2 className={styles.paymentsCardTitle}>Configuración de Descuentos Masivos</h2>
               <p className={styles.paymentsCardDesc}>
