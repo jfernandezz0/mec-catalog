@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import Lightbox from '@/app/components/Lightbox';
 import styles from './article.module.css';
@@ -44,11 +44,61 @@ export default function ArticleGallery({ id, imageUrls, title }: ArticleGalleryP
     );
   }
 
+  const touchStartX = useRef<number | null>(null);
+  const touchEndX = useRef<number | null>(null);
+  const swipeOccurred = useRef(false);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchEndX.current = e.touches[0].clientX;
+    swipeOccurred.current = false;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    touchEndX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = () => {
+    if (touchStartX.current === null || touchEndX.current === null) return;
+    const diffX = touchStartX.current - touchEndX.current;
+    const threshold = 50; // pixels
+
+    if (Math.abs(diffX) > threshold) {
+      swipeOccurred.current = true;
+      if (diffX > 0) {
+        showNextImage();
+      } else {
+        showPreviousImage();
+      }
+      setTimeout(() => {
+        swipeOccurred.current = false;
+      }, 300);
+    }
+
+    touchStartX.current = null;
+    touchEndX.current = null;
+  };
+
+  const handleHeroClick = (e: React.MouseEvent) => {
+    if (swipeOccurred.current) {
+      e.preventDefault();
+      e.stopPropagation();
+      swipeOccurred.current = false;
+      return;
+    }
+    if (imageUrl) {
+      setIsLightboxOpen(true);
+    }
+  };
+
   return (
     <section className={styles.galleryCard}>
       <div 
         className={`${styles.heroImage} cursor-zoom-in`}
-        onClick={() => imageUrl && setIsLightboxOpen(true)}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onClick={handleHeroClick}
       >
         {imageUrl ? (
           <>
