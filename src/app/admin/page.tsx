@@ -2498,7 +2498,7 @@ ON CONFLICT (key) DO NOTHING;`}
 
             {/* Sección 3: Descuentos Masivos */}
             <div className={styles.paymentsCard}>
-              <h2 className={styles.paymentsCardTitle}>Configuración de Descuentos Masivos</h2>
+              <h2 className={styles.paymentsCardTitle}>Configuración de descuentos:</h2>
               <p className={styles.paymentsCardDesc}>
                 Aplica descuentos de porcentaje (%) a toda la web o por categorías de origen.
               </p>
@@ -2524,222 +2524,220 @@ ALTER TABLE categories ADD COLUMN IF NOT EXISTS discount_percent INTEGER CHECK (
                   </button>
                 </div>
               ) : (
-                <form onSubmit={handleSaveDiscount} style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginTop: '12px' }}>
-                  <label className={styles.field}>
-                    <span className={styles.labelRow}>
-                      <span>Seleccionar objetivo del descuento</span>
-                      <span className={styles.hint}>Requerido</span>
-                    </span>
-                    <select
-                      value={selectedDiscountTarget}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setSelectedDiscountTarget(val);
-                        if (val === 'general') {
-                          setTargetDiscountPercent(generalDiscountPercent);
-                        } else if (val.startsWith('cat-')) {
-                          const catId = Number(val.substring(4));
-                          const cat = categories.find(c => c.id === catId);
-                          setTargetDiscountPercent(cat?.discount_percent ? String(cat.discount_percent) : '');
-                        } else {
-                          setTargetDiscountPercent('');
-                        }
-                      }}
-                      className={styles.control}
-                      required
-                    >
-                      <option value="">Selecciona una opción...</option>
-                      <option value="general">General (Toda la Web)</option>
-                      <option value="separator" disabled>────────────────────</option>
-                      {categories.map((cat) => (
-                        <option key={cat.id} value={`cat-${cat.id}`}>
-                          {getFlagEmoji(cat.country_code)} {cat.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
-                  {selectedDiscountTarget && selectedDiscountTarget !== 'separator' && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                      {/* Priority Warning alert if applicable */}
-                      {(() => {
-                        if (selectedDiscountTarget === 'general') {
-                          const hasArticleDiscounts = articles.some(a => a.discount_type);
-                          const hasCategoryDiscounts = categories.some(c => c.discount_percent);
-                          if (hasArticleDiscounts || hasCategoryDiscounts) {
-                            return (
-                              <div style={{ padding: '12px 16px', borderRadius: '8px', background: 'rgba(234, 179, 8, 0.12)', border: '1px solid rgba(234, 179, 8, 0.3)', color: 'var(--text-primary)', fontSize: '13px', lineHeight: '1.45' }}>
-                                ⚠️ Nota: Hay artículos o categorías con descuentos específicos (prioridad superior) que no se verán afectados por este descuento general a menos que su descuento específico sea menor.
-                              </div>
-                            );
-                          }
-                        } else if (selectedDiscountTarget.startsWith('cat-')) {
-                          const catId = Number(selectedDiscountTarget.substring(4));
-                          const hasArticleDiscounts = articles.some(a => a.category_id === catId && a.discount_type);
-                          if (hasArticleDiscounts) {
-                            return (
-                              <div style={{ padding: '12px 16px', borderRadius: '8px', background: 'rgba(234, 179, 8, 0.12)', border: '1px solid rgba(234, 179, 8, 0.3)', color: 'var(--text-primary)', fontSize: '13px', lineHeight: '1.45' }}>
-                                ⚠️ Nota: Hay artículos en esta categoría con descuento individual (prioridad superior) que no se verán afectados por este descuento de categoría a menos que su descuento específico sea menor.
-                              </div>
-                            );
-                          }
-                        }
-                        return null;
-                      })()}
-
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 0' }}>
-                        <div>
-                          <span style={{ fontWeight: '700', fontSize: '14px', display: 'block' }}>Activar descuento</span>
-                          <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                            Habilita el descuento para {selectedDiscountTarget === 'general' ? 'toda la web' : 'esta categoría'}.
-                          </span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setTargetDiscountPercent(prev => prev ? '' : '10');
-                          }}
-                          className={`${styles.switch} ${targetDiscountPercent ? styles.switchActive : ''}`}
-                          title="Alternar descuento"
-                          style={{ flexShrink: 0, marginLeft: '12px' }}
-                        >
-                          <span className={styles.switchHandle} />
-                        </button>
-                      </div>
-
-                      {targetDiscountPercent !== '' && (
-                        <label className={styles.field} style={{ borderLeft: '3px solid var(--border-card)', paddingLeft: '16px' }}>
-                          <span className={styles.labelRow}>
-                            <span>Porcentaje de descuento (%)</span>
-                            <span className={styles.hint}>Valor entero de 1 a 100</span>
-                          </span>
-                          <input
-                            type="number"
-                            value={targetDiscountPercent}
-                            onChange={(e) => setTargetDiscountPercent(e.target.value)}
-                            min="1"
-                            max="100"
-                            step="1"
-                            required
-                            placeholder="Ej: 10"
-                            className={styles.control}
-                            disabled={savingDiscount}
-                          />
-                        </label>
-                      )}
-
-                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '8px' }}>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedDiscountTarget('');
+                <>
+                  <form onSubmit={handleSaveDiscount} style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginTop: '12px' }}>
+                    <label className={styles.field}>
+                      <span className={styles.labelRow}>
+                        <span>Seleccionar objetivo del descuento</span>
+                        <span className={styles.hint}>Requerido</span>
+                      </span>
+                      <select
+                        value={selectedDiscountTarget}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setSelectedDiscountTarget(val);
+                          if (val === 'general') {
+                            setTargetDiscountPercent(generalDiscountPercent);
+                          } else if (val.startsWith('cat-')) {
+                            const catId = Number(val.substring(4));
+                            const cat = categories.find(c => c.id === catId);
+                            setTargetDiscountPercent(cat?.discount_percent ? String(cat.discount_percent) : '');
+                          } else {
                             setTargetDiscountPercent('');
-                          }}
-                          className={styles.secondaryButton}
-                          disabled={savingDiscount}
-                        >
-                          Cancelar
-                        </button>
-                        <button
-                          type="submit"
-                          className={styles.primaryButton}
-                          disabled={savingDiscount}
-                        >
-                          {savingDiscount ? 'Guardando...' : 'Guardar Descuento'}
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </form>
-              )}
-            </div>
+                          }
+                        }}
+                        className={styles.control}
+                        required
+                      >
+                        <option value="">Selecciona una opción...</option>
+                        <option value="general">General (Toda la Web)</option>
+                        <option value="separator" disabled>────────────────────</option>
+                        {categories.map((cat) => (
+                          <option key={cat.id} value={`cat-${cat.id}`}>
+                            {getFlagEmoji(cat.country_code)} {cat.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
 
-            {hasDiscountColumns && (() => {
-              const activeGeneral = generalDiscountPercent && Number(generalDiscountPercent) > 0;
-              const activeCategories = categories.filter(c => c.discount_percent && c.discount_percent > 0);
-              
-              if (!activeGeneral && activeCategories.length === 0) {
-                return (
-                  <div className={styles.paymentsCard}>
-                    <h2 className={styles.paymentsCardTitle}>Descuentos Masivos Activos</h2>
-                    <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-secondary)' }}>
-                      No hay descuentos generales ni de categoría activos actualmente.
-                    </p>
-                  </div>
-                );
-              }
-              
-              return (
-                <div className={styles.paymentsCard}>
-                  <h2 className={styles.paymentsCardTitle}>Descuentos Masivos Activos</h2>
-                  <p className={styles.paymentsCardDesc} style={{ marginBottom: '16px' }}>
-                    Lista de descuentos generales y de categoría configurados actualmente en la tienda.
-                  </p>
-                  
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    {activeGeneral && (
-                      <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        padding: '12px 16px',
-                        borderRadius: '10px',
-                        background: 'var(--bg-card-glass)',
-                        border: '1px solid var(--border-card-glass)'
-                      }}>
-                        <div>
-                          <span style={{ fontWeight: '850', fontSize: '14px', color: 'var(--text-primary)', display: 'block' }}>
-                            🌍 Descuento General (Toda la Web)
-                          </span>
-                          <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-                            Porcentaje: <strong>{generalDiscountPercent}%</strong>
-                          </span>
+                    {selectedDiscountTarget && selectedDiscountTarget !== 'separator' && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                        {/* Priority Warning alert if applicable */}
+                        {(() => {
+                          if (selectedDiscountTarget === 'general') {
+                            const hasArticleDiscounts = articles.some(a => a.discount_type);
+                            const hasCategoryDiscounts = categories.some(c => c.discount_percent);
+                            if (hasArticleDiscounts || hasCategoryDiscounts) {
+                              return (
+                                <div style={{ padding: '12px 16px', borderRadius: '8px', background: 'rgba(234, 179, 8, 0.12)', border: '1px solid rgba(234, 179, 8, 0.3)', color: 'var(--text-primary)', fontSize: '13px', lineHeight: '1.45' }}>
+                                  ⚠️ Nota: Hay artículos o categorías con descuentos específicos (prioridad superior) que no se verán afectados por este descuento general a menos que su descuento específico sea menor.
+                                </div>
+                              );
+                            }
+                          } else if (selectedDiscountTarget.startsWith('cat-')) {
+                            const catId = Number(selectedDiscountTarget.substring(4));
+                            const hasArticleDiscounts = articles.some(a => a.category_id === catId && a.discount_type);
+                            if (hasArticleDiscounts) {
+                              return (
+                                <div style={{ padding: '12px 16px', borderRadius: '8px', background: 'rgba(234, 179, 8, 0.12)', border: '1px solid rgba(234, 179, 8, 0.3)', color: 'var(--text-primary)', fontSize: '13px', lineHeight: '1.45' }}>
+                                  ⚠️ Nota: Hay artículos en esta categoría con descuento individual (prioridad superior) que no se verán afectados por este descuento de categoría a menos que su descuento específico sea menor.
+                                </div>
+                              );
+                            }
+                          }
+                          return null;
+                        })()}
+
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 0' }}>
+                          <div>
+                            <span style={{ fontWeight: '700', fontSize: '14px', display: 'block' }}>Activar descuento</span>
+                            <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                              Habilita el descuento para {selectedDiscountTarget === 'general' ? 'toda la web' : 'esta categoría'}.
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setTargetDiscountPercent(prev => prev ? '' : '10');
+                            }}
+                            className={`${styles.switch} ${targetDiscountPercent ? styles.switchActive : ''}`}
+                            title="Alternar descuento"
+                            style={{ flexShrink: 0, marginLeft: '12px' }}
+                          >
+                            <span className={styles.switchHandle} />
+                          </button>
                         </div>
-                        <button
-                          type="button"
-                          disabled={savingDiscount}
-                          onClick={() => handleDeleteDiscount('general')}
-                          className={`${styles.dangerButtonSmall} ${styles.solidRedButton}`}
-                          style={{ padding: '8px 14px', height: 'auto', borderRadius: '6px', fontSize: '12px', fontWeight: '800' }}
-                        >
-                          Eliminar
-                        </button>
+
+                        {targetDiscountPercent !== '' && (
+                          <label className={styles.field} style={{ borderLeft: '3px solid var(--border-card)', paddingLeft: '16px' }}>
+                            <span className={styles.labelRow}>
+                              <span>Porcentaje de descuento (%)</span>
+                              <span className={styles.hint}>Valor entero de 1 a 100</span>
+                            </span>
+                            <input
+                              type="number"
+                              value={targetDiscountPercent}
+                              onChange={(e) => setTargetDiscountPercent(e.target.value)}
+                              min="1"
+                              max="100"
+                              step="1"
+                              required
+                              placeholder="Ej: 10"
+                              className={styles.control}
+                              disabled={savingDiscount}
+                            />
+                          </label>
+                        )}
+
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '8px' }}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedDiscountTarget('');
+                              setTargetDiscountPercent('');
+                            }}
+                            className={styles.secondaryButton}
+                            disabled={savingDiscount}
+                          >
+                            Cancelar
+                          </button>
+                          <button
+                            type="submit"
+                            className={styles.primaryButton}
+                            disabled={savingDiscount}
+                          >
+                            {savingDiscount ? 'Guardando...' : 'Guardar Descuento'}
+                          </button>
+                        </div>
                       </div>
                     )}
-                    
-                    {activeCategories.map(cat => (
-                      <div key={cat.id} style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        padding: '12px 16px',
-                        borderRadius: '10px',
-                        background: 'var(--bg-card-glass)',
-                        border: '1px solid var(--border-card-glass)'
-                      }}>
-                        <div>
-                          <span style={{ fontWeight: '850', fontSize: '14px', color: 'var(--text-primary)', display: 'block' }}>
-                            {getFlagEmoji(cat.country_code)} Categoría: {cat.name}
-                          </span>
-                          <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-                            Porcentaje: <strong>{cat.discount_percent}%</strong>
-                          </span>
+                  </form>
+
+                  {/* Active Discounts List merged directly here */}
+                  <div style={{ marginTop: '32px', borderTop: '1px solid var(--border-card)', paddingTop: '24px' }}>
+                    <h3 style={{ fontSize: '15px', fontWeight: '800', marginBottom: '14px', color: 'var(--text-primary)' }}>
+                      Descuentos Masivos Activos
+                    </h3>
+                    {(() => {
+                      const activeGeneral = generalDiscountPercent && Number(generalDiscountPercent) > 0;
+                      const activeCategories = categories.filter(c => c.discount_percent && c.discount_percent > 0);
+                      
+                      if (!activeGeneral && activeCategories.length === 0) {
+                        return (
+                          <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)' }}>
+                            No hay descuentos generales ni de categoría activos actualmente.
+                          </p>
+                        );
+                      }
+                      
+                      return (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                          {activeGeneral && (
+                            <div style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              padding: '12px 16px',
+                              borderRadius: '10px',
+                              background: 'var(--bg-card-glass)',
+                              border: '1px solid var(--border-card-glass)'
+                            }}>
+                              <div>
+                                <span style={{ fontWeight: '850', fontSize: '14px', color: 'var(--text-primary)', display: 'block' }}>
+                                  🌍 Descuento General (Toda la Web)
+                                </span>
+                                <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+                                  Porcentaje: <strong>{generalDiscountPercent}%</strong>
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                disabled={savingDiscount}
+                                onClick={() => handleDeleteDiscount('general')}
+                                className={`${styles.dangerButtonSmall} ${styles.solidRedButton}`}
+                                style={{ padding: '8px 14px', height: 'auto', borderRadius: '6px', fontSize: '12px', fontWeight: '800' }}
+                              >
+                                Eliminar
+                              </button>
+                            </div>
+                          )}
+                          
+                          {activeCategories.map(cat => (
+                            <div key={cat.id} style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              padding: '12px 16px',
+                              borderRadius: '10px',
+                              background: 'var(--bg-card-glass)',
+                              border: '1px solid var(--border-card-glass)'
+                            }}>
+                              <div>
+                                <span style={{ fontWeight: '850', fontSize: '14px', color: 'var(--text-primary)', display: 'block' }}>
+                                  {getFlagEmoji(cat.country_code)} Categoría: {cat.name}
+                                </span>
+                                <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+                                  Porcentaje: <strong>{cat.discount_percent}%</strong>
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                disabled={savingDiscount}
+                                onClick={() => handleDeleteDiscount(cat.id)}
+                                className={`${styles.dangerButtonSmall} ${styles.solidRedButton}`}
+                                style={{ padding: '8px 14px', height: 'auto', borderRadius: '6px', fontSize: '12px', fontWeight: '800' }}
+                              >
+                                Eliminar
+                              </button>
+                            </div>
+                          ))}
                         </div>
-                        <button
-                          type="button"
-                          disabled={savingDiscount}
-                          onClick={() => handleDeleteDiscount(cat.id)}
-                          className={`${styles.dangerButtonSmall} ${styles.solidRedButton}`}
-                          style={{ padding: '8px 14px', height: 'auto', borderRadius: '6px', fontSize: '12px', fontWeight: '800' }}
-                        >
-                          Eliminar
-                        </button>
-                      </div>
-                    ))}
+                      );
+                    })()}
                   </div>
-                </div>
-              );
-            })()}
+                </>
+              )}
+            </div>
           </div>
         )}
 
