@@ -1209,6 +1209,48 @@ export default function AdminPage() {
     }
   }
 
+  async function handleDeleteDiscount(target: 'general' | number) {
+    const confirmed = confirm(
+      target === 'general'
+        ? '¿Estás seguro de que deseas eliminar el descuento general?'
+        : '¿Estás seguro de que deseas eliminar el descuento de esta categoría?'
+    );
+    if (!confirmed) return;
+
+    setSavingDiscount(true);
+    try {
+      if (target === 'general') {
+        const { error } = await supabase
+          .from('settings')
+          .upsert({ key: 'general_discount_percent', value: '' });
+
+        if (error) throw new Error(error.message);
+        setGeneralDiscountPercent('');
+        if (selectedDiscountTarget === 'general') {
+          setTargetDiscountPercent('');
+        }
+        alert('Descuento general eliminado correctamente.');
+      } else {
+        const { error } = await supabase
+          .from('categories')
+          .update({ discount_percent: null })
+          .eq('id', target);
+
+        if (error) throw new Error(error.message);
+
+        setCategories(prev => prev.map(c => c.id === target ? { ...c, discount_percent: null } : c));
+        if (selectedDiscountTarget === `cat-${target}`) {
+          setTargetDiscountPercent('');
+        }
+        alert('Descuento de categoría eliminado correctamente.');
+      }
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Error al eliminar el descuento.');
+    } finally {
+      setSavingDiscount(false);
+    }
+  }
+
   if (checkingAuth) {
     return (
       <main className={styles.page}>
@@ -2628,6 +2670,93 @@ ALTER TABLE categories ADD COLUMN IF NOT EXISTS discount_percent INTEGER CHECK (
                 </form>
               )}
             </div>
+
+            {hasDiscountColumns && (() => {
+              const activeGeneral = generalDiscountPercent && Number(generalDiscountPercent) > 0;
+              const activeCategories = categories.filter(c => c.discount_percent && c.discount_percent > 0);
+              
+              if (!activeGeneral && activeCategories.length === 0) {
+                return (
+                  <div className={styles.paymentsCard}>
+                    <h2 className={styles.paymentsCardTitle}>Descuentos Masivos Activos</h2>
+                    <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-secondary)' }}>
+                      No hay descuentos generales ni de categoría activos actualmente.
+                    </p>
+                  </div>
+                );
+              }
+              
+              return (
+                <div className={styles.paymentsCard}>
+                  <h2 className={styles.paymentsCardTitle}>Descuentos Masivos Activos</h2>
+                  <p className={styles.paymentsCardDesc} style={{ marginBottom: '16px' }}>
+                    Lista de descuentos generales y de categoría configurados actualmente en la tienda.
+                  </p>
+                  
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {activeGeneral && (
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '12px 16px',
+                        borderRadius: '10px',
+                        background: 'var(--bg-card-glass)',
+                        border: '1px solid var(--border-card-glass)'
+                      }}>
+                        <div>
+                          <span style={{ fontWeight: '850', fontSize: '14px', color: 'var(--text-primary)', display: 'block' }}>
+                            🌍 Descuento General (Toda la Web)
+                          </span>
+                          <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+                            Porcentaje: <strong>{generalDiscountPercent}%</strong>
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          disabled={savingDiscount}
+                          onClick={() => handleDeleteDiscount('general')}
+                          className={`${styles.dangerButtonSmall} ${styles.solidRedButton}`}
+                          style={{ padding: '8px 14px', height: 'auto', borderRadius: '6px', fontSize: '12px', fontWeight: '800' }}
+                        >
+                          Eliminar
+                        </button>
+                      </div>
+                    )}
+                    
+                    {activeCategories.map(cat => (
+                      <div key={cat.id} style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '12px 16px',
+                        borderRadius: '10px',
+                        background: 'var(--bg-card-glass)',
+                        border: '1px solid var(--border-card-glass)'
+                      }}>
+                        <div>
+                          <span style={{ fontWeight: '850', fontSize: '14px', color: 'var(--text-primary)', display: 'block' }}>
+                            {getFlagEmoji(cat.country_code)} Categoría: {cat.name}
+                          </span>
+                          <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+                            Porcentaje: <strong>{cat.discount_percent}%</strong>
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          disabled={savingDiscount}
+                          onClick={() => handleDeleteDiscount(cat.id)}
+                          className={`${styles.dangerButtonSmall} ${styles.solidRedButton}`}
+                          style={{ padding: '8px 14px', height: 'auto', borderRadius: '6px', fontSize: '12px', fontWeight: '800' }}
+                        >
+                          Eliminar
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         )}
 
