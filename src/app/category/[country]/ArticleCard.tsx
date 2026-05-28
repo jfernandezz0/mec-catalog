@@ -4,6 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
+import { calculateDiscount } from '@/lib/discounts';
 import styles from './category.module.css';
 
 type ArticleCardProps = {
@@ -14,10 +15,14 @@ type ArticleCardProps = {
     price: number | string;
     quantity: number;
     image_urls: string[] | null;
+    discount_type?: string | null;
+    discount_value?: number | null;
   };
   index?: number;
   hidePrices?: boolean;
   hideAvailability?: boolean;
+  categoryDiscountPercent?: number | null;
+  generalDiscountPercent?: string;
 };
 
 function formatPrice(value: number | string) {
@@ -31,7 +36,9 @@ export default function ArticleCard({
   article, 
   index, 
   hidePrices = false, 
-  hideAvailability = false 
+  hideAvailability = false,
+  categoryDiscountPercent = null,
+  generalDiscountPercent = ''
 }: ArticleCardProps) {
   const isPriceHidden = hidePrices || article.quantity === 0;
   const imageUrls = article.image_urls?.filter(Boolean) ?? [];
@@ -266,16 +273,45 @@ export default function ArticleCard({
           </div>
         </div>
 
-        {(!isPriceHidden || !hideAvailability) && (
-          <div className={styles.metaRow}>
-            {!isPriceHidden && <span className={styles.price}>{formatPrice(article.price)}</span>}
-            {!hideAvailability && (
-              <span className={article.quantity === 0 ? styles.stockOut : styles.stockIn}>
-                {article.quantity === 0 ? 'Agotado' : 'Disponible'}
-              </span>
-            )}
-          </div>
-        )}
+        {(!isPriceHidden || !hideAvailability) && (() => {
+          const discountInfo = calculateDiscount(
+            article.price,
+            article.discount_type,
+            article.discount_value,
+            categoryDiscountPercent,
+            generalDiscountPercent
+          );
+          const hasDiscount = discountInfo.appliedSource !== 'none';
+
+          return (
+            <div className={styles.metaRow}>
+              {!isPriceHidden && (
+                <div className={styles.priceContainer}>
+                  {hasDiscount && (
+                    <span className={discountInfo.discountType === 'amount' ? styles.discountBubbleBlue : styles.discountBubbleRed}>
+                      {discountInfo.discountType === 'amount' 
+                        ? `-${formatPrice(discountInfo.discountValue)}` 
+                        : `-${discountInfo.discountValue}%`}
+                    </span>
+                  )}
+                  {hasDiscount ? (
+                    <>
+                      <span className={styles.originalPriceStrikethrough}>{formatPrice(discountInfo.originalPrice)}</span>
+                      <span className={styles.price}>{formatPrice(discountInfo.finalPrice)}</span>
+                    </>
+                  ) : (
+                    <span className={styles.price}>{formatPrice(discountInfo.originalPrice)}</span>
+                  )}
+                </div>
+              )}
+              {!hideAvailability && (
+                <span className={article.quantity === 0 ? styles.stockOut : styles.stockIn}>
+                  {article.quantity === 0 ? 'Agotado' : 'Disponible'}
+                </span>
+              )}
+            </div>
+          );
+        })()}
         <Link href={`/article/${article.id}`} className={styles.detailLink}>
           Ver ficha
         </Link>

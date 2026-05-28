@@ -9,6 +9,8 @@ import { getMECLogo } from '@/lib/utils.server';
 
 export const revalidate = 0;
 
+import { calculateDiscount } from '@/lib/discounts';
+
 type Article = {
   id: number;
   category_id: number;
@@ -17,11 +19,14 @@ type Article = {
   price: number | string;
   quantity: number;
   image_urls: string[] | null;
+  discount_type?: string | null;
+  discount_value?: number | null;
 };
 
 type Category = {
   name: string;
   country_code: string;
+  discount_percent?: number | null;
 };
 
 function formatPrice(value: number | string) {
@@ -91,11 +96,34 @@ export default async function ArticlePage({
     notFound();
   }
 
-  const { data: article, error: articleError } = await supabase
-    .from('articles')
-    .select('id, category_id, title, description, price, quantity, image_urls')
-    .eq('id', articleId)
-    .maybeSingle<Article>();
+  let article: Article | null = null;
+  let articleError = null;
+
+  try {
+    const { data, error } = await supabase
+      .from('articles')
+      .select('id, category_id, title, description, price, quantity, image_urls, discount_type, discount_value')
+      .eq('id', articleId)
+      .maybeSingle<Article>();
+    if (error) {
+      if (error.message.includes('discount_type') || error.message.includes('discount_value')) {
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('articles')
+          .select('id, category_id, title, description, price, quantity, image_urls')
+          .eq('id', articleId)
+          .maybeSingle<Article>();
+        article = fallbackData ? { ...fallbackData, discount_type: null, discount_value: null } : null;
+        articleError = fallbackError;
+      } else {
+        article = data;
+        articleError = error;
+      }
+    } else {
+      article = data;
+    }
+  } catch (err) {
+    console.error('Error loading article:', err);
+  }
 
   if (articleError) {
     console.error('Could not load article:', JSON.stringify(articleError, null, 2));
@@ -106,11 +134,34 @@ export default async function ArticlePage({
     notFound();
   }
 
-  const { data: category, error: categoryError } = await supabase
-    .from('categories')
-    .select('name, country_code')
-    .eq('id', article.category_id)
-    .maybeSingle<Category>();
+  let category: Category | null = null;
+  let categoryError = null;
+
+  try {
+    const { data, error } = await supabase
+      .from('categories')
+      .select('name, country_code, discount_percent')
+      .eq('id', article.category_id)
+      .maybeSingle<Category>();
+    if (error) {
+      if (error.message.includes('discount_percent')) {
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('categories')
+          .select('name, country_code')
+          .eq('id', article.category_id)
+          .maybeSingle<Category>();
+        category = fallbackData ? { ...fallbackData, discount_percent: null } : null;
+        categoryError = fallbackError;
+      } else {
+        category = data;
+        categoryError = error;
+      }
+    } else {
+      category = data;
+    }
+  } catch (err) {
+    console.error('Error loading category:', err);
+  }
 
   if (categoryError) {
     console.error('Could not load category:', JSON.stringify(categoryError, null, 2));
@@ -122,6 +173,7 @@ export default async function ArticlePage({
   let paypalEnabled = true;
   let hidePrices = false;
   let hideAvailability = false;
+  let generalDiscountPercent = '';
   try {
     const { data: settingsData, error: settingsError } = await supabase
       .from('settings')
@@ -134,6 +186,7 @@ export default async function ArticlePage({
       paypalEnabled = settingsMap.get('paypal_enabled') !== 'false';
       hidePrices = settingsMap.get('hide_prices') === 'true';
       hideAvailability = settingsMap.get('hide_availability') === 'true';
+      generalDiscountPercent = settingsMap.get('general_discount_percent') || '';
     }
   } catch (e) {
     console.error('Error loading settings:', e);
@@ -141,12 +194,22 @@ export default async function ArticlePage({
 
   const isPriceHidden = hidePrices || article.quantity === 0;
 
+  const discountInfo = calculateDiscount(
+    article.price,
+    article.discount_type,
+    article.discount_value,
+    category?.discount_percent,
+    generalDiscountPercent
+  );
+  const hasDiscount = discountInfo.appliedSource !== 'none';
+  const finalPrice = discountInfo.finalPrice;
+
   const noteText = `MEC | mini engines - ID ${article.id}`;
-  const amountInCents = Math.round(Number(article.price) * 100);
+  const amountInCents = Math.round(Number(finalPrice) * 100);
   const revolutPayUrl = `https://revolut.me/jfernandezz?currency=EUR&amount=${amountInCents}&note=${encodeURIComponent(noteText)}`;
 
   // PayPal Classic Checkout URL (with dynamic item_name and amount)
-  const paypalPrice = Number(article.price).toFixed(2);
+  const paypalPrice = Number(finalPrice).toFixed(2);
   const paypalPayUrl = `https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=javifzlvdc@gmail.com&item_name=${encodeURIComponent(noteText)}&amount=${paypalPrice}&currency_code=EUR&no_shipping=1`;
 
   const categoryHref = category
@@ -204,7 +267,23 @@ export default async function ArticlePage({
                   <div className={styles.fact}>
                     <span className={styles.factLabel}>Precio</span>
                     <span className={styles.factValue}>
-                      {formatPrice(article.price)}
+                      <span className={styles.priceContainer}>
+                        {hasDiscount && (
+                          <span className={discountInfo.discountType === 'amount' ? styles.discountBubbleBlue : styles.discountBubbleRed}>
+                            {discountInfo.discountType === 'amount' 
+                              ? `-${formatPrice(discountInfo.discountValue)}` 
+                              : `-${discountInfo.discountValue}%`}
+                          </span>
+                        )}
+                        {hasDiscount ? (
+                          <>
+                            <span className={styles.originalPriceStrikethrough}>{formatPrice(discountInfo.originalPrice)}</span>
+                            <span>{formatPrice(discountInfo.finalPrice)}</span>
+                          </>
+                        ) : (
+                          <span>{formatPrice(discountInfo.originalPrice)}</span>
+                        )}
+                      </span>
                     </span>
                   </div>
                 )}

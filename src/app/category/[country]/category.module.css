@@ -656,3 +656,45 @@
   align-items: center;
   gap: 8px;
 }
+
+/* Burbujas de descuento premium */
+.discountBubbleRed, .discountBubbleBlue {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 800;
+  border-radius: 6px;
+  padding: 3px 7px;
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+.discountBubbleRed {
+  background: #ff4d4f; /* Rojo vibrante */
+}
+
+.discountBubbleBlue {
+  background: #1890ff; /* Azul elegante */
+}
+
+.originalPriceStrikethrough {
+  font-size: 0.85em;
+  color: var(--text-tertiary);
+  text-decoration: line-through;
+  margin-right: 8px;
+  opacity: 0.7;
+}
+
+.priceContainer {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+

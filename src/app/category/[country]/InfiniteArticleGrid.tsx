@@ -11,18 +11,24 @@ type Article = {
   price: number | string;
   quantity: number;
   image_urls: string[] | null;
+  discount_type?: string | null;
+  discount_value?: number | null;
 };
 
 type InfiniteArticleGridProps = {
   articles: Article[];
   hidePrices?: boolean;
   hideAvailability?: boolean;
+  categoryDiscountPercent?: number | null;
+  generalDiscountPercent?: string;
 };
 
 export default function InfiniteArticleGrid({ 
   articles, 
   hidePrices = false, 
-  hideAvailability = false 
+  hideAvailability = false,
+  categoryDiscountPercent = null,
+  generalDiscountPercent = ''
 }: InfiniteArticleGridProps) {
   const [visibleCount, setVisibleCount] = useState(12);
   const observerTargetRef = useRef<HTMLDivElement>(null);
@@ -64,6 +70,8 @@ export default function InfiniteArticleGrid({
             index={index} 
             hidePrices={hidePrices} 
             hideAvailability={hideAvailability} 
+            categoryDiscountPercent={categoryDiscountPercent}
+            generalDiscountPercent={generalDiscountPercent}
           />
         ))}
       </section>

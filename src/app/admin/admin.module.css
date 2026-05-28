@@ -1572,5 +1572,32 @@
   transform: translateX(20px);
 }
 
+.solidRedButton {
+  background: #dc2626;
+  color: #ffffff;
+}
+
+.solidRedButton:hover:not(:disabled) {
+  background: #b91c1c;
+}
+
+.solidGreenButton {
+  background: #16a34a;
+  color: #ffffff;
+}
+
+.solidGreenButton:hover:not(:disabled) {
+  background: #15803d;
+}
+
+.solidGrayButton {
+  background: #737373;
+  color: #ffffff;
+}
+
+.solidGrayButton:hover:not(:disabled) {
+  background: #525252;
+}
+
 
 

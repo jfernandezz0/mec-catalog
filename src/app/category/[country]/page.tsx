@@ -14,6 +14,7 @@ type Category = {
   id: number;
   name: string;
   country_code: string;
+  discount_percent?: number | null;
 };
 
 type Article = {
@@ -23,6 +24,8 @@ type Article = {
   price: number | string;
   quantity: number;
   image_urls: string[] | null;
+  discount_type?: string | null;
+  discount_value?: number | null;
 };
 
 export async function generateMetadata(
@@ -77,11 +80,36 @@ export default async function CategoryPage({
   const { country } = await params;
   const countryCode = country.toUpperCase();
 
-  const { data: category, error: categoryError } = await supabase
-    .from('categories')
-    .select('id, name, country_code')
-    .eq('country_code', countryCode)
-    .maybeSingle<Category>();
+  // 1. Fetch category
+  let category: Category | null = null;
+  let categoryError = null;
+
+  try {
+    const { data, error } = await supabase
+      .from('categories')
+      .select('id, name, country_code, discount_percent')
+      .eq('country_code', countryCode)
+      .maybeSingle<Category>();
+    
+    if (error) {
+      if (error.message.includes('discount_percent')) {
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('categories')
+          .select('id, name, country_code')
+          .eq('country_code', countryCode)
+          .maybeSingle<Category>();
+        category = fallbackData ? { ...fallbackData, discount_percent: null } : null;
+        categoryError = fallbackError;
+      } else {
+        category = data;
+        categoryError = error;
+      }
+    } else {
+      category = data;
+    }
+  } catch (err) {
+    console.error('Error fetching category:', err);
+  }
 
   if (categoryError) {
     console.error('Could not load category:', JSON.stringify(categoryError, null, 2));
@@ -92,13 +120,36 @@ export default async function CategoryPage({
     notFound();
   }
 
-  const { data: articles, error: articlesError } = await supabase
-    .from('articles')
-    .select('id, title, description, price, quantity, image_urls')
-    .eq('category_id', category.id)
-    .order('sort_order', { ascending: true })
-    .order('id', { ascending: true })
-    .returns<Article[]>();
+  // 2. Fetch articles
+  let articles: Article[] = [];
+  let articlesError = null;
+
+  if (category) {
+    const { data, error } = await supabase
+      .from('articles')
+      .select('id, title, description, price, quantity, image_urls, discount_type, discount_value')
+      .eq('category_id', category.id)
+      .order('sort_order', { ascending: true })
+      .order('id', { ascending: true });
+
+    if (error) {
+      if (error.message.includes('discount_type') || error.message.includes('discount_value')) {
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('articles')
+          .select('id, title, description, price, quantity, image_urls')
+          .eq('category_id', category.id)
+          .order('sort_order', { ascending: true })
+          .order('id', { ascending: true });
+        articles = (fallbackData ?? []).map(a => ({ ...a, discount_type: null, discount_value: null })) as Article[];
+        articlesError = fallbackError;
+      } else {
+        articles = (data ?? []) as Article[];
+        articlesError = error;
+      }
+    } else {
+      articles = (data ?? []) as Article[];
+    }
+  }
 
   if (articlesError) {
     console.error('Could not load articles:', JSON.stringify(articlesError, null, 2));
@@ -107,6 +158,7 @@ export default async function CategoryPage({
 
   let hidePrices = false;
   let hideAvailability = false;
+  let generalDiscountPercent = '';
   try {
     const { data: settingsData, error: settingsError } = await supabase
       .from('settings')
@@ -116,6 +168,7 @@ export default async function CategoryPage({
       const settingsMap = new Map(settingsData.map((s) => [s.key, s.value]));
       hidePrices = settingsMap.get('hide_prices') === 'true';
       hideAvailability = settingsMap.get('hide_availability') === 'true';
+      generalDiscountPercent = settingsMap.get('general_discount_percent') || '';
     }
   } catch (e) {
     console.error('Error loading settings:', e);
@@ -170,6 +223,8 @@ export default async function CategoryPage({
             articles={articleItems} 
             hidePrices={hidePrices} 
             hideAvailability={hideAvailability} 
+            categoryDiscountPercent={category?.discount_percent}
+            generalDiscountPercent={generalDiscountPercent}
           />
         ) : (
           <section className={styles.empty}>

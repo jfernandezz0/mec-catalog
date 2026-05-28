@@ -12,6 +12,7 @@ type Category = {
   name: string;
   country_code: string;
   is_visible?: boolean;
+  discount_percent?: number | null;
 };
 
 type Article = {
@@ -26,6 +27,8 @@ type Article = {
   contact_clicks?: number;
   share_clicks?: number;
   views?: number;
+  discount_type?: string | null;
+  discount_value?: number | null;
 };
 
 type ImportRow = {
@@ -47,6 +50,8 @@ type FormState = {
   description: string;
   price: string;
   quantity: string;
+  discountType: string;
+  discountValue: string;
 };
 
 const initialFormState: FormState = {
@@ -56,6 +61,8 @@ const initialFormState: FormState = {
   description: '',
   price: '',
   quantity: '1',
+  discountType: '',
+  discountValue: '',
 };
 
 function getSafeFilePath(file: File) {
@@ -145,7 +152,7 @@ export default function AdminPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [articles, setArticles] = useState<Article[]>([]);
-  const [activeTab, setActiveTab] = useState<'catalog' | 'create' | 'edit' | 'categories' | 'import' | 'config'>('catalog');
+  const [activeTab, setActiveTab] = useState<'catalog' | 'create' | 'edit' | 'categories' | 'import' | 'config' | 'discounts'>('catalog');
   
   const [formState, setFormState] = useState<FormState>(initialFormState);
   const [files, setFiles] = useState<File[]>([]);
@@ -153,6 +160,15 @@ export default function AdminPage() {
   const [loadingCategories, setLoadingCategories] = useState(true);
   const [loadingArticles, setLoadingArticles] = useState(true);
   const [hasVisibilityColumn, setHasVisibilityColumn] = useState(true);
+
+  // Discount states
+  const [hasDiscountColumns, setHasDiscountColumns] = useState(true);
+  const [generalDiscountPercent, setGeneralDiscountPercent] = useState('');
+  const [selectedDiscountTarget, setSelectedDiscountTarget] = useState(''); // 'general' or 'cat-[id]'
+  const [targetDiscountPercent, setTargetDiscountPercent] = useState('');
+  const [savingDiscount, setSavingDiscount] = useState(false);
+  const [showDiscountWarnModal, setShowDiscountWarnModal] = useState(false);
+  const [pendingSubmitData, setPendingSubmitData] = useState<{ isCreate: boolean; event: any } | null>(null);
 
   // Search & Payments States
   const [searchQuery, setSearchQuery] = useState('');
@@ -218,11 +234,38 @@ export default function AdminPage() {
     async function loadCategories() {
       const { data, error } = await supabase
         .from('categories')
-        .select('id, name, country_code, is_visible')
+        .select('id, name, country_code, is_visible, discount_percent')
         .order('id', { ascending: true });
 
       if (error) {
-        if (error.message.includes('is_visible')) {
+        if (error.message.includes('discount_percent')) {
+          setHasDiscountColumns(false);
+          const { data: fallbackData, error: fallbackError } = await supabase
+            .from('categories')
+            .select('id, name, country_code, is_visible')
+            .order('id', { ascending: true });
+
+          if (fallbackError) {
+            if (fallbackError.message.includes('is_visible')) {
+              setHasVisibilityColumn(false);
+              const { data: doubleFallback, error: doubleError } = await supabase
+                .from('categories')
+                .select('id, name, country_code')
+                .order('id', { ascending: true });
+              if (doubleError) {
+                alert(`Could not load categories: ${doubleError.message}`);
+                setCategories([]);
+              } else {
+                setCategories((doubleFallback ?? []).map(c => ({ ...c, is_visible: true, discount_percent: null })));
+              }
+            } else {
+              alert(`Could not load categories: ${fallbackError.message}`);
+              setCategories([]);
+            }
+          } else {
+            setCategories((fallbackData ?? []).map(c => ({ ...c, discount_percent: null })));
+          }
+        } else if (error.message.includes('is_visible')) {
           setHasVisibilityColumn(false);
           const { data: fallbackData, error: fallbackError } = await supabase
             .from('categories')
@@ -237,6 +280,7 @@ export default function AdminPage() {
               (fallbackData ?? []).map((category) => ({
                 ...category,
                 is_visible: true,
+                discount_percent: null
               }))
             );
           }
@@ -245,6 +289,7 @@ export default function AdminPage() {
           setCategories([]);
         }
       } else {
+        setHasDiscountColumns(true);
         setHasVisibilityColumn(true);
         setCategories(data ?? []);
       }
@@ -275,6 +320,7 @@ export default function AdminPage() {
         setPaypalEnabled(true);
         setHidePrices(false);
         setHideAvailability(false);
+        setGeneralDiscountPercent('');
       } else if (data && data.length > 0) {
         const settingsMap = new Map(data.map((s) => [s.key, s.value]));
         setPaymentsEnabled(settingsMap.get('payments_enabled') === 'true');
@@ -282,6 +328,7 @@ export default function AdminPage() {
         setPaypalEnabled(settingsMap.get('paypal_enabled') !== 'false');
         setHidePrices(settingsMap.get('hide_prices') === 'true');
         setHideAvailability(settingsMap.get('hide_availability') === 'true');
+        setGeneralDiscountPercent(settingsMap.get('general_discount_percent') || '');
         setHasSettingsTable(true);
       } else {
         setPaymentsEnabled(false);
@@ -289,6 +336,7 @@ export default function AdminPage() {
         setPaypalEnabled(true);
         setHidePrices(false);
         setHideAvailability(false);
+        setGeneralDiscountPercent('');
         setHasSettingsTable(true);
       }
     } catch (e) {
@@ -298,6 +346,7 @@ export default function AdminPage() {
       setPaypalEnabled(true);
       setHidePrices(false);
       setHideAvailability(false);
+      setGeneralDiscountPercent('');
     } finally {
       setLoadingPaymentsSetting(false);
     }
@@ -356,15 +405,29 @@ export default function AdminPage() {
     setLoadingArticles(true);
     const { data, error } = await supabase
       .from('articles')
-      .select('id, category_id, title, description, price, quantity, image_urls, sort_order, contact_clicks, share_clicks, views')
+      .select('id, category_id, title, description, price, quantity, image_urls, sort_order, contact_clicks, share_clicks, views, discount_type, discount_value')
       .order('sort_order', { ascending: true })
       .order('id', { ascending: true });
 
     if (error) {
-      alert(`Could not load articles: ${error.message}`);
+      if (error.message.includes('discount_type') || error.message.includes('discount_value')) {
+        setHasDiscountColumns(false);
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('articles')
+          .select('id, category_id, title, description, price, quantity, image_urls, sort_order, contact_clicks, share_clicks, views')
+          .order('sort_order', { ascending: true })
+          .order('id', { ascending: true });
+        if (fallbackError) {
+          alert(`Could not load articles: ${fallbackError.message}`);
+        } else {
+          setArticles((fallbackData ?? []).map(a => ({ ...a, discount_type: null, discount_value: null })));
+        }
+      } else {
+        alert(`Could not load articles: ${error.message}`);
+      }
+    } else {
+      setArticles(data ?? []);
     }
-
-    setArticles(data ?? []);
     setLoadingArticles(false);
   }
 
@@ -395,7 +458,7 @@ export default function AdminPage() {
     }
   }
 
-  function handleTabChange(tab: 'catalog' | 'create' | 'categories' | 'import' | 'config') {
+  function handleTabChange(tab: 'catalog' | 'create' | 'categories' | 'import' | 'config' | 'discounts') {
     resetForm();
     setActiveTab(tab);
     setSelectedCatalogCategoryId(null);
@@ -403,9 +466,13 @@ export default function AdminPage() {
     setCsvRows([]);
     setCsvFileName('');
     setCsvImportResults(null);
+    setSelectedDiscountTarget('');
+    setTargetDiscountPercent('');
     if (tab === 'catalog') {
       loadArticles();
     } else if (tab === 'config') {
+      loadPaymentsSetting();
+    } else if (tab === 'discounts') {
       loadPaymentsSetting();
     }
   }
@@ -419,6 +486,8 @@ export default function AdminPage() {
       description: article.description ?? '',
       price: String(article.price),
       quantity: String(article.quantity),
+      discountType: article.discount_type ?? '',
+      discountValue: article.discount_value !== null && article.discount_value !== undefined ? String(article.discount_value) : '',
     });
     setExistingImageUrls(article.image_urls ?? []);
     setImagesToDelete([]);
@@ -580,18 +649,42 @@ export default function AdminPage() {
       return;
     }
 
+    const discountType = formState.discountType || null;
+    const discountValue = formState.discountType ? Number(formState.discountValue) : null;
+
+    const isZeroOrNegativePrice = discountType === 'amount' && discountValue !== null && price <= discountValue;
+
+    if (isZeroOrNegativePrice) {
+      setPendingSubmitData({ isCreate: true, event: null });
+      setShowDiscountWarnModal(true);
+      return;
+    }
+
+    await executeCreate(false);
+  }
+
+  async function executeCreate(deleteDiscount: boolean) {
+    const price = Number(formState.price);
+    const quantity = Number.parseInt(formState.quantity, 10);
     setLoading(true);
 
     try {
       const imageUrls = await uploadImages();
-      const { error } = await supabase.from('articles').insert({
+      const insertData: any = {
         category_id: Number(formState.categoryId),
         title: `${formState.marca.trim()} – ${formState.modelo.trim()}`,
         description: formState.description,
         price,
         quantity,
         image_urls: imageUrls,
-      });
+      };
+
+      if (hasDiscountColumns) {
+        insertData.discount_type = deleteDiscount ? null : (formState.discountType || null);
+        insertData.discount_value = deleteDiscount ? null : (formState.discountType ? Number(formState.discountValue) : null);
+      }
+
+      const { error } = await supabase.from('articles').insert(insertData);
 
       if (error) {
         throw new Error(error.message);
@@ -605,6 +698,8 @@ export default function AdminPage() {
       alert(error instanceof Error ? error.message : 'Could not create article.');
     } finally {
       setLoading(false);
+      setShowDiscountWarnModal(false);
+      setPendingSubmitData(null);
     }
   }
 
@@ -620,22 +715,50 @@ export default function AdminPage() {
       return;
     }
 
+    const discountType = formState.discountType || null;
+    const discountValue = formState.discountType ? Number(formState.discountValue) : null;
+
+    const originalPrice = editingArticle ? Number(editingArticle.price) || 0 : 0;
+    const isPriceLowered = editingArticle && price < originalPrice;
+    const hasDiscount = !!discountType;
+    const isZeroOrNegativePrice = discountType === 'amount' && discountValue !== null && price <= discountValue;
+
+    if ((isPriceLowered && hasDiscount) || isZeroOrNegativePrice) {
+      setPendingSubmitData({ isCreate: false, event: null });
+      setShowDiscountWarnModal(true);
+      return;
+    }
+
+    await executeUpdate(false);
+  }
+
+  async function executeUpdate(deleteDiscount: boolean) {
+    if (!editingArticle) return;
+    const price = Number(formState.price);
+    const quantity = Number.parseInt(formState.quantity, 10);
     setLoading(true);
 
     try {
       const newUrls = await uploadImages();
       const finalImageUrls = [...existingImageUrls, ...newUrls];
 
+      const updateData: any = {
+        category_id: Number(formState.categoryId),
+        title: `${formState.marca.trim()} – ${formState.modelo.trim()}`,
+        description: formState.description,
+        price,
+        quantity,
+        image_urls: finalImageUrls,
+      };
+
+      if (hasDiscountColumns) {
+        updateData.discount_type = deleteDiscount ? null : (formState.discountType || null);
+        updateData.discount_value = deleteDiscount ? null : (formState.discountType ? Number(formState.discountValue) : null);
+      }
+
       const { error } = await supabase
         .from('articles')
-        .update({
-          category_id: Number(formState.categoryId),
-          title: `${formState.marca.trim()} – ${formState.modelo.trim()}`,
-          description: formState.description,
-          price,
-          quantity,
-          image_urls: finalImageUrls,
-        })
+        .update(updateData)
         .eq('id', editingArticle.id);
 
       if (error) {
@@ -654,6 +777,8 @@ export default function AdminPage() {
       alert(error instanceof Error ? error.message : 'Could not update article.');
     } finally {
       setLoading(false);
+      setShowDiscountWarnModal(false);
+      setPendingSubmitData(null);
     }
   }
 
@@ -833,10 +958,34 @@ export default function AdminPage() {
   async function reloadCategories() {
     const { data: catData, error: catError } = await supabase
       .from('categories')
-      .select('id, name, country_code, is_visible')
+      .select('id, name, country_code, is_visible, discount_percent')
       .order('id', { ascending: true });
 
     if (catError) {
+      if (catError.message.includes('discount_percent')) {
+        setHasDiscountColumns(false);
+        const { data: fallbackCatData, error: fallbackCatError } = await supabase
+          .from('categories')
+          .select('id, name, country_code, is_visible')
+          .order('id', { ascending: true });
+
+        if (fallbackCatError) {
+          if (fallbackCatError.message.includes('is_visible')) {
+            setHasVisibilityColumn(false);
+            const { data: doubleFallback, error: doubleError } = await supabase
+              .from('categories')
+              .select('id, name, country_code')
+              .order('id', { ascending: true });
+            if (doubleError) throw new Error(doubleError.message);
+            setCategories((doubleFallback ?? []).map(c => ({ ...c, is_visible: true, discount_percent: null })));
+          } else {
+            throw new Error(fallbackCatError.message);
+          }
+        } else {
+          setCategories((fallbackCatData ?? []).map(c => ({ ...c, discount_percent: null })));
+        }
+        return;
+      }
       if (catError.message.includes('is_visible')) {
         setHasVisibilityColumn(false);
         const { data: fallbackCatData, error: fallbackCatError } = await supabase
@@ -852,6 +1001,7 @@ export default function AdminPage() {
           (fallbackCatData ?? []).map((category) => ({
             ...category,
             is_visible: true,
+            discount_percent: null
           }))
         );
         return;
@@ -1022,6 +1172,43 @@ export default function AdminPage() {
     }
   }
 
+  async function handleSaveDiscount(event: FormEvent) {
+    event.preventDefault();
+    if (!selectedDiscountTarget) return;
+
+    setSavingDiscount(true);
+    try {
+      if (selectedDiscountTarget === 'general') {
+        const val = targetDiscountPercent.trim();
+        const { error } = await supabase
+          .from('settings')
+          .upsert({ key: 'general_discount_percent', value: val });
+
+        if (error) throw new Error(error.message);
+        setGeneralDiscountPercent(val);
+        alert('Descuento general guardado correctamente.');
+      } else if (selectedDiscountTarget.startsWith('cat-')) {
+        const catId = Number(selectedDiscountTarget.substring(4));
+        const val = targetDiscountPercent.trim() ? Number(targetDiscountPercent) : null;
+        
+        const { error } = await supabase
+          .from('categories')
+          .update({ discount_percent: val })
+          .eq('id', catId);
+
+        if (error) throw new Error(error.message);
+
+        // Update local categories state
+        setCategories(prev => prev.map(c => c.id === catId ? { ...c, discount_percent: val } : c));
+        alert('Descuento de categoría guardado correctamente.');
+      }
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Error al guardar el descuento.');
+    } finally {
+      setSavingDiscount(false);
+    }
+  }
+
   if (checkingAuth) {
     return (
       <main className={styles.page}>
@@ -1102,6 +1289,8 @@ export default function AdminPage() {
                 ? 'Importar artículos'
                 : activeTab === 'config'
                 ? 'Configuración'
+                : activeTab === 'discounts'
+                ? 'Gestionar Descuentos'
                 : 'Editar artículo'}
             </h1>
             <p className={styles.subtitle}>
@@ -1115,6 +1304,8 @@ export default function AdminPage() {
                 ? 'Importa múltiples artículos de golpe subiendo un archivo CSV.'
                 : activeTab === 'config'
                 ? 'Configura opciones globales del catálogo, como ocultar precios o disponibilidad.'
+                : activeTab === 'discounts'
+                ? 'Configura descuentos para toda la web o para categorías específicas de forma masiva.'
                 : 'Modifica los campos del artículo, gestiona sus imágenes o bórralo permanentemente.'}
             </p>
             </div>
@@ -1153,6 +1344,13 @@ export default function AdminPage() {
               onClick={() => handleTabChange('categories')}
             >
               Categorías
+            </button>
+            <button
+              type="button"
+              className={`${styles.tab} ${activeTab === 'discounts' ? styles.tabActive : ''}`}
+              onClick={() => handleTabChange('discounts')}
+            >
+              Descuentos
             </button>
             <button
               type="button"
@@ -1542,6 +1740,129 @@ export default function AdminPage() {
                   />
                 </label>
               </div>
+            </div>
+            <div className={styles.section}>
+              <h2 className={styles.sectionTitle}>Descuento</h2>
+              {!hasDiscountColumns ? (
+                <div className={styles.paymentsWarning} style={{ padding: '12px', margin: '0 0 16px 0' }}>
+                  <p style={{ margin: 0, fontSize: '13px' }}>
+                    ⚠️ Los descuentos de artículo están inhabilitados. Para usarlos, ejecuta la migración SQL en Supabase.
+                  </p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  {/* Active discount selector */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 0' }}>
+                    <div>
+                      <span style={{ fontWeight: '700', fontSize: '14px', display: 'block' }}>Activar descuento individual</span>
+                      <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Aplica una rebaja exclusiva para este artículo.</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormState(prev => ({
+                          ...prev,
+                          discountType: prev.discountType ? '' : 'percentage',
+                          discountValue: prev.discountType ? '' : '10'
+                        }));
+                      }}
+                      className={`${styles.switch} ${formState.discountType ? styles.switchActive : ''}`}
+                      title="Alternar descuento"
+                      style={{ flexShrink: 0, marginLeft: '12px' }}
+                    >
+                      <span className={styles.switchHandle} />
+                    </button>
+                  </div>
+
+                  {formState.discountType && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', borderLeft: '3px solid var(--border-card)', paddingLeft: '16px' }}>
+                      <div className="flex gap-4">
+                        <button
+                          type="button"
+                          className={`${styles.secondaryButton} ${formState.discountType === 'percentage' ? styles.primaryButton : ''}`}
+                          style={{ padding: '8px 16px', fontSize: '13px', borderRadius: '8px' }}
+                          onClick={() => {
+                            setFormState(prev => ({
+                              ...prev,
+                              discountType: 'percentage',
+                              discountValue: prev.discountType === 'percentage' ? prev.discountValue : '10'
+                            }));
+                          }}
+                        >
+                          % Porcentaje
+                        </button>
+                        <button
+                          type="button"
+                          className={`${styles.secondaryButton} ${formState.discountType === 'amount' ? styles.primaryButton : ''}`}
+                          style={{ padding: '8px 16px', fontSize: '13px', borderRadius: '8px' }}
+                          onClick={() => {
+                            setFormState(prev => ({
+                              ...prev,
+                              discountType: 'amount',
+                              discountValue: prev.discountType === 'amount' ? prev.discountValue : '5'
+                            }));
+                          }}
+                        >
+                          Importe Fijo
+                        </button>
+                      </div>
+
+                      <label className={styles.field}>
+                        <span className={styles.labelRow}>
+                          <span>{formState.discountType === 'percentage' ? 'Porcentaje de descuento' : 'Importe a descontar (EUR)'}</span>
+                          <span className={styles.hint}>
+                            {formState.discountType === 'percentage' ? '1% a 100%' : `0.01€ a ${Number(formState.price) || 0}€`}
+                          </span>
+                        </span>
+                        <input
+                          type="number"
+                          name="discountValue"
+                          value={formState.discountValue}
+                          onChange={updateField}
+                          min={formState.discountType === 'percentage' ? "1" : "0.01"}
+                          max={formState.discountType === 'percentage' ? "100" : formState.price || "99999"}
+                          step={formState.discountType === 'percentage' ? "1" : "0.01"}
+                          placeholder={formState.discountType === 'percentage' ? "Ej: 10" : "Ej: 5.50"}
+                          required
+                          disabled={loading}
+                          className={styles.control}
+                        />
+                      </label>
+                    </div>
+                  )}
+
+                  {/* Info about active discounts (if any) from category or general */}
+                  {(() => {
+                    const price = Number(formState.price) || 0;
+                    if (price <= 0) return null;
+                    const catId = Number(formState.categoryId);
+                    const category = categories.find(c => c.id === catId);
+                    const catPercent = category?.discount_percent || 0;
+                    const genPercent = Number(generalDiscountPercent) || 0;
+
+                    if (catPercent > 0 || genPercent > 0) {
+                      return (
+                        <div style={{ padding: '10px 14px', borderRadius: '8px', background: 'var(--bg-card-glass)', fontSize: '13px', border: '1px solid var(--border-card-glass)' }}>
+                          <span style={{ fontWeight: '700', display: 'block', marginBottom: '4px' }}>Otros descuentos activos que podrían aplicar:</span>
+                          <ul style={{ margin: 0, paddingLeft: '20px', listStyleType: 'disc', color: 'var(--text-secondary)' }}>
+                            {catPercent > 0 && (
+                              <li>
+                                Descuento de Categoría ({category?.name}): <strong>{catPercent}%</strong>
+                              </li>
+                            )}
+                            {genPercent > 0 && (
+                              <li>
+                                Descuento General de la web: <strong>{genPercent}%</strong>
+                              </li>
+                            )}
+                          </ul>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+                </div>
+              )}
             </div>
 
             <div className={styles.section}>
@@ -2147,6 +2468,255 @@ ON CONFLICT (key) DO NOTHING;`}
             </div>
           </div>
         )}
+
+        {/* Discounts View */}
+        {activeTab === 'discounts' && (
+          <div className={styles.paymentsSection} style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
+            <div className={styles.paymentsCard}>
+              <h2 className={styles.paymentsCardTitle}>Configuración de Descuentos Masivos</h2>
+              <p className={styles.paymentsCardDesc}>
+                Aplica descuentos de porcentaje (%) a toda la web o por categorías de origen.
+              </p>
+
+              {!hasDiscountColumns ? (
+                <div className={styles.paymentsWarning}>
+                  <h3>⚠️ Configuración requerida en base de datos</h3>
+                  <p>
+                    Para usar esta sección de descuentos, es necesario añadir las columnas de descuento en tu base de datos de Supabase.
+                    Copia y ejecuta el siguiente código en el <strong>SQL Editor</strong> de tu panel de Supabase y recarga:
+                  </p>
+                  <pre className={styles.paymentsSqlBlock}>
+{`ALTER TABLE articles ADD COLUMN IF NOT EXISTS discount_type TEXT CHECK (discount_type IN ('percentage', 'amount'));
+ALTER TABLE articles ADD COLUMN IF NOT EXISTS discount_value NUMERIC;
+ALTER TABLE categories ADD COLUMN IF NOT EXISTS discount_percent INTEGER CHECK (discount_percent >= 1 AND discount_percent <= 100);`}
+                  </pre>
+                  <button
+                    type="button"
+                    onClick={() => window.location.reload()}
+                    className={styles.paymentsRetryButton}
+                  >
+                    Recargar página
+                  </button>
+                </div>
+              ) : (
+                <form onSubmit={handleSaveDiscount} style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginTop: '12px' }}>
+                  <label className={styles.field}>
+                    <span className={styles.labelRow}>
+                      <span>Seleccionar objetivo del descuento</span>
+                      <span className={styles.hint}>Requerido</span>
+                    </span>
+                    <select
+                      value={selectedDiscountTarget}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setSelectedDiscountTarget(val);
+                        if (val === 'general') {
+                          setTargetDiscountPercent(generalDiscountPercent);
+                        } else if (val.startsWith('cat-')) {
+                          const catId = Number(val.substring(4));
+                          const cat = categories.find(c => c.id === catId);
+                          setTargetDiscountPercent(cat?.discount_percent ? String(cat.discount_percent) : '');
+                        } else {
+                          setTargetDiscountPercent('');
+                        }
+                      }}
+                      className={styles.control}
+                      required
+                    >
+                      <option value="">Selecciona una opción...</option>
+                      <option value="general">General (Toda la Web)</option>
+                      <option value="separator" disabled>────────────────────</option>
+                      {categories.map((cat) => (
+                        <option key={cat.id} value={`cat-${cat.id}`}>
+                          {getFlagEmoji(cat.country_code)} {cat.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  {selectedDiscountTarget && selectedDiscountTarget !== 'separator' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                      {/* Priority Warning alert if applicable */}
+                      {(() => {
+                        if (selectedDiscountTarget === 'general') {
+                          const hasArticleDiscounts = articles.some(a => a.discount_type);
+                          const hasCategoryDiscounts = categories.some(c => c.discount_percent);
+                          if (hasArticleDiscounts || hasCategoryDiscounts) {
+                            return (
+                              <div style={{ padding: '12px 16px', borderRadius: '8px', background: 'rgba(234, 179, 8, 0.12)', border: '1px solid rgba(234, 179, 8, 0.3)', color: 'var(--text-primary)', fontSize: '13px', lineHeight: '1.45' }}>
+                                ⚠️ Nota: Hay artículos o categorías con descuentos específicos (prioridad superior) que no se verán afectados por este descuento general a menos que su descuento específico sea menor.
+                              </div>
+                            );
+                          }
+                        } else if (selectedDiscountTarget.startsWith('cat-')) {
+                          const catId = Number(selectedDiscountTarget.substring(4));
+                          const hasArticleDiscounts = articles.some(a => a.category_id === catId && a.discount_type);
+                          if (hasArticleDiscounts) {
+                            return (
+                              <div style={{ padding: '12px 16px', borderRadius: '8px', background: 'rgba(234, 179, 8, 0.12)', border: '1px solid rgba(234, 179, 8, 0.3)', color: 'var(--text-primary)', fontSize: '13px', lineHeight: '1.45' }}>
+                                ⚠️ Nota: Hay artículos en esta categoría con descuento individual (prioridad superior) que no se verán afectados por este descuento de categoría a menos que su descuento específico sea menor.
+                              </div>
+                            );
+                          }
+                        }
+                        return null;
+                      })()}
+
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 0' }}>
+                        <div>
+                          <span style={{ fontWeight: '700', fontSize: '14px', display: 'block' }}>Activar descuento</span>
+                          <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                            Habilita el descuento para {selectedDiscountTarget === 'general' ? 'toda la web' : 'esta categoría'}.
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTargetDiscountPercent(prev => prev ? '' : '10');
+                          }}
+                          className={`${styles.switch} ${targetDiscountPercent ? styles.switchActive : ''}`}
+                          title="Alternar descuento"
+                          style={{ flexShrink: 0, marginLeft: '12px' }}
+                        >
+                          <span className={styles.switchHandle} />
+                        </button>
+                      </div>
+
+                      {targetDiscountPercent !== '' && (
+                        <label className={styles.field} style={{ borderLeft: '3px solid var(--border-card)', paddingLeft: '16px' }}>
+                          <span className={styles.labelRow}>
+                            <span>Porcentaje de descuento (%)</span>
+                            <span className={styles.hint}>Valor entero de 1 a 100</span>
+                          </span>
+                          <input
+                            type="number"
+                            value={targetDiscountPercent}
+                            onChange={(e) => setTargetDiscountPercent(e.target.value)}
+                            min="1"
+                            max="100"
+                            step="1"
+                            required
+                            placeholder="Ej: 10"
+                            className={styles.control}
+                            disabled={savingDiscount}
+                          />
+                        </label>
+                      )}
+
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '8px' }}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedDiscountTarget('');
+                            setTargetDiscountPercent('');
+                          }}
+                          className={styles.secondaryButton}
+                          disabled={savingDiscount}
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          type="submit"
+                          className={styles.primaryButton}
+                          disabled={savingDiscount}
+                        >
+                          {savingDiscount ? 'Guardando...' : 'Guardar Descuento'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </form>
+              )}
+            </div>
+          </div>
+        )}
+
+        {(() => {
+          if (!showDiscountWarnModal || !pendingSubmitData) return null;
+          const newPrice = Number(formState.price) || 0;
+          const discountVal = Number(formState.discountValue) || 0;
+          let finalPriceWithDiscount = newPrice;
+          if (formState.discountType === 'percentage') {
+            finalPriceWithDiscount = Math.max(0, newPrice * (1 - discountVal / 100));
+          } else if (formState.discountType === 'amount') {
+            finalPriceWithDiscount = Math.max(0, newPrice - discountVal);
+          }
+          return (
+            <div style={{
+              position: 'fixed',
+              inset: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.6)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 9999,
+              padding: '16px'
+            }}>
+              <div style={{
+                background: 'var(--bg-card)',
+                border: '1px solid var(--border-card)',
+                borderRadius: '16px',
+                padding: '24px',
+                maxWidth: '460px',
+                width: '100%',
+                boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '16px'
+              }}>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  ⚠️ Ajuste de Descuento
+                </h3>
+                <p style={{ margin: 0, fontSize: '14px', lineHeight: '1.5', color: 'var(--text-primary)' }}>
+                  Este artículo tiene un descuento aplicado. Si bajas el precio, su nuevo precio final con el descuento será <strong>{formatPrice(finalPriceWithDiscount)}</strong>.
+                  <br /><br />
+                  Eliminando el descuento, su precio final será: <strong>{formatPrice(newPrice)}</strong>.
+                </p>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '8px' }}>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (pendingSubmitData.isCreate) {
+                        await executeCreate(false);
+                      } else {
+                        await executeUpdate(false);
+                      }
+                    }}
+                    className={`${styles.dangerButton} ${styles.solidRedButton}`}
+                    style={{ flex: 1, padding: '12px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: '800', textWrap: 'nowrap' }}
+                  >
+                    Continuar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (pendingSubmitData.isCreate) {
+                        await executeCreate(true);
+                      } else {
+                        await executeUpdate(true);
+                      }
+                    }}
+                    className={`${styles.primaryButton} ${styles.solidGreenButton}`}
+                    style={{ flex: 1, padding: '12px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: '800', border: 'none', textWrap: 'nowrap' }}
+                  >
+                    Eliminar descuento actual
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowDiscountWarnModal(false);
+                      setPendingSubmitData(null);
+                    }}
+                    className={`${styles.secondaryButton} ${styles.solidGrayButton}`}
+                    style={{ width: '100%', padding: '10px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: '800', marginTop: '4px' }}
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
       </section>
     </main>
   );
