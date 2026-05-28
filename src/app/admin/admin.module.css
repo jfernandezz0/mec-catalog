@@ -772,6 +772,10 @@
     flex-direction: column;
     gap: 8px;
   }
+
+  .salesSummaryGrid {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Auth / Login Vista */
@@ -1730,6 +1734,64 @@
   border-radius: 12px;
   color: var(--text-secondary);
   font-size: 14px;
+}
+
+/* Dynamic financial summary grid */
+.salesSummaryGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.salesSummaryCard {
+  background: var(--bg-card-glass);
+  border: 1px solid var(--border-card-glass);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
+}
+
+.salesSummaryLabel {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  letter-spacing: 0.05em;
+  margin-bottom: 6px;
+}
+
+.salesSummaryValue {
+  font-size: 22px;
+  font-weight: 850;
+  color: var(--text-primary);
+  font-family: monospace;
+}
+
+.salesSummaryPayments {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.salesSummaryPayItem {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--text-primary);
+}
+
+.payName {
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.payVal {
+  font-weight: 700;
+  font-family: monospace;
 }
 
 .salesTableWrapper {

@@ -163,6 +163,7 @@ export default function AdminPage() {
   const [salesFilterPayment, setSalesFilterPayment] = useState<'all' | 'REVOLUT' | 'PAYPAL' | 'EFECTIVO'>('all');
   const [salesFilterStatus, setSalesFilterStatus] = useState<'all' | 'COMPLETADA' | 'PRECOMPRA'>('all');
   const [salesFilterDate, setSalesFilterDate] = useState<'all' | 'today' | 'week' | 'month'>('all');
+  const [exportingSales, setExportingSales] = useState(false);
   
   // Sale detail viewer modal
   const [selectedSaleDetail, setSelectedSaleDetail] = useState<any | null>(null);
@@ -437,6 +438,104 @@ export default function AdminPage() {
       console.error(e);
     } finally {
       setLoadingSales(false);
+    }
+  }
+
+  async function handleExportSalesCSV(filteredSalesList: any[]) {
+    if (filteredSalesList.length === 0) {
+      alert('No hay ventas para exportar.');
+      return;
+    }
+    setExportingSales(true);
+    try {
+      const saleIds = filteredSalesList.map((s) => s.id);
+      
+      const { data: allItems, error } = await supabase
+        .from('sale_items')
+        .select('*')
+        .in('sale_id', saleIds);
+
+      if (error) {
+        throw new Error(`Error al cargar los artículos de las ventas: ${error.message}`);
+      }
+
+      const itemsBySale = new Map<string, any[]>();
+      (allItems ?? []).forEach((item) => {
+        const list = itemsBySale.get(item.sale_id) || [];
+        list.push(item);
+        itemsBySale.set(item.sale_id, list);
+      });
+
+      const csvHeaders = [
+        'ID Venta',
+        'Fecha',
+        'Email Comprador',
+        'Teléfono Comprador',
+        'Lugar',
+        'Método de Pago',
+        'Total Artículos',
+        'Monto Total (€)',
+        'Estado',
+        'Detalle Artículos'
+      ];
+
+      const csvRowsList = [csvHeaders.join(';')];
+
+      filteredSalesList.forEach((sale) => {
+        const dateStr = new Date(sale.created_at).toLocaleDateString('es-ES', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+        
+        const email = sale.buyer_email || 'Directa';
+        const phone = sale.buyer_phone || '';
+        const location = sale.location || '';
+        const payment = sale.payment_type || '';
+        const totalQty = sale.total_articles || 0;
+        const totalVal = String(sale.total_price).replace('.', ',');
+        const status = sale.status || '';
+
+        const saleItems = itemsBySale.get(sale.id) || [];
+        const itemsDetail = saleItems
+          .map((item) => `${item.title} (x${item.quantity}) - ${String(item.price).replace('.', ',')}€`)
+          .join(' | ');
+
+        const row = [
+          sale.id.substring(0, 8).toUpperCase(),
+          dateStr,
+          email,
+          phone,
+          location,
+          payment,
+          totalQty,
+          totalVal,
+          status,
+          `"${itemsDetail.replace(/"/g, '""')}"`
+        ];
+
+        csvRowsList.push(row.join(';'));
+      });
+
+      const csvContent = '\uFEFF' + csvRowsList.join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      
+      const nowStr = new Date().toISOString().split('T')[0];
+      link.setAttribute('download', `ventas_mec_${nowStr}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (e: any) {
+      alert(e.message || 'Error al exportar a CSV.');
+    } finally {
+      setExportingSales(false);
     }
   }
 
@@ -3083,6 +3182,15 @@ ALTER TABLE categories ADD COLUMN IF NOT EXISTS discount_percent INTEGER CHECK (
             });
           }
 
+          // Resumen Financiero Dinámico
+          const totalRevenue = filteredSales.reduce((sum, s) => sum + Number(s.total_price), 0);
+          const totalSalesCount = filteredSales.length;
+          const revenueByPayment = filteredSales.reduce((acc, s) => {
+            const type = s.payment_type || 'OTRO';
+            acc[type] = (acc[type] || 0) + Number(s.total_price);
+            return acc;
+          }, {} as Record<string, number>);
+
           return (
             <div className={styles.salesTabContainer}>
               <div className={styles.salesSubmenuBar}>
@@ -3149,6 +3257,45 @@ ALTER TABLE categories ADD COLUMN IF NOT EXISTS discount_percent INTEGER CHECK (
                   <option value="week">Últimos 7 días</option>
                   <option value="month">Este mes</option>
                 </select>
+
+                <button
+                  type="button"
+                  disabled={exportingSales || filteredSales.length === 0}
+                  onClick={() => handleExportSalesCSV(filteredSales)}
+                  className={`${styles.actionButton} ${styles.actionButtonYellow}`}
+                  style={{ marginLeft: 'auto' }}
+                >
+                  {exportingSales ? 'Exportando...' : '↑ Exportar CSV'}
+                </button>
+              </div>
+
+              {/* Panel de Resumen Financiero Dinámico */}
+              <div className={styles.salesSummaryGrid}>
+                <div className={styles.salesSummaryCard}>
+                  <span className={styles.salesSummaryLabel}>Total Facturado</span>
+                  <span className={styles.salesSummaryValue}>{formatPrice(totalRevenue)}</span>
+                </div>
+                <div className={styles.salesSummaryCard}>
+                  <span className={styles.salesSummaryLabel}>Ventas Registradas</span>
+                  <span className={styles.salesSummaryValue}>{totalSalesCount}</span>
+                </div>
+                <div className={styles.salesSummaryCard}>
+                  <span className={styles.salesSummaryLabel}>Por Método de Pago</span>
+                  <div className={styles.salesSummaryPayments}>
+                    <div className={styles.salesSummaryPayItem}>
+                      <span className={styles.payName}>Revolut:</span>
+                      <span className={styles.payVal}>{formatPrice(revenueByPayment['REVOLUT'] || 0)}</span>
+                    </div>
+                    <div className={styles.salesSummaryPayItem}>
+                      <span className={styles.payName}>PayPal:</span>
+                      <span className={styles.payVal}>{formatPrice(revenueByPayment['PAYPAL'] || 0)}</span>
+                    </div>
+                    <div className={styles.salesSummaryPayItem}>
+                      <span className={styles.payName}>Efectivo:</span>
+                      <span className={styles.payVal}>{formatPrice(revenueByPayment['EFECTIVO'] || 0)}</span>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {loadingSales ? (
