@@ -153,7 +153,7 @@ export default function AdminPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [articles, setArticles] = useState<Article[]>([]);
-  const [activeTab, setActiveTab] = useState<'catalog' | 'create' | 'edit' | 'categories' | 'import' | 'config' | 'sales' | 'sales-create'>('catalog');
+  const [activeTab, setActiveTab] = useState<'catalog' | 'create' | 'edit' | 'categories' | 'import' | 'config' | 'sales' | 'sales-create' | 'analytics'>('catalog');
   
   // Sales management states
   const [sales, setSales] = useState<any[]>([]);
@@ -239,6 +239,7 @@ export default function AdminPage() {
   const [csvImportProgress, setCsvImportProgress] = useState(0);
   const [csvImportResults, setCsvImportResults] = useState<{ success: number; failed: number } | null>(null);
   const [csvDragOver, setCsvDragOver] = useState(false);
+  const [csvImportMode, setCsvImportMode] = useState<'create' | 'update'>('create');
 
   useEffect(() => {
     async function getSession() {
@@ -815,7 +816,7 @@ export default function AdminPage() {
     }
   }
 
-  function handleTabChange(tab: 'catalog' | 'create' | 'categories' | 'import' | 'config' | 'sales' | 'sales-create') {
+  function handleTabChange(tab: 'catalog' | 'create' | 'categories' | 'import' | 'config' | 'sales' | 'sales-create' | 'analytics') {
     resetForm();
     setActiveTab(tab);
     setSelectedCatalogCategoryId(null);
@@ -825,6 +826,7 @@ export default function AdminPage() {
     setCsvImportResults(null);
     setSelectedDiscountTarget('');
     setTargetDiscountPercent('');
+    setCsvImportMode('create');
     if (tab === 'catalog') {
       loadArticles();
     } else if (tab === 'config') {
@@ -840,6 +842,9 @@ export default function AdminPage() {
       setSaleLocation('online');
       setSalePaymentType('REVOLUT');
       setSalesCreateSearch('');
+    } else if (tab === 'analytics') {
+      loadArticles();
+      loadSales();
     }
   }
 
@@ -1493,15 +1498,35 @@ export default function AdminPage() {
     let success = 0;
     let failed = 0;
     for (const row of validRows) {
-      const { error } = await supabase.from('articles').insert({
-        category_id: row.categoryId!,
-        title: `${row.marca.trim()} – ${row.modelo.trim()}`,
-        description: row.descripcion.trim() || null,
-        price: Number(row.precio.replace(',', '.')),
-        quantity: Number(row.cantidad),
-        image_urls: [],
-      });
-      if (error) { failed++; } else { success++; }
+      const title = `${row.marca.trim()} – ${row.modelo.trim()}`;
+      
+      const existingArticle = csvImportMode === 'update' 
+        ? articles.find((a) => a.category_id === row.categoryId && a.title.trim().toLowerCase() === title.toLowerCase())
+        : null;
+
+      if (existingArticle) {
+        // Update existing article
+        const { error } = await supabase
+          .from('articles')
+          .update({
+            price: Number(row.precio.replace(',', '.')),
+            quantity: Number(row.cantidad),
+            description: row.descripcion.trim() || existingArticle.description,
+          })
+          .eq('id', existingArticle.id);
+        if (error) { failed++; } else { success++; }
+      } else {
+        // Insert new article
+        const { error } = await supabase.from('articles').insert({
+          category_id: row.categoryId!,
+          title: title,
+          description: row.descripcion.trim() || null,
+          price: Number(row.precio.replace(',', '.')),
+          quantity: Number(row.cantidad),
+          image_urls: [],
+        });
+        if (error) { failed++; } else { success++; }
+      }
       setCsvImportProgress((p) => p + 1);
     }
     setCsvImportResults({ success, failed });
@@ -1799,6 +1824,13 @@ export default function AdminPage() {
               onClick={() => handleTabChange('sales')}
             >
               Ventas
+            </button>
+            <button
+              type="button"
+              className={`${styles.tab} ${activeTab === 'analytics' ? styles.tabActive : ''}`}
+              onClick={() => handleTabChange('analytics')}
+            >
+              Estadísticas
             </button>
             {activeTab === 'edit' && (
               <button
@@ -2586,6 +2618,41 @@ export default function AdminPage() {
               <button type="button" className={styles.secondaryButton} onClick={downloadTemplate}>
                 ⬇ Plantilla CSV
               </button>
+            </div>
+
+            {/* Import Mode Selection */}
+            <div className={styles.importModeCard}>
+              <span className={styles.importModeTitle}>Modo de Importación:</span>
+              <div className={styles.importModeOptions}>
+                <label className={`${styles.importModeOption} ${csvImportMode === 'create' ? styles.importModeOptionActive : ''}`}>
+                  <input
+                    type="radio"
+                    name="csvImportMode"
+                    value="create"
+                    checked={csvImportMode === 'create'}
+                    onChange={() => setCsvImportMode('create')}
+                    className={styles.importModeRadio}
+                  />
+                  <div>
+                    <span className={styles.importModeLabel}>Crear nuevos artículos</span>
+                    <span className={styles.importModeSublabel}>Inserta todos los artículos del archivo CSV como nuevos artículos independientes en el catálogo.</span>
+                  </div>
+                </label>
+                <label className={`${styles.importModeOption} ${csvImportMode === 'update' ? styles.importModeOptionActive : ''}`}>
+                  <input
+                    type="radio"
+                    name="csvImportMode"
+                    value="update"
+                    checked={csvImportMode === 'update'}
+                    onChange={() => setCsvImportMode('update')}
+                    className={styles.importModeRadio}
+                  />
+                  <div>
+                    <span className={styles.importModeLabel}>Actualizar existentes (Upsert)</span>
+                    <span className={styles.importModeSublabel}>Si ya existe un artículo con la misma categoría, marca y modelo, actualiza su precio y cantidad. Si no, lo crea nuevo.</span>
+                  </div>
+                </label>
+              </div>
             </div>
 
             {/* Drop zone */}
@@ -3657,6 +3724,173 @@ ALTER TABLE categories ADD COLUMN IF NOT EXISTS discount_percent INTEGER CHECK (
                       </div>
                     </>
                   )}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+        {activeTab === 'analytics' && (() => {
+          const totalViews = articles.reduce((sum, a) => sum + (a.views || 0), 0);
+          const totalContactClicks = articles.reduce((sum, a) => sum + (a.contact_clicks || 0), 0);
+          const totalShareClicks = articles.reduce((sum, a) => sum + (a.share_clicks || 0), 0);
+          const conversionRate = totalViews > 0 ? ((totalContactClicks / totalViews) * 100).toFixed(2) : '0';
+          const totalSalesCount = sales.length;
+          const totalRevenue = sales.reduce((sum, s) => sum + Number(s.total_price), 0);
+          const averageTicket = totalSalesCount > 0 ? (totalRevenue / totalSalesCount) : 0;
+
+          const topViews = [...articles]
+            .sort((a, b) => (b.views || 0) - (a.views || 0))
+            .slice(0, 5);
+
+          const topContact = [...articles]
+            .sort((a, b) => (b.contact_clicks || 0) - (a.contact_clicks || 0))
+            .slice(0, 5);
+
+          const topConversion = articles
+            .filter((a) => (a.views || 0) >= 5)
+            .map((a) => ({
+              ...a,
+              rate: ((a.contact_clicks || 0) / (a.views || 1)) * 100
+            }))
+            .sort((a, b) => b.rate - a.rate)
+            .slice(0, 5);
+
+          const maxViews = Math.max(...topViews.map(a => a.views || 1), 1);
+          const maxClicks = Math.max(...topContact.map(a => a.contact_clicks || 1), 1);
+          const maxConversion = Math.max(...topConversion.map(a => a.rate || 1), 1);
+
+          const revenueByPayment = sales.reduce((acc, s) => {
+            const type = s.payment_type || 'OTRO';
+            acc[type] = (acc[type] || 0) + Number(s.total_price);
+            return acc;
+          }, {} as Record<string, number>);
+
+          return (
+            <div className={styles.analyticsContainer}>
+              {/* Tarjetas Métricas Globales */}
+              <div className={styles.analyticsGrid}>
+                <div className={styles.analyticsCard}>
+                  <span className={styles.analyticsCardLabel}>Visitas Totales</span>
+                  <span className={styles.analyticsCardValue}>{totalViews}</span>
+                  <span className={styles.analyticsCardSubtext}>Interacciones con artículos</span>
+                </div>
+                <div className={styles.analyticsCard}>
+                  <span className={styles.analyticsCardLabel}>Clics de WhatsApp</span>
+                  <span className={styles.analyticsCardValue}>{totalContactClicks}</span>
+                  <span className={styles.analyticsCardSubtext}>Conversión a contacto</span>
+                </div>
+                <div className={styles.analyticsCard}>
+                  <span className={styles.analyticsCardLabel}>Veces Compartido</span>
+                  <span className={styles.analyticsCardValue}>{totalShareClicks}</span>
+                  <span className={styles.analyticsCardSubtext}>Compartición del catálogo</span>
+                </div>
+                <div className={styles.analyticsCard}>
+                  <span className={styles.analyticsCardLabel}>Conversión Interés</span>
+                  <span className={styles.analyticsCardValue}>{conversionRate}%</span>
+                  <span className={styles.analyticsCardSubtext}>Ratio Clics / Visitas</span>
+                </div>
+              </div>
+
+              {/* Panel de Rendimiento de Ventas Histórico */}
+              <div className={styles.analyticsSalesCard}>
+                <h3 className={styles.sectionTitle}>Métricas Financieras Consolidadas</h3>
+                <div className={styles.analyticsSalesGrid}>
+                  <div className={styles.analyticsSalesMetric}>
+                    <span className={styles.analyticsSalesLabel}>Ingresos Históricos</span>
+                    <span className={styles.analyticsSalesValue}>{formatPrice(totalRevenue)}</span>
+                  </div>
+                  <div className={styles.analyticsSalesMetric}>
+                    <span className={styles.analyticsSalesLabel}>Ventas Registradas</span>
+                    <span className={styles.analyticsSalesValue}>{totalSalesCount} uds.</span>
+                  </div>
+                  <div className={styles.analyticsSalesMetric}>
+                    <span className={styles.analyticsSalesLabel}>Ticket Medio</span>
+                    <span className={styles.analyticsSalesValue}>{formatPrice(averageTicket)}</span>
+                  </div>
+                  <div className={styles.analyticsSalesMetric}>
+                    <span className={styles.analyticsSalesLabel}>Métodos de Pago</span>
+                    <div className={styles.analyticsSalesPayments}>
+                      <div className={styles.payRow}>
+                        <span>Revolut:</span>
+                        <strong>{formatPrice(revenueByPayment['REVOLUT'] || 0)}</strong>
+                      </div>
+                      <div className={styles.payRow}>
+                        <span>PayPal:</span>
+                        <strong>{formatPrice(revenueByPayment['PAYPAL'] || 0)}</strong>
+                      </div>
+                      <div className={styles.payRow}>
+                        <span>Efectivo:</span>
+                        <strong>{formatPrice(revenueByPayment['EFECTIVO'] || 0)}</strong>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Grid de Artículos TOP */}
+              <div className={styles.topArticlesGrid}>
+                {/* TOP Visitas */}
+                <div className={styles.topArticlesCard}>
+                  <h3 className={styles.sectionTitle}>Top 5 Artículos Más Vistos</h3>
+                  <div className={styles.topArticlesList}>
+                    {topViews.map((art) => {
+                      const percentage = ((art.views || 0) / maxViews) * 100;
+                      return (
+                        <div key={art.id} className={styles.topArticleRow}>
+                          <div className={styles.topArticleInfo}>
+                            <span className={styles.topArticleTitle}>{art.title}</span>
+                            <span className={styles.topArticleValue}>{art.views || 0} visitas</span>
+                          </div>
+                          <div className={styles.progressBarContainer}>
+                            <div className={styles.progressBar} style={{ width: `${percentage}%`, backgroundColor: '#1d4ed8' }} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* TOP Interés (Clics de Contacto) */}
+                <div className={styles.topArticlesCard}>
+                  <h3 className={styles.sectionTitle}>Top 5 Mayor Interés de Compra</h3>
+                  <div className={styles.topArticlesList}>
+                    {topContact.map((art) => {
+                      const percentage = ((art.contact_clicks || 0) / maxClicks) * 100;
+                      return (
+                        <div key={art.id} className={styles.topArticleRow}>
+                          <div className={styles.topArticleInfo}>
+                            <span className={styles.topArticleTitle}>{art.title}</span>
+                            <span className={styles.topArticleValue}>{art.contact_clicks || 0} clics</span>
+                          </div>
+                          <div className={styles.progressBarContainer}>
+                            <div className={styles.progressBar} style={{ width: `${percentage}%`, backgroundColor: '#15803d' }} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* TOP Ratio de Conversión */}
+                <div className={styles.topArticlesCard}>
+                  <h3 className={styles.sectionTitle}>Top 5 Ratios de Conversión (Visita a Clic)</h3>
+                  <div className={styles.topArticlesList}>
+                    {topConversion.map((art) => {
+                      const percentage = (art.rate / maxConversion) * 100;
+                      return (
+                        <div key={art.id} className={styles.topArticleRow}>
+                          <div className={styles.topArticleInfo}>
+                            <span className={styles.topArticleTitle}>{art.title}</span>
+                            <span className={styles.topArticleValue}>{art.rate.toFixed(1)}% ratio</span>
+                          </div>
+                          <div className={styles.progressBarContainer}>
+                            <div className={styles.progressBar} style={{ width: `${percentage}%`, backgroundColor: '#ea580c' }} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             </div>

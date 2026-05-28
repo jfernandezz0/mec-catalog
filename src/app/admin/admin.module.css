@@ -2237,5 +2237,273 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* Import Mode selector cards */
+.importModeCard {
+  background: var(--bg-card-glass);
+  border: 1px solid var(--border-card-glass);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.importModeTitle {
+  display: block;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.importModeOptions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.importModeOption {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  border: 1.5px solid var(--border-card-glass);
+  background: rgba(0, 0, 0, 0.01);
+  border-radius: 10px;
+  padding: 14px;
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.importModeOption:hover {
+  border-color: var(--text-secondary);
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.importModeOptionActive {
+  border-color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.5);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
+}
+
+.importModeRadio {
+  margin-top: 3px;
+  accent-color: var(--text-primary);
+  cursor: pointer;
+}
+
+.importModeLabel {
+  display: block;
+  font-size: 13px;
+  font-weight: 750;
+  color: var(--text-primary);
+  margin-bottom: 3px;
+}
+
+.importModeSublabel {
+  display: block;
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+/* Analytics Container & Widgets */
+.analyticsContainer {
+  margin-top: 16px;
+  animation: fadeIn 0.4s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.analyticsGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.analyticsCard {
+  background: var(--bg-card-glass);
+  border: 1px solid var(--border-card-glass);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
+}
+
+.analyticsCardLabel {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  letter-spacing: 0.05em;
+  margin-bottom: 6px;
+}
+
+.analyticsCardValue {
+  font-size: 26px;
+  font-weight: 850;
+  color: var(--text-primary);
+  line-height: 1.1;
+  margin-bottom: 4px;
+}
+
+.analyticsCardSubtext {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+/* Analytics Sales Summary card */
+.analyticsSalesCard {
+  background: var(--bg-card-glass);
+  border: 1px solid var(--border-card-glass);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
+}
+
+.analyticsSalesGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 20px;
+  margin-top: 16px;
+}
+
+.analyticsSalesMetric {
+  display: flex;
+  flex-direction: column;
+}
+
+.analyticsSalesLabel {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  letter-spacing: 0.05em;
+  margin-bottom: 6px;
+}
+
+.analyticsSalesValue {
+  font-size: 20px;
+  font-weight: 850;
+  color: var(--text-primary);
+  font-family: monospace;
+}
+
+.analyticsSalesPayments {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.payRow {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--text-primary);
+}
+
+.payRow span {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.payRow strong {
+  font-family: monospace;
+  font-weight: 700;
+}
+
+/* Top ranking tables */
+.topArticlesGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.topArticlesCard {
+  background: var(--bg-card-glass);
+  border: 1px solid var(--border-card-glass);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
+}
+
+.topArticlesList {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.topArticleRow {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.topArticleInfo {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.topArticleTitle {
+  font-size: 13px;
+  font-weight: 750;
+  color: var(--text-primary);
+  line-height: 1.3;
+}
+
+.topArticleValue {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--text-secondary);
+  text-wrap: nowrap;
+}
+
+.progressBarContainer {
+  width: 100%;
+  height: 6px;
+  background: var(--border-card-glass);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progressBar {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Mobile Media Queries */
+@media (max-width: 768px) {
+  .analyticsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  
+  .analyticsSalesGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .topArticlesGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .analyticsGrid {
+    grid-template-columns: 1fr;
+  }
+  
+  .analyticsSalesGrid {
+    grid-template-columns: 1fr;
+  }
+  
+  .importModeOptions {
+    grid-template-columns: 1fr;
+  }
+}
+
 
 
