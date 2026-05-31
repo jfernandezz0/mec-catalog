@@ -1,0 +1,55 @@
+"    // Initialize textures
+    renderDayTexture(null);
+    renderNightTexture(null);
+
+    // Solar direction calculation in object space relative to UTC-0 time.
+    // Fixed alignment: positive Z points towards camera, where longitude 0 is mapped.
+    const updateSunDir = () => {
+      const now = new Date();
+      // UTC-0 Time: uses getUTCHours(), getUTCMinutes(), getUTCSeconds()
+      const utcHour = now.getUTCHours() + now.getUTCMinutes() / 60 + now.getUTCSeconds() / 3600;
+      const sunLon = -(utcHour - 12) * 15 * (Math.PI / 180);
+      
+      // Sun direction in LOCAL coordinates of the Earth sphere.
+      // Correct coordinate mapping on standard Three.js SphereGeometry:
+      // x = Math.cos(sunLon)
+      // z = -Math.sin(sunLon)
+      const sunVector = new THREE.Vector3(
+        Math.cos(sunLon),
+        0.18, 
+        -Math.sin(sunLon)
+      ).normalize();
+      
+      material.uniforms.uSunDir.value.copy(sunVector);
+    };
+    updateSunDir();
+
+    // Raycaster for mouse interactions
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+    let currentHoveredCode: string | null = null;
+
+    const handlePointerMove = (e: MouseEvent) => {
+      const rect = renderer.domElement.getBoundingClientRect();
+      mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+      raycaster.setFromCamera(mouse, camera);
+      const intersects = raycaster.intersectObject(globe);
+
+      if (intersects.length > 0) {
+        const uv = intersects[0].uv;
+        if (uv) {
+          const lon = uv.x * 360 - 180;
+          const lat = uv.y * 180 - 90;
+
+          let foundCategory: Category | null = null;
+          for (const feature of geoJsonData.features) {
+            if (feature.category && isPointInFeature([lon, lat], feature.geometry)) {
+              foundCategory = feature.category;
+              break;
+            }
+          }
+
+          const foundCode = foundCate
+<truncated 2549 bytes>

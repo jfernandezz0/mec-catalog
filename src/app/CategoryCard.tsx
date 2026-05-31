@@ -18,6 +18,10 @@ const hoverStyles: Record<string, { bg: string; border: string }> = {
   ESP: { bg: 'var(--cc-hover-bg-ES, #fff7ed)',  border: 'var(--cc-hover-border-ES, #ea580c)' },    // Spain (Alias)
   KR:  { bg: 'var(--cc-hover-bg-KR, #f0f9ff)',  border: 'var(--cc-hover-border-KR, #0284c7)' },    // Korea
   KOR: { bg: 'var(--cc-hover-bg-KR, #f0f9ff)',  border: 'var(--cc-hover-border-KR, #0284c7)' },    // Korea (Alias)
+  AUT: { bg: 'var(--cc-hover-bg-AUT, #fef2f2)', border: 'var(--cc-hover-border-AUT, #ef4444)' },   // Austria
+  AT:  { bg: 'var(--cc-hover-bg-AUT, #fef2f2)', border: 'var(--cc-hover-border-AUT, #ef4444)' },   // Austria (Alias)
+  DNK: { bg: 'var(--cc-hover-bg-DNK, #fff5f5)', border: 'var(--cc-hover-border-DNK, #e11d48)' },   // Denmark
+  DK:  { bg: 'var(--cc-hover-bg-DNK, #fff5f5)', border: 'var(--cc-hover-border-DNK, #e11d48)' },   // Denmark (Alias)
 };
 
 const defaultStyle = { bg: 'var(--bg-page, #f9fafb)', border: 'var(--border-card, #d1d5db)' };

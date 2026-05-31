@@ -36,6 +36,36 @@
   object-fit: contain;
 }
 
+/* Article page header – matches category page layout */
+.articlePageHeader {
+  margin-bottom: 24px;
+}
+
+.articleLogoWrapper {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 0;
+}
+
+.articleLogoContainer {
+  position: relative;
+  display: inline-flex;
+  max-width: 320px;
+  width: 100%;
+}
+
+.articleLogoImage {
+  width: 100%;
+  max-width: 320px;
+  height: auto;
+  object-fit: contain;
+  background: #ffffff;
+  padding: 10px 20px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  border: 1px solid var(--border-card);
+}
+
 .backLink {
   display: inline-flex;
   align-items: center;

@@ -1,0 +1,94 @@
+Created At: 2026-05-31T08:56:10Z
+Completed At: 2026-05-31T08:56:10Z
+File Path: `file:///Users/javierfernandez/mec-catalog/src/app/components/Globe.tsx`
+Total Lines: 827
+Total Bytes: 29323
+Showing lines 540 to 650
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+540: 
+541:     // Initialize textures
+542:     renderDayTexture(null);
+543:     renderNightTexture();
+544: 
+545:     // Solar direction calculation in object space relative to UTC-0 time.
+546:     // Fixed alignment: positive Z points towards camera, where longitude 0 is mapped.
+547:     const updateSunDir = () => {
+548:       const now = new Date();
+549:       // UTC-0 Time: uses getUTCHours(), getUTCMinutes(), getUTCSeconds()
+550:       const utcHour = now.getUTCHours() + now.getUTCMinutes() / 60 + now.getUTCSeconds() / 3600;
+551:       const sunLon = -(utcHour - 12) * 15 * (Math.PI / 180);
+552:       
+553:       // Sun direction in LOCAL coordinates of the Earth sphere.
+554:       // Positive signs (sin, cos) match the sphere geometry texture mapping,
+555:       // locking noon UTC-0 directly to longitude 0 (Europe/Spain) facing the camera.
+556:       const sunVector = new THREE.Vector3(
+557:         Math.sin(sunLon),
+558:         0.18, 
+559:         Math.cos(sunLon)
+560:       ).normalize();
+561:       
+562:       console.log('updateSunDir debug:', {
+563:         localTime: now.toLocaleString(),
+564:         utcHour,
+565:         sunLonDeg: sunLon * 180 / Math.PI,
+566:         sunVector: { x: sunVector.x, y: sunVector.y, z: sunVector.z }
+567:       });
+568:       
+569:       material.uniforms.uSunDir.value.copy(sunVector);
+570:     };
+571:     updateSunDir();
+572: 
+573:     // Raycaster for mouse interactions
+574:     const raycaster = new THREE.Raycaster();
+575:     const mouse = new THREE.Vector2();
+576:     let currentHoveredCode: string | null = null;
+577: 
+5
+<truncated 1193 bytes>
+re(foundCode);
+606:           }
+607: 
+608:           if (foundCategory) {
+609:             const rawIso = (foundCategory.country_code || '').toUpperCase();
+610:             const mappedIso = featurePropsISOForCode(foundCategory.country_code) || rawIso;
+611:             const name = countryNamesES[mappedIso] || foundCategory.name;
+612:             const flag = getFlagEmoji(foundCategory.country_code);
+613:             const count = Array.isArray(foundCategory.articles) ? foundCategory.articles[0]?.count ?? 0 : 0;
+614: 
+615:             setTooltip({
+616:               x: e.clientX,
+617:               y: e.clientY,
+618:               visible: true,
+619:               name,
+620:               flag,
+621:               articles: count,
+622:               code: foundCategory.country_code
+623:             });
+624:             document.body.style.cursor = 'pointer';
+625:           } else {
+626:             setTooltip(null);
+627:             document.body.style.cursor = 'default';
+628:           }
+629:         }
+630:       } else {
+631:         if (currentHoveredCode !== null) {
+632:           currentHoveredCode = null;
+633:           setHoveredCountry(null);
+634:           renderDayTexture(null);
+635:         }
+636:         setTooltip(null);
+637:         document.body.style.cursor = 'default';
+638:       }
+639:     };
+640: 
+641:     function featurePropsISOForCode(dbCode: string) {
+642:       const code = dbCode.toUpperCase().trim();
+643:       const map: Record<string, string> = {
+644:         'ALE': 'DE', 'DE': 'DE', 'JAP': 'JP', 'JP': 'JP',
+645:         'ITA': 'IT', 'IT': 'IT', 'USA': 'US', 'US': 'US',
+646:         'FRA': 'FR', 'FR': 'FR', 'UK': 'GB', 'GB': 'GB',
+647:         'CRO': 'HR', 'HR': 'HR', 'SUE': 'SE', 'SE': 'SE',
+648:         'ESP': 'ES', 'ES': 'ES', 'KOR': 'KR', 'KR': 'KR'
+649:       };
+650:       return map[code] || code;
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.

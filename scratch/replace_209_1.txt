@@ -1,0 +1,25 @@
+"    const updateSunDir = () => {
+      const now = new Date();
+      // UTC-0 Time: uses getUTCHours(), getUTCMinutes(), getUTCSeconds()
+      const utcHour = now.getUTCHours() + now.getUTCMinutes() / 60 + now.getUTCSeconds() / 3600;
+      const sunLon = -(utcHour - 12) * 15 * (Math.PI / 180);
+      
+      // Sun direction in LOCAL coordinates of the Earth sphere.
+      // Positive signs (sin, cos) match the sphere geometry texture mapping,
+      // locking noon UTC-0 directly to longitude 0 (Europe/Spain) facing the camera.
+      const sunVector = new THREE.Vector3(
+        Math.sin(sunLon),
+        0.18, 
+        Math.cos(sunLon)
+      ).normalize();
+      
+      console.log('updateSunDir debug:', {
+        localTime: now.toLocaleString(),
+        utcHour,
+        sunLonDeg: sunLon * 180 / Math.PI,
+        sunVector: { x: sunVector.x, y: sunVector.y, z: sunVector.z }
+      });
+      
+      material.uniforms.uSunDir.value.copy(sunVector);
+    };
+    updateSunDir();"

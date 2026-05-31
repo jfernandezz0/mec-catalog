@@ -48,7 +48,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es" className={jakarta.className}>
+    <html lang="es" className={jakarta.className} suppressHydrationWarning>
       <head>
         <link rel="manifest" href="/manifest.json" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -60,12 +60,16 @@ export default function RootLayout({
               (function() {
                 try {
                   const theme = localStorage.getItem('theme');
-                  if (theme === 'dark') {
-                     document.documentElement.classList.add('dark');
-                  } else if (theme === 'light') {
-                     document.documentElement.classList.add('light');
+                  if (theme === 'light') {
+                    document.documentElement.classList.add('light');
+                  } else {
+                    // Default to dark (first visit or explicit dark preference)
+                    document.documentElement.classList.add('dark');
+                    if (!theme) localStorage.setItem('theme', 'dark');
                   }
-                } catch (e) {}
+                } catch (e) {
+                  document.documentElement.classList.add('dark');
+                }
                 
                 if ('serviceWorker' in navigator) {
                   window.addEventListener('load', function() {

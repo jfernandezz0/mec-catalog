@@ -2,11 +2,11 @@ import { supabase } from '@/lib/supabase';
 import { getFlagEmoji } from '@/lib/utils';
 import { getMECLogo } from '@/lib/utils.server';
 import type { Metadata } from 'next';
-import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import InfiniteArticleGrid from './InfiniteArticleGrid';
 import styles from './category.module.css';
+
 
 export const revalidate = 0;
 
@@ -183,40 +183,37 @@ export default async function CategoryPage({
   return (
     <main className={styles.page}>
       <div className={styles.shell}>
-        <header className={styles.header}>
-          {mecLogo && (
-            <div className={styles.mecLogoWrapper}>
-              <div className={styles.logoContainer}>
-                <Image
-                  src={mecLogo}
-                  alt={`MEC ${category.name}`}
-                  width={320}
-                  height={200}
-                  className={styles.mecLogoHeader}
-                  priority
-                  style={{ width: '100%', height: 'auto', objectFit: 'contain' }}
-                />
-                <span className={styles.availableBadge}>
-                  {availableArticles.length}
+          <header className={styles.header} style={{ marginBottom: 0 }}>
+            {mecLogo && (
+              <div className={styles.mecLogoWrapper}>
+                <div className={styles.logoContainer}>
+                  <img
+                    src={mecLogo}
+                    alt={`MEC ${category.name}`}
+                    className={styles.mecLogoHeader}
+                    style={{ width: '100%', height: 'auto', objectFit: 'contain' }}
+                  />
+                  <span className={styles.availableBadge}>
+                    {availableArticles.length}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {mecLogo === '/logo_mini.png' && (
+              <div style={{ display: 'flex', justifyContent: 'center', marginTop: '16px' }}>
+                <span className={styles.flag}>
+                  {getFlagEmoji(category.country_code)}
                 </span>
               </div>
-            </div>
-          )}
+            )}
 
-          {mecLogo === '/logo_mini.png' && (
-            <div style={{ display: 'flex', justifyContent: 'center', marginTop: '16px' }}>
-              <span className={styles.flag}>
-                {getFlagEmoji(category.country_code)}
-              </span>
+            <div className={styles.topBar}>
+              <Link href="/" className={styles.backLink}>
+                ← Principal
+              </Link>
             </div>
-          )}
-
-          <div className={styles.topBar}>
-            <Link href="/" className={styles.backLink}>
-              ← Principal
-            </Link>
-          </div>
-        </header>
+          </header>
 
         {articleItems.length > 0 ? (
           <InfiniteArticleGrid 

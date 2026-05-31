@@ -1,0 +1,47 @@
+"    // Draw Night Map Texture with glowing golden city lights and active country borders
+    const renderNightTexture = (hoveredCode: string | null) => {
+      const W = 2048;
+      const H = 1024;
+      nightCtx.clearRect(0, 0, W, H);
+
+      // Pitch black night oceans
+      nightCtx.fillStyle = '#010204';
+      nightCtx.fillRect(0, 0, W, H);
+
+      // Draw dark land silhouettes and active country boundary lines
+      geoJsonData.features.forEach((feature: any) => {
+        const cat = feature.category;
+        const rawIso = feature.properties.ISO_A2 || feature.properties.iso_a2;
+        const iso = rawIso ? rawIso.toUpperCase() : '';
+        const isActive = !!cat;
+        const isHovered = hoveredCode && cat && cat.country_code === hoveredCode;
+
+        if (isHovered) {
+          // Scale ONLY the country shape relative to its center, add glowing shadow!
+          nightCtx.save();
+          const bounds = getGeometryBounds(feature.geometry);
+          if (bounds) {
+            const centerLon = (bounds.minLon + bounds.maxLon) / 2;
+            const centerLat = (bounds.minLat + bounds.maxLat) / 2;
+            const cx = W * (centerLon + 180) / 360;
+            const cy = H * (90 - centerLat) / 180;
+            
+            nightCtx.translate(cx, cy);
+            nightCtx.scale(1.12, 1.12); // Enlarge ONLY this country by 12%
+            nightCtx.translate(-cx, -cy);
+          }
+
+          // Intense glowing shadow
+          nightCtx.shadowColor = flagColors[iso] || '#ffffff';
+          nightCtx.shadowBlur = 20;
+
+          // Full vibrant flag color
+          nightCtx.fillStyle = flagColors[iso] || '#ea580c';
+          nightCtx.strokeStyle = '#ffffff';
+          nightCtx.lineWidth = 3.5;
+          drawGeometry(nightCtx, feature.geometry);
+          nightCtx.restore();
+        } else if (isActive) {
+          // Active countries in night mode: keep borders clearly outlined in their flag color
+          // with 100% opacity and neon glowing stroke so the user can easi
+<truncated 2495 bytes>

@@ -7,6 +7,7 @@ import ShareButtons from './ShareButtons';
 import styles from './article.module.css';
 import { getMECLogo } from '@/lib/utils.server';
 
+
 export const revalidate = 0;
 
 import { calculateDiscount } from '@/lib/discounts';
@@ -223,16 +224,25 @@ export default async function ArticlePage({
   return (
     <main className={styles.page}>
       <div className={styles.shell}>
-        <div className={styles.topBar}>
-          <Link href={categoryHref} className={styles.backLink}>
-            ← Volver
-          </Link>
-          {mecLogo && (
-            <div className={styles.topLogo}>
-              <img src={mecLogo} alt={category?.name || "Logo"} className={styles.topLogoImage} />
+          <header className={styles.articlePageHeader}>
+            {mecLogo && (
+              <div className={styles.articleLogoWrapper}>
+                <div className={styles.articleLogoContainer}>
+                  <img
+                    src={mecLogo}
+                    alt={category?.name || 'MiniEngines Creations'}
+                    className={styles.articleLogoImage}
+                    style={{ width: '100%', height: 'auto', objectFit: 'contain' }}
+                  />
+                </div>
+              </div>
+            )}
+            <div className={styles.topBar} style={{ marginTop: '16px', marginBottom: 0 }}>
+              <Link href={categoryHref} className={styles.backLink}>
+                ← Volver
+              </Link>
             </div>
-          )}
-        </div>
+          </header>
 
         <div className={styles.layout}>
           <ArticleGallery id={article.id} imageUrls={imageUrls} title={article.title} />

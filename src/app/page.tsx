@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase';
-import Image from 'next/image';
 import CategoryCard from './CategoryCard';
+
+import GlobeWrapper from './components/GlobeWrapper';
 
 export const revalidate = 0;
 
@@ -82,50 +83,53 @@ export default async function Home() {
   });
 
   return (
-    <main className="min-h-screen p-6 max-w-2xl mx-auto font-sans bg-[color:var(--bg-page)] text-[color:var(--text-primary)]">
-      <header className="text-center mb-10 mt-8">
-        <div className="flex justify-center mb-4">
-          <Image
+    <main className="min-h-screen font-sans bg-[color:var(--bg-page)] text-[color:var(--text-primary)] pb-12">
+      <header className="w-full max-w-2xl mx-auto px-6 pt-6 pb-4 text-center">
+        <div className="flex justify-center">
+          <img
             src="/logo.png"
             alt="MiniEngines Creations"
-            width={320}
-            height={120}
-            priority
             style={{ width: '100%', maxWidth: '320px', height: 'auto', filter: 'invert(var(--logo-invert, 0))' }}
           />
         </div>
-        <p className="text-[color:var(--text-secondary)] text-sm">
+        <p className="text-[color:var(--text-secondary)] text-sm mt-4">
           Garaje digital de vehículos by MiniEngines.
           <br />
           Todos nuestros MOCs de bloques y diseños estan hechos a mano por ingenieros cualificados
         </p>
       </header>
 
-      <section>
-        <h2 className="text-lg font-semibold mb-4 text-center text-[color:var(--text-primary)]">Listado de creaciones por origen</h2>
-        {/* 2 columns on mobile, 4 on md+ */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {sorted.map((category) => (
-            <CategoryCard key={category.id} category={category} />
-          ))}
+      <div className="w-full overflow-hidden">
+        <GlobeWrapper categories={sorted} />
+      </div>
+
+      <div className="max-w-2xl mx-auto px-6">
+        <section>
+          <h2 className="text-lg font-semibold mb-4 text-center text-[color:var(--text-primary)]">Listado de creaciones por origen</h2>
+          {/* 2 columns on mobile, 4 on md+ */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {sorted.map((category) => (
+              <CategoryCard key={category.id} category={category} />
+            ))}
+          </div>
+        </section>
+
+        <hr className="border-[color:var(--border-card)] my-8" />
+
+        <div className="flex flex-col items-center justify-center mb-8 gap-3">
+          <span className="text-lg font-semibold text-center text-[color:var(--text-primary)]">
+            Síguenos en:
+          </span>
+          <a
+            href="https://www.instagram.com/minienginescreations"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[color:var(--text-primary)] opacity-85 hover:text-pink-600 transition-all"
+            aria-label="Visitar Instagram de MiniEngines Creations"
+          >
+            <Instagram size={56} />
+          </a>
         </div>
-      </section>
-
-      <hr className="border-[color:var(--border-card)] my-8" />
-
-      <div className="flex flex-col items-center justify-center mb-8 gap-3">
-        <span className="text-lg font-semibold text-center text-[color:var(--text-primary)]">
-          Síguenos en:
-        </span>
-        <a
-          href="https://www.instagram.com/minienginescreations"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-[color:var(--text-primary)] opacity-85 hover:text-pink-600 transition-all"
-          aria-label="Visitar Instagram de MiniEngines Creations"
-        >
-          <Instagram size={56} />
-        </a>
       </div>
     </main>
   );
