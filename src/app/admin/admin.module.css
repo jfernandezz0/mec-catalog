@@ -6,6 +6,25 @@
   color: #171717;
   padding: 32px 20px 56px;
   font-family: inherit;
+
+  /* Force light-mode design tokens so sales/analytics panels match
+     the catalogue/categories/settings style regardless of OS theme */
+  --bg-page: #fafafa;
+  --text-primary: #171717;
+  --text-secondary: #525252;
+  --text-tertiary: #a3a3a3;
+  --bg-card: #ffffff;
+  --border-card: #e5e5e5;
+  --bg-input: #ffffff;
+  --border-input: #d4d4d4;
+  --bg-available: #f0fdf4;
+  --text-available: #16a34a;
+  --bg-soldout: #fef2f2;
+  --text-soldout: #dc2626;
+  --bg-card-glass: rgba(255, 255, 255, 0.85);
+  --border-card-glass: #e5e5e5;
+  --shadow-glass: 0 4px 12px rgba(0, 0, 0, 0.04), inset 0 1px 1px rgba(255, 255, 255, 0.9);
+  --shadow-hover: 0 12px 28px rgba(0, 0, 0, 0.07);
 }
 
 .shell {

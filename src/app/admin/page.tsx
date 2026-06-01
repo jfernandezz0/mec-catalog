@@ -3637,44 +3637,42 @@ ALTER TABLE categories ADD COLUMN IF NOT EXISTS discount_percent INTEGER CHECK (
                       </div>
 
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '24px', borderTop: '1px solid var(--border-card-glass)', paddingTop: '20px' }}>
-                        <div style={{ display: 'flex', gap: '12px' }}>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
-                            <label className={styles.formLabel}>Teléfono Comprador (Opcional)</label>
-                            <div style={{ display: 'flex', gap: '6px' }}>
-                              <select
-                                value={saleBuyerPhoneCode}
-                                onChange={(e) => setSaleBuyerPhoneCode(e.target.value)}
-                                className={styles.salesPrefixSelect}
-                              >
-                                <option value="+34">🇪🇸 +34</option>
-                                <option value="+33">🇫🇷 +33</option>
-                                <option value="+49">🇩🇪 +49</option>
-                                <option value="+39">🇮🇹 +39</option>
-                                <option value="+44">🇬🇧 +44</option>
-                                <option value="+351">🇵🇹 +351</option>
-                                <option value="+1">🇺🇸 +1</option>
-                              </select>
-                              <input
-                                type="text"
-                                placeholder="600000000"
-                                value={saleBuyerPhone}
-                                onChange={(e) => setSaleBuyerPhone(e.target.value)}
-                                className={styles.salesTextInput}
-                                style={{ flex: 1 }}
-                              />
-                            </div>
-                          </div>
-
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
-                            <label className={styles.formLabel}>Email Comprador (Opcional)</label>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <label className={styles.formLabel}>Teléfono Comprador (Opcional)</label>
+                          <div style={{ display: 'flex', gap: '6px' }}>
+                            <select
+                              value={saleBuyerPhoneCode}
+                              onChange={(e) => setSaleBuyerPhoneCode(e.target.value)}
+                              className={styles.salesPrefixSelect}
+                            >
+                              <option value="+34">🇪🇸 +34</option>
+                              <option value="+33">🇫🇷 +33</option>
+                              <option value="+49">🇩🇪 +49</option>
+                              <option value="+39">🇮🇹 +39</option>
+                              <option value="+44">🇬🇧 +44</option>
+                              <option value="+351">🇵🇹 +351</option>
+                              <option value="+1">🇺🇸 +1</option>
+                            </select>
                             <input
-                              type="email"
-                              placeholder="cliente@email.com"
-                              value={saleBuyerEmail}
-                              onChange={(e) => setSaleBuyerEmail(e.target.value)}
+                              type="text"
+                              placeholder="600000000"
+                              value={saleBuyerPhone}
+                              onChange={(e) => setSaleBuyerPhone(e.target.value)}
                               className={styles.salesTextInput}
+                              style={{ flex: 1 }}
                             />
                           </div>
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <label className={styles.formLabel}>Email Comprador (Opcional)</label>
+                          <input
+                            type="email"
+                            placeholder="cliente@email.com"
+                            value={saleBuyerEmail}
+                            onChange={(e) => setSaleBuyerEmail(e.target.value)}
+                            className={styles.salesTextInput}
+                          />
                         </div>
 
                         <div style={{ display: 'flex', gap: '12px' }}>
