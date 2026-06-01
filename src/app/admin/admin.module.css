@@ -2524,5 +2524,80 @@
   }
 }
 
+/* ==============================
+   Stats Periods
+   ============================== */
 
+.newPeriodBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 16px;
+  border: 1.5px solid #16a34a;
+  border-radius: 8px;
+  background: #f0fdf4;
+  color: #15803d;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 150ms ease;
+  white-space: nowrap;
+}
 
+.newPeriodBtn:hover {
+  background: #16a34a;
+  color: #ffffff;
+}
+
+.periodHistoryCard {
+  background: #ffffff;
+  border: 1px solid #e5e5e5;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
+}
+
+.snapshotTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.snapshotTable th {
+  padding: 10px 14px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #737373;
+  border-bottom: 1.5px solid #e5e5e5;
+  white-space: nowrap;
+  background: #fafafa;
+}
+
+.snapshotRow td {
+  padding: 12px 14px;
+  border-bottom: 1px solid #f5f5f5;
+  color: #171717;
+  vertical-align: middle;
+}
+
+.snapshotRow:last-child td {
+  border-bottom: none;
+}
+
+.snapshotRow:hover td {
+  background: #fafafa;
+}
+
+.periodModal {
+  background: #ffffff;
+  border: 1px solid #e5e5e5;
+  border-radius: 16px;
+  padding: 28px;
+  max-width: 460px;
+  width: 100%;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
+}

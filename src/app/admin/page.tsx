@@ -242,6 +242,13 @@ export default function AdminPage() {
   const [csvDragOver, setCsvDragOver] = useState(false);
   const [csvImportMode, setCsvImportMode] = useState<'create' | 'update'>('create');
 
+  // Stats periods
+  const [statsSnapshots, setStatsSnapshots] = useState<any[]>([]);
+  const [loadingSnapshots, setLoadingSnapshots] = useState(false);
+  const [showPeriodModal, setShowPeriodModal] = useState(false);
+  const [periodNameInput, setPeriodNameInput] = useState('');
+  const [savingPeriod, setSavingPeriod] = useState(false);
+
   useEffect(() => {
     async function getSession() {
       const { data: { session } } = await supabase.auth.getSession();
@@ -331,6 +338,7 @@ export default function AdminPage() {
     loadCategories();
     loadArticles();
     loadPaymentsSetting();
+    loadSnapshots();
   }, [user]);
 
   async function loadPaymentsSetting() {
@@ -421,6 +429,74 @@ export default function AdminPage() {
       category?.discount_percent,
       generalDiscountPercent
     ).finalPrice;
+  }
+
+  async function loadSnapshots() {
+    setLoadingSnapshots(true);
+    try {
+      const { data, error } = await supabase
+        .from('stats_snapshots')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (!error) setStatsSnapshots(data ?? []);
+    } catch (e) {
+      // Table may not exist yet — fail silently
+    } finally {
+      setLoadingSnapshots(false);
+    }
+  }
+
+  async function handleNewPeriod() {
+    const name = periodNameInput.trim();
+    if (!name) {
+      alert('Por favor introduce un nombre para el período.');
+      return;
+    }
+    setSavingPeriod(true);
+    try {
+      // Calculate current totals from articles
+      const totalViews = articles.reduce((s, a) => s + (a.views || 0), 0);
+      const totalContactClicks = articles.reduce((s, a) => s + (a.contact_clicks || 0), 0);
+      const totalShareClicks = articles.reduce((s, a) => s + (a.share_clicks || 0), 0);
+
+      // Save snapshot
+      const { error: insertError } = await supabase
+        .from('stats_snapshots')
+        .insert({
+          period_name: name,
+          total_views: totalViews,
+          total_contact_clicks: totalContactClicks,
+          total_share_clicks: totalShareClicks,
+          article_count: articles.length,
+        });
+
+      if (insertError) {
+        if (insertError.message.includes('stats_snapshots')) {
+          alert('La tabla stats_snapshots no existe aún en Supabase. Ejecuta el SQL del plan primero.');
+        } else {
+          throw insertError;
+        }
+        return;
+      }
+
+      // Reset all article counters to 0
+      const { error: resetError } = await supabase
+        .from('articles')
+        .update({ views: 0, contact_clicks: 0, share_clicks: 0 })
+        .gte('id', 0);
+
+      if (resetError) throw resetError;
+
+      alert(`¡Período "${name}" guardado con éxito! Los contadores se han reiniciado.`);
+      setShowPeriodModal(false);
+      setPeriodNameInput('');
+      await loadArticles();
+      await loadSnapshots();
+    } catch (e: any) {
+      alert(`Error al guardar el período: ${e.message || e}`);
+    } finally {
+      setSavingPeriod(false);
+    }
   }
 
   async function loadSales() {
@@ -3800,6 +3876,22 @@ ALTER TABLE categories ADD COLUMN IF NOT EXISTS discount_percent INTEGER CHECK (
 
           return (
             <div className={styles.analyticsContainer}>
+              {/* Header con botón de nuevo período */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                    Período actual · desde el último reset
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { setPeriodNameInput(''); setShowPeriodModal(true); }}
+                  className={styles.newPeriodBtn}
+                >
+                  📅 Iniciar nuevo período
+                </button>
+              </div>
+
               {/* Tarjetas Métricas Globales */}
               <div className={styles.analyticsGrid}>
                 <div className={styles.analyticsCard}>
@@ -3925,9 +4017,101 @@ ALTER TABLE categories ADD COLUMN IF NOT EXISTS discount_percent INTEGER CHECK (
                   </div>
                 </div>
               </div>
+
+              {/* Historial de Períodos */}
+              {statsSnapshots.length > 0 && (
+                <div className={styles.periodHistoryCard}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                    <h3 className={styles.sectionTitle} style={{ margin: 0, borderBottom: 'none', paddingBottom: 0 }}>🗂️ Historial de Períodos</h3>
+                    <span style={{ fontSize: '12px', color: '#a3a3a3' }}>{statsSnapshots.length} período{statsSnapshots.length !== 1 ? 's' : ''} guardado{statsSnapshots.length !== 1 ? 's' : ''}</span>
+                  </div>
+                  <div style={{ overflowX: 'auto' }}>
+                    <table className={styles.snapshotTable}>
+                      <thead>
+                        <tr>
+                          <th>Período</th>
+                          <th>Fecha cierre</th>
+                          <th style={{ textAlign: 'right' }}>Visitas</th>
+                          <th style={{ textAlign: 'right' }}>Clics WA</th>
+                          <th style={{ textAlign: 'right' }}>Compartidos</th>
+                          <th style={{ textAlign: 'right' }}>Artículos</th>
+                          <th style={{ textAlign: 'right' }}>Conv. %</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {statsSnapshots.map((snap) => {
+                          const convRate = snap.total_views > 0
+                            ? ((snap.total_contact_clicks / snap.total_views) * 100).toFixed(1)
+                            : '0.0';
+                          return (
+                            <tr key={snap.id} className={styles.snapshotRow}>
+                              <td style={{ fontWeight: 750 }}>{snap.period_name}</td>
+                              <td style={{ color: '#737373', fontSize: '12px' }}>
+                                {new Date(snap.created_at).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                              </td>
+                              <td style={{ textAlign: 'right', fontFamily: 'monospace', fontWeight: 700 }}>{snap.total_views.toLocaleString()}</td>
+                              <td style={{ textAlign: 'right', fontFamily: 'monospace', fontWeight: 700 }}>{snap.total_contact_clicks.toLocaleString()}</td>
+                              <td style={{ textAlign: 'right', fontFamily: 'monospace', fontWeight: 700 }}>{snap.total_share_clicks.toLocaleString()}</td>
+                              <td style={{ textAlign: 'right', color: '#737373' }}>{snap.article_count}</td>
+                              <td style={{ textAlign: 'right', fontWeight: 700, color: Number(convRate) >= 5 ? '#16a34a' : Number(convRate) >= 2 ? '#d97706' : '#737373' }}>
+                                {convRate}%
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </div>
           );
         })()}
+
+        {/* Modal: Nuevo Período */}
+        {showPeriodModal && (
+          <div className={styles.modalOverlay} onClick={() => setShowPeriodModal(false)}>
+            <div className={styles.periodModal} onClick={(e) => e.stopPropagation()}>
+              <h3 className={styles.modalTitle}>📅 Iniciar nuevo período</h3>
+              <p style={{ fontSize: '13px', color: '#525252', margin: '0 0 20px 0', lineHeight: 1.5 }}>
+                Se guardará un snapshot de las estadísticas actuales y los contadores de visitas, clics y compartidos se pondrán a cero para empezar a medir el nuevo período.
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '20px' }}>
+                <label style={{ fontSize: '11px', fontWeight: 700, color: '#737373', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Nombre del período
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ej: Mayo 2026, Temporada verano..."
+                  value={periodNameInput}
+                  onChange={(e) => setPeriodNameInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && !savingPeriod && handleNewPeriod()}
+                  className={styles.salesTextInput}
+                  autoFocus
+                />
+              </div>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button
+                  type="button"
+                  onClick={handleNewPeriod}
+                  disabled={savingPeriod || !periodNameInput.trim()}
+                  className={`${styles.primaryButton} ${styles.solidGreenButton}`}
+                  style={{ flex: 1 }}
+                >
+                  {savingPeriod ? 'Guardando...' : '✓ Guardar y resetear'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowPeriodModal(false)}
+                  className={styles.secondaryButton}
+                  style={{ flex: 1 }}
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {showSaleSummary && (() => {
           let summaryTotal = 0;
