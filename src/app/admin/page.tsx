@@ -177,6 +177,7 @@ export default function AdminPage() {
   const [saleBuyerPhoneCode, setSaleBuyerPhoneCode] = useState('+34');
   const [saleBuyerPhone, setSaleBuyerPhone] = useState('');
   const [saleBuyerEmail, setSaleBuyerEmail] = useState('');
+  const [saleBuyerInstagram, setSaleBuyerInstagram] = useState('');
   const [saleLocation, setSaleLocation] = useState('online');
   const [salePaymentType, setSalePaymentType] = useState<'REVOLUT' | 'PAYPAL' | 'EFECTIVO'>('REVOLUT');
   const [showSaleSummary, setShowSaleSummary] = useState(false);
@@ -472,6 +473,7 @@ export default function AdminPage() {
         'Fecha',
         'Email Comprador',
         'Teléfono Comprador',
+        'Instagram Comprador',
         'Lugar',
         'Método de Pago',
         'Total Artículos',
@@ -493,6 +495,7 @@ export default function AdminPage() {
         
         const email = sale.buyer_email || 'Directa';
         const phone = sale.buyer_phone || '';
+        const instagram = sale.buyer_instagram || '';
         const location = sale.location || '';
         const payment = sale.payment_type || '';
         const totalQty = sale.total_articles || 0;
@@ -509,6 +512,7 @@ export default function AdminPage() {
           dateStr,
           email,
           phone,
+          instagram,
           location,
           payment,
           totalQty,
@@ -690,6 +694,7 @@ export default function AdminPage() {
         .insert({
           buyer_phone: fullPhoneNumber || null,
           buyer_email: saleBuyerEmail.trim() || null,
+          buyer_instagram: saleBuyerInstagram.trim() ? (saleBuyerInstagram.trim().startsWith('@') ? saleBuyerInstagram.trim() : `@${saleBuyerInstagram.trim()}`) : null,
           location: saleLocation.trim() || 'online',
           payment_type: salePaymentType,
           total_price: totalPrice,
@@ -729,6 +734,7 @@ export default function AdminPage() {
 
       alert('¡Venta registrada con éxito!');
       setShowSaleSummary(false);
+      setSaleBuyerInstagram('');
       
       await loadArticles();
       handleTabChange('sales');
@@ -3220,6 +3226,7 @@ ALTER TABLE categories ADD COLUMN IF NOT EXISTS discount_percent INTEGER CHECK (
               s.id.toLowerCase().includes(query) ||
               (s.buyer_email && s.buyer_email.toLowerCase().includes(query)) ||
               (s.buyer_phone && s.buyer_phone.toLowerCase().includes(query)) ||
+              (s.buyer_instagram && s.buyer_instagram.toLowerCase().includes(query)) ||
               (s.location && s.location.toLowerCase().includes(query))
             );
           }
@@ -3403,10 +3410,11 @@ ALTER TABLE categories ADD COLUMN IF NOT EXISTS discount_percent INTEGER CHECK (
                             })}
                           </td>
                           <td>
-                            {sale.buyer_email || sale.buyer_phone ? (
+                            {sale.buyer_email || sale.buyer_phone || sale.buyer_instagram ? (
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                                 {sale.buyer_email && <span style={{ fontSize: '13px' }}>{sale.buyer_email}</span>}
                                 {sale.buyer_phone && <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{sale.buyer_phone}</span>}
+                                {sale.buyer_instagram && <span style={{ fontSize: '11px', color: '#e1306c', fontWeight: 700 }}>{sale.buyer_instagram}</span>}
                               </div>
                             ) : (
                               <span style={{ fontStyle: 'italic', color: 'var(--text-tertiary)' }}>Directa</span>
@@ -3673,6 +3681,32 @@ ALTER TABLE categories ADD COLUMN IF NOT EXISTS discount_percent INTEGER CHECK (
                             onChange={(e) => setSaleBuyerEmail(e.target.value)}
                             className={styles.salesTextInput}
                           />
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <label className={styles.formLabel}>Instagram Comprador (Opcional)</label>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0' }}>
+                            <span style={{
+                              height: '38px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              padding: '0 10px',
+                              background: '#f5f5f5',
+                              border: '1px solid #d4d4d4',
+                              borderRight: 'none',
+                              borderRadius: '8px 0 0 8px',
+                              fontSize: '16px',
+                              lineHeight: 1,
+                            }}>📸</span>
+                            <input
+                              type="text"
+                              placeholder="@usuario"
+                              value={saleBuyerInstagram}
+                              onChange={(e) => setSaleBuyerInstagram(e.target.value)}
+                              className={styles.salesTextInput}
+                              style={{ borderRadius: '0 8px 8px 0' }}
+                            />
+                          </div>
                         </div>
 
                         <div style={{ display: 'flex', gap: '12px' }}>
@@ -3974,11 +4008,19 @@ ALTER TABLE categories ADD COLUMN IF NOT EXISTS discount_percent INTEGER CHECK (
                   <div className={styles.summaryRow}>
                     <span>Comprador:</span>
                     <strong>
-                      {saleBuyerEmail || saleBuyerPhone
-                        ? `${saleBuyerEmail} ${saleBuyerPhone ? `(${saleBuyerPhoneCode}${saleBuyerPhone})` : ''}`
+                      {saleBuyerEmail || saleBuyerPhone || saleBuyerInstagram
+                        ? `${saleBuyerEmail || ''}${saleBuyerPhone ? ` (${saleBuyerPhoneCode}${saleBuyerPhone})` : ''}${saleBuyerInstagram ? ` ${saleBuyerInstagram.startsWith('@') ? saleBuyerInstagram : '@' + saleBuyerInstagram}` : ''}`
                         : 'Venta Directa'}
                     </strong>
                   </div>
+                  {saleBuyerInstagram && (
+                    <div className={styles.summaryRow}>
+                      <span>Instagram:</span>
+                      <strong style={{ color: '#e1306c' }}>
+                        {saleBuyerInstagram.startsWith('@') ? saleBuyerInstagram : `@${saleBuyerInstagram}`}
+                      </strong>
+                    </div>
+                  )}
                   <div className={styles.summaryRow}>
                     <span>Estado venta:</span>
                     <strong style={{ color: hasPrepurchase ? 'var(--text-soldout)' : 'var(--text-available)' }}>
@@ -4058,6 +4100,14 @@ ALTER TABLE categories ADD COLUMN IF NOT EXISTS discount_percent INTEGER CHECK (
                         : 'Venta Directa'}
                     </strong>
                   </div>
+                  {selectedSaleDetail.buyer_instagram && (
+                    <div className={styles.summaryRow}>
+                      <span>Instagram:</span>
+                      <strong style={{ color: '#e1306c' }}>
+                        {selectedSaleDetail.buyer_instagram}
+                      </strong>
+                    </div>
+                  )}
                   <div className={styles.summaryRow}>
                     <span>Estado:</span>
                     <strong style={{ color: selectedSaleDetail.status === 'PRECOMPRA' ? 'var(--text-soldout)' : 'var(--text-available)' }}>
