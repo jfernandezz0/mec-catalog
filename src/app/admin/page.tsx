@@ -471,10 +471,12 @@ export default function AdminPage() {
         });
 
       if (insertError) {
-        if (insertError.message.includes('stats_snapshots')) {
+        // 42P01 = "undefined_table" in PostgreSQL
+        if ((insertError as any).code === '42P01' || insertError.message.includes('does not exist')) {
           alert('La tabla stats_snapshots no existe aún en Supabase. Ejecuta el SQL del plan primero.');
         } else {
-          throw insertError;
+          // Show the real error so it can be diagnosed (e.g. RLS policy blocking the insert)
+          alert(`Error al guardar el snapshot:\n\n${insertError.message}\n\nCódigo: ${(insertError as any).code || 'N/A'}`);
         }
         return;
       }
