@@ -384,6 +384,11 @@ export default async function ArticlePage({
 
             <p className={styles.disclaimer}>
               Nuestros diseños MOCs (de bloques) son de creación propia e intentan reflejar de la mejor manera un vehículo real; la imagen y los datos del vehículo son meramente informativos y han sido extraídos de diferentes fuentes oficiales.
+              <br />
+              <br />
+              Se presentan en un marco expositor con una tira led USB (blanco neutro) que recore todo el perimetro interior y tiene una medida exterior de 27x27x6*cm (Alto/Ancho/fondo)
+              <br />
+              * Las medidas tienen un margen de error de (+-1cm) y dependen del contenido.
             </p>
           </section>
         </div>
