@@ -125,6 +125,24 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  border-top-left-radius: 13px;
+  border-top-right-radius: 13px;
+  overflow: hidden;
+}
+
+.galleryTabs + .heroImage {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+
+.heroImage:not(:last-child) {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.heroImage:last-child {
+  border-bottom-left-radius: 13px;
+  border-bottom-right-radius: 13px;
 }
 
 .image {
@@ -193,6 +211,9 @@
   grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 8px;
   padding: 12px;
+  border-bottom-left-radius: 13px;
+  border-bottom-right-radius: 13px;
+  overflow: hidden;
 }
 
 .thumb {
@@ -647,6 +668,9 @@
 .galleryTabs {
   display: flex;
   border-bottom: 1px solid var(--border-card);
+  border-top-left-radius: 13px;
+  border-top-right-radius: 13px;
+  overflow: hidden;
 }
 
 .galleryTab {

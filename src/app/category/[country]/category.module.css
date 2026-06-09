@@ -165,6 +165,9 @@
   position: relative;
   aspect-ratio: 1 / 1;
   background: linear-gradient(135deg, var(--border-card), var(--bg-page));
+  border-top-left-radius: 11px;
+  border-top-right-radius: 11px;
+  overflow: hidden;
 }
 
 .imageLink {
