@@ -229,3 +229,129 @@ a {
   padding-bottom: 1rem;
 }
 
+:root {
+  --neon-glow-opacity: 0.22;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    --neon-glow-opacity: 0.55;
+  }
+}
+
+:root.dark {
+  --neon-glow-opacity: 0.55;
+}
+
+/* ==============================
+   Futuristic Neon Gradient Cards
+   ============================== */
+
+/* Base neon card class */
+.neon-card {
+  position: relative;
+  background-color: var(--bg-card-glass) !important;
+  border: 1px solid transparent !important;
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), 
+              box-shadow 0.35s ease, 
+              background-color 0.4s ease;
+  overflow: visible !important;
+}
+
+/* Gradient border overlay */
+.neon-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.5px; /* Border thickness */
+  background: var(--neon-grad, linear-gradient(135deg, #00f0ff, #7f00ff, #ff007f));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 2;
+  opacity: 0.35;
+  transition: opacity 0.3s ease, background 0.3s ease;
+}
+
+/* Neon glow (positioned behind the card) */
+.neon-card::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  background: var(--neon-grad, linear-gradient(135deg, #00f0ff, #7f00ff, #ff007f));
+  filter: blur(14px);
+  opacity: 0;
+  z-index: -1;
+  pointer-events: none;
+  transition: opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Hover active state animations */
+.neon-card:hover {
+  transform: translateY(-4px) scale(1.015);
+  background-color: var(--neon-hover-bg, var(--bg-card)) !important;
+  box-shadow: var(--shadow-hover);
+}
+
+.neon-card:hover::before {
+  opacity: 1;
+}
+
+.neon-card:hover::after {
+  opacity: var(--neon-glow-opacity, 0.45);
+}
+
+/* Specific flag gradients & settings for Category Cards */
+.neon-card-ALE {
+  --neon-grad: linear-gradient(135deg, #ffcc00, #dd0000, #171717);
+  --neon-hover-bg: var(--cc-hover-bg-ALE);
+}
+.neon-card-JAP {
+  --neon-grad: linear-gradient(135deg, #ffffff, #bc002d, #ffffff);
+  --neon-hover-bg: var(--cc-hover-bg-JAP);
+}
+.neon-card-ITA {
+  --neon-grad: linear-gradient(135deg, #009246, #ffffff, #ce2b37);
+  --neon-hover-bg: var(--cc-hover-bg-ITA);
+}
+.neon-card-USA {
+  --neon-grad: linear-gradient(135deg, #3c3b6e, #ffffff, #b22234);
+  --neon-hover-bg: var(--cc-hover-bg-USA);
+}
+.neon-card-FRA {
+  --neon-grad: linear-gradient(135deg, #0055a5, #ffffff, #ef4135);
+  --neon-hover-bg: var(--cc-hover-bg-FRA);
+}
+.neon-card-UK {
+  --neon-grad: linear-gradient(135deg, #00247d, #ffffff, #cf142b);
+  --neon-hover-bg: var(--cc-hover-bg-UK);
+}
+.neon-card-CRO {
+  --neon-grad: linear-gradient(135deg, #ff0000, #ffffff, #171796);
+  --neon-hover-bg: var(--cc-hover-bg-CRO);
+}
+.neon-card-SUE {
+  --neon-grad: linear-gradient(135deg, #006aa7, #fecc00, #006aa7);
+  --neon-hover-bg: var(--cc-hover-bg-SUE);
+}
+.neon-card-ES, .neon-card-ESP {
+  --neon-grad: linear-gradient(135deg, #aa151b, #f1bf00, #aa151b);
+  --neon-hover-bg: var(--cc-hover-bg-ES);
+}
+.neon-card-KR, .neon-card-KOR {
+  --neon-grad: linear-gradient(135deg, #0047a0, #cd2e3a, #ffffff);
+  --neon-hover-bg: var(--cc-hover-bg-KR);
+}
+.neon-card-AUT, .neon-card-AT {
+  --neon-grad: linear-gradient(135deg, #ed2939, #ffffff, #ed2939);
+  --neon-hover-bg: var(--cc-hover-bg-AUT);
+}
+.neon-card-DNK, .neon-card-DK {
+  --neon-grad: linear-gradient(135deg, #c60c30, #ffffff, #c60c30);
+  --neon-hover-bg: var(--cc-hover-bg-DNK);
+}
+
+

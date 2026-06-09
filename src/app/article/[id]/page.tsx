@@ -249,7 +249,7 @@ export default async function ArticlePage({
         <div className={styles.layout}>
           <ArticleGallery id={article.id} imageUrls={imageUrls} frameImageUrls={frameImageUrls} title={article.title} />
 
-          <section className={styles.detailsCard}>
+          <section className={`${styles.detailsCard} neon-card`}>
             <span className={styles.refCode}>
               #MEC-{String(article.id).padStart(4, '0')}
             </span>

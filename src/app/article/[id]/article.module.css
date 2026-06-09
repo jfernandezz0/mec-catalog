@@ -103,7 +103,7 @@
 
 .galleryCard,
 .detailsCard {
-  border: 1px solid var(--border-card-glass);
+  border: 1px solid transparent;
   border-radius: 14px;
   background: var(--bg-card-glass);
   backdrop-filter: blur(12px);

@@ -150,7 +150,7 @@ export default function ArticleCard({
 
   return (
     <article 
-      className={`${styles.card} ${isShareOpen ? styles.cardActiveShare : ''}`}
+      className={`${styles.card} ${isShareOpen ? styles.cardActiveShare : ''} neon-card`}
       style={index !== undefined ? { animationDelay: `${index * 60}ms` } : undefined}
     >
       <div className={styles.imageWrap}>

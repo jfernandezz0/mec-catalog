@@ -103,7 +103,7 @@ export default function ArticleGallery({ id, imageUrls, frameImageUrls = [], tit
   };
 
   return (
-    <section className={styles.galleryCard}>
+    <section className={`${styles.galleryCard} neon-card`}>
       {hasFrameImages && (
         <div className={styles.galleryTabs}>
           <button
