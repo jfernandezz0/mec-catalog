@@ -223,6 +223,7 @@ export default async function CategoryPage({
             hideAvailability={hideAvailability} 
             categoryDiscountPercent={category?.discount_percent}
             generalDiscountPercent={generalDiscountPercent}
+            countryCode={category?.country_code}
           />
         ) : (
           <section className={styles.empty}>

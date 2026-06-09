@@ -24,6 +24,7 @@ type ArticleCardProps = {
   hideAvailability?: boolean;
   categoryDiscountPercent?: number | null;
   generalDiscountPercent?: string;
+  countryCode?: string;
 };
 
 function formatPrice(value: number | string) {
@@ -39,7 +40,8 @@ export default function ArticleCard({
   hidePrices = false, 
   hideAvailability = false,
   categoryDiscountPercent = null,
-  generalDiscountPercent = ''
+  generalDiscountPercent = '',
+  countryCode = ''
 }: ArticleCardProps) {
   const isPriceHidden = hidePrices || article.quantity <= 0;
   const imageUrls = article.image_urls?.filter(Boolean) ?? [];
@@ -148,9 +150,11 @@ export default function ArticleCard({
     }
   };
 
+  const countryUpper = countryCode.toUpperCase();
+
   return (
     <article 
-      className={`${styles.card} ${isShareOpen ? styles.cardActiveShare : ''} neon-card`}
+      className={`${styles.card} ${isShareOpen ? styles.cardActiveShare : ''} neon-card ${countryUpper ? `neon-card-${countryUpper}` : ''}`}
       style={index !== undefined ? { animationDelay: `${index * 60}ms` } : undefined}
     >
       <div className={styles.imageWrap}>

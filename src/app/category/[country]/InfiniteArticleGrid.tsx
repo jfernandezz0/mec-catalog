@@ -23,6 +23,7 @@ type InfiniteArticleGridProps = {
   hideAvailability?: boolean;
   categoryDiscountPercent?: number | null;
   generalDiscountPercent?: string;
+  countryCode?: string;
 };
 
 export default function InfiniteArticleGrid({ 
@@ -30,7 +31,8 @@ export default function InfiniteArticleGrid({
   hidePrices = false, 
   hideAvailability = false,
   categoryDiscountPercent = null,
-  generalDiscountPercent = ''
+  generalDiscountPercent = '',
+  countryCode = ''
 }: InfiniteArticleGridProps) {
   const [visibleCount, setVisibleCount] = useState(12);
   const [sortBy, setSortBy] = useState<string>('default');
@@ -167,6 +169,7 @@ export default function InfiniteArticleGrid({
             hideAvailability={hideAvailability} 
             categoryDiscountPercent={categoryDiscountPercent}
             generalDiscountPercent={generalDiscountPercent}
+            countryCode={countryCode}
           />
         ))}
       </section>

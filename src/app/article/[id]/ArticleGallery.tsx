@@ -11,9 +11,10 @@ type ArticleGalleryProps = {
   imageUrls: string[];
   frameImageUrls?: string[];
   title: string;
+  countryCode?: string;
 };
 
-export default function ArticleGallery({ id, imageUrls, frameImageUrls = [], title }: ArticleGalleryProps) {
+export default function ArticleGallery({ id, imageUrls, frameImageUrls = [], title, countryCode = '' }: ArticleGalleryProps) {
   const [activeImageTab, setActiveImageTab] = useState<'vehicle' | 'frame'>('vehicle');
   const [currentImage, setCurrentImage] = useState(0);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
@@ -102,8 +103,10 @@ export default function ArticleGallery({ id, imageUrls, frameImageUrls = [], tit
     }
   };
 
+  const countryUpper = countryCode.toUpperCase();
+
   return (
-    <section className={`${styles.galleryCard} neon-card`}>
+    <section className={`${styles.galleryCard} neon-card ${countryUpper ? `neon-card-${countryUpper}` : ''}`}>
       {hasFrameImages && (
         <div className={styles.galleryTabs}>
           <button
