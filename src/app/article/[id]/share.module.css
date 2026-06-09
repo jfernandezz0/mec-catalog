@@ -200,9 +200,7 @@
 
 @media (max-width: 480px) {
   .dropdown {
-    width: calc(100vw - 36px);
-    right: 50%;
-    transform: translateX(50%);
-    transform-origin: bottom center;
+    width: 235px;
+    right: 0;
   }
 }
