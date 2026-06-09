@@ -12,6 +12,7 @@ type Article = {
   price: number | string;
   quantity: number;
   image_urls: string[] | null;
+  frame_image_urls?: string[] | null;
   discount_type?: string | null;
   discount_value?: number | null;
 };

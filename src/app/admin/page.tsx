@@ -24,6 +24,7 @@ type Article = {
   price: number | string;
   quantity: number;
   image_urls: string[] | null;
+  frame_image_urls?: string[] | null;
   sort_order: number;
   contact_clicks?: number;
   share_clicks?: number;
@@ -151,6 +152,7 @@ function formatPrice(value: number | string) {
 export default function AdminPage() {
   const isProduction = typeof window !== 'undefined' && window.location.hostname !== 'localhost' && !window.location.hostname.includes('127.0.0.1');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const frameFileInputRef = useRef<HTMLInputElement>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [articles, setArticles] = useState<Article[]>([]);
   const [activeTab, setActiveTab] = useState<'catalog' | 'create' | 'edit' | 'categories' | 'import' | 'config' | 'sales' | 'sales-create' | 'analytics'>('catalog');
@@ -214,6 +216,11 @@ export default function AdminPage() {
   const [editingArticle, setEditingArticle] = useState<Article | null>(null);
   const [existingImageUrls, setExistingImageUrls] = useState<string[]>([]);
   const [imagesToDelete, setImagesToDelete] = useState<string[]>([]);
+
+  // Frame (cuadro) image states
+  const [frameFiles, setFrameFiles] = useState<File[]>([]);
+  const [existingFrameImageUrls, setExistingFrameImageUrls] = useState<string[]>([]);
+  const [frameImagesToDelete, setFrameImagesToDelete] = useState<string[]>([]);
 
   // Auth states
   const [user, setUser] = useState<User | null>(null);
@@ -847,7 +854,7 @@ export default function AdminPage() {
     setLoadingArticles(true);
     const { data, error } = await supabase
       .from('articles')
-      .select('id, category_id, title, description, price, quantity, image_urls, sort_order, contact_clicks, share_clicks, views, discount_type, discount_value')
+      .select('id, category_id, title, description, price, quantity, image_urls, frame_image_urls, sort_order, contact_clicks, share_clicks, views, discount_type, discount_value')
       .order('sort_order', { ascending: true })
       .order('id', { ascending: true });
 
@@ -856,7 +863,7 @@ export default function AdminPage() {
         setHasDiscountColumns(false);
         const { data: fallbackData, error: fallbackError } = await supabase
           .from('articles')
-          .select('id, category_id, title, description, price, quantity, image_urls, sort_order, contact_clicks, share_clicks, views')
+          .select('id, category_id, title, description, price, quantity, image_urls, frame_image_urls, sort_order, contact_clicks, share_clicks, views')
           .order('sort_order', { ascending: true })
           .order('id', { ascending: true });
         if (fallbackError) {
@@ -888,15 +895,25 @@ export default function AdminPage() {
     setFiles(Array.from(event.target.files ?? []));
   }
 
+  function updateFrameFiles(event: ChangeEvent<HTMLInputElement>) {
+    setFrameFiles(Array.from(event.target.files ?? []));
+  }
+
   function resetForm() {
     setFormState(initialFormState);
     setFiles([]);
+    setFrameFiles([]);
     setEditingArticle(null);
     setExistingImageUrls([]);
     setImagesToDelete([]);
+    setExistingFrameImageUrls([]);
+    setFrameImagesToDelete([]);
 
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
+    }
+    if (frameFileInputRef.current) {
+      frameFileInputRef.current.value = '';
     }
   }
 
@@ -945,8 +962,11 @@ export default function AdminPage() {
       discountValue: article.discount_value !== null && article.discount_value !== undefined ? String(article.discount_value) : '',
     });
     setExistingImageUrls(article.image_urls ?? []);
+    setExistingFrameImageUrls(article.frame_image_urls ?? []);
     setImagesToDelete([]);
+    setFrameImagesToDelete([]);
     setFiles([]);
+    setFrameFiles([]);
     setActiveTab('edit');
   }
 
@@ -955,8 +975,23 @@ export default function AdminPage() {
     setImagesToDelete((current) => [...current, url]);
   }
 
+  function handleDeleteExistingFrameImage(url: string) {
+    setExistingFrameImageUrls((current) => current.filter((u) => u !== url));
+    setFrameImagesToDelete((current) => [...current, url]);
+  }
+
   function moveImage(index: number, direction: 'left' | 'right') {
     setExistingImageUrls((current) => {
+      const next = [...current];
+      const swapIndex = direction === 'left' ? index - 1 : index + 1;
+      if (swapIndex < 0 || swapIndex >= next.length) return current;
+      [next[index], next[swapIndex]] = [next[swapIndex], next[index]];
+      return next;
+    });
+  }
+
+  function moveFrameImage(index: number, direction: 'left' | 'right') {
+    setExistingFrameImageUrls((current) => {
       const next = [...current];
       const swapIndex = direction === 'left' ? index - 1 : index + 1;
       if (swapIndex < 0 || swapIndex >= next.length) return current;
@@ -1093,6 +1128,33 @@ export default function AdminPage() {
     return imageUrls;
   }
 
+  async function uploadFrameImages() {
+    const imageUrls: string[] = [];
+
+    for (const file of frameFiles) {
+      const compressedFile = await compressImage(file);
+      const filePath = getSafeFilePath(compressedFile);
+      const { error } = await supabase.storage
+        .from('product-images')
+        .upload(filePath, compressedFile, {
+          cacheControl: '3600',
+          upsert: false,
+        });
+
+      if (error) {
+        throw new Error(`Could not upload ${file.name}: ${error.message}`);
+      }
+
+      const { data } = supabase.storage
+        .from('product-images')
+        .getPublicUrl(filePath);
+
+      imageUrls.push(data.publicUrl);
+    }
+
+    return imageUrls;
+  }
+
   async function handleCreateSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -1125,6 +1187,7 @@ export default function AdminPage() {
 
     try {
       const imageUrls = await uploadImages();
+      const frameImageUrls = await uploadFrameImages();
       const insertData: any = {
         category_id: Number(formState.categoryId),
         title: `${formState.marca.trim()} – ${formState.modelo.trim()}`,
@@ -1132,6 +1195,7 @@ export default function AdminPage() {
         price,
         quantity,
         image_urls: imageUrls,
+        frame_image_urls: frameImageUrls,
       };
 
       if (hasDiscountColumns) {
@@ -1197,6 +1261,9 @@ export default function AdminPage() {
       const newUrls = await uploadImages();
       const finalImageUrls = [...existingImageUrls, ...newUrls];
 
+      const newFrameUrls = await uploadFrameImages();
+      const finalFrameImageUrls = [...existingFrameImageUrls, ...newFrameUrls];
+
       const updateData: any = {
         category_id: Number(formState.categoryId),
         title: `${formState.marca.trim()} – ${formState.modelo.trim()}`,
@@ -1204,6 +1271,7 @@ export default function AdminPage() {
         price,
         quantity,
         image_urls: finalImageUrls,
+        frame_image_urls: finalFrameImageUrls,
       };
 
       if (hasDiscountColumns) {
@@ -1220,8 +1288,9 @@ export default function AdminPage() {
         throw new Error(error.message);
       }
 
-      if (imagesToDelete.length > 0) {
-        await deleteStorageImages(imagesToDelete);
+      const allImagesToDelete = [...imagesToDelete, ...frameImagesToDelete];
+      if (allImagesToDelete.length > 0) {
+        await deleteStorageImages(allImagesToDelete);
       }
 
       alert('Article updated successfully.');
@@ -1258,7 +1327,7 @@ export default function AdminPage() {
         throw new Error(error.message);
       }
 
-      const urlsToDelete = editingArticle.image_urls ?? [];
+      const urlsToDelete = [...(editingArticle.image_urls ?? []), ...(editingArticle.frame_image_urls ?? [])];
       if (urlsToDelete.length > 0) {
         await deleteStorageImages(urlsToDelete);
       }
@@ -2409,87 +2478,181 @@ export default function AdminPage() {
             <div className={styles.section}>
               <h2 className={styles.sectionTitle}>Imágenes</h2>
 
-              {/* Existing images manager (only in Edit mode) */}
-              {activeTab === 'edit' && existingImageUrls.length > 0 && (
-                  <div className={styles.existingImages}>
-                  <span className={styles.labelRow}>
-                    <span>Imágenes guardadas</span>
-                    <span className={styles.hint}>
-                      ← → para reordenar · × para eliminar
-                    </span>
-                  </span>
-                  <div className={styles.imageGrid}>
-                    {existingImageUrls.map((url, index) => (
-                      <div key={url} className={styles.thumbnailWrapper}>
-                        <Image
-                          src={url}
-                          alt={`Imagen ${index + 1}`}
-                          fill
-                          sizes="80px"
-                          className={styles.thumbnail}
-                        />
-                        <button
-                          type="button"
-                          className={styles.deleteImageBadge}
-                          onClick={() => handleDeleteExistingImage(url)}
-                          title="Eliminar imagen"
-                        >
-                          ×
-                        </button>
-                        <div className={styles.imageMoveButtons}>
-                          <button
-                            type="button"
-                            className={styles.imageMoveBtn}
-                            onClick={() => moveImage(index, 'left')}
-                            disabled={index === 0}
-                            title="Mover a la izquierda"
-                          >
-                            ←
-                          </button>
-                          <button
-                            type="button"
-                            className={styles.imageMoveBtn}
-                            onClick={() => moveImage(index, 'right')}
-                            disabled={index === existingImageUrls.length - 1}
-                            title="Mover a la derecha"
-                          >
-                            →
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+              <div className={styles.imageColumnsWrapper}>
+                {/* Left column: Vehicle images */}
+                <div className={styles.imageColumn}>
+                  <span className={styles.imageColumnTitle}>🚗 Vehículo</span>
 
-              <label className={styles.uploadBox}>
-                <span className={styles.labelRow}>
-                  <span>
-                    {activeTab === 'edit'
-                      ? 'Subir nuevas fotos'
-                      : 'Fotos del producto'}
-                  </span>
-                  <span className={styles.hint}>{files.length} seleccionadas</span>
-                </span>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={updateFiles}
-                  disabled={loading}
-                  className={styles.fileInput}
-                />
-                {files.length > 0 && (
-                  <ul className={styles.fileList}>
-                    {files.map((file) => (
-                      <li key={`${file.name}-${file.size}`}>
-                        {file.name} ({(file.size / 1024).toFixed(1)} KB)
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </label>
+                  {/* Existing vehicle images (only in Edit mode) */}
+                  {activeTab === 'edit' && existingImageUrls.length > 0 && (
+                    <div className={styles.existingImages}>
+                      <span className={styles.labelRow}>
+                        <span>Imágenes guardadas</span>
+                        <span className={styles.hint}>
+                          ← → · ×
+                        </span>
+                      </span>
+                      <div className={styles.imageGrid}>
+                        {existingImageUrls.map((url, index) => (
+                          <div key={url} className={styles.thumbnailWrapper}>
+                            <Image
+                              src={url}
+                              alt={`Imagen ${index + 1}`}
+                              fill
+                              sizes="80px"
+                              className={styles.thumbnail}
+                            />
+                            <button
+                              type="button"
+                              className={styles.deleteImageBadge}
+                              onClick={() => handleDeleteExistingImage(url)}
+                              title="Eliminar imagen"
+                            >
+                              ×
+                            </button>
+                            <div className={styles.imageMoveButtons}>
+                              <button
+                                type="button"
+                                className={styles.imageMoveBtn}
+                                onClick={() => moveImage(index, 'left')}
+                                disabled={index === 0}
+                                title="Mover a la izquierda"
+                              >
+                                ←
+                              </button>
+                              <button
+                                type="button"
+                                className={styles.imageMoveBtn}
+                                onClick={() => moveImage(index, 'right')}
+                                disabled={index === existingImageUrls.length - 1}
+                                title="Mover a la derecha"
+                              >
+                                →
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <label className={styles.uploadBox}>
+                    <span className={styles.labelRow}>
+                      <span>
+                        {activeTab === 'edit'
+                          ? 'Subir nuevas fotos'
+                          : 'Fotos del vehículo'}
+                      </span>
+                      <span className={styles.hint}>{files.length} seleccionadas</span>
+                    </span>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={updateFiles}
+                      disabled={loading}
+                      className={styles.fileInput}
+                    />
+                    {files.length > 0 && (
+                      <ul className={styles.fileList}>
+                        {files.map((file) => (
+                          <li key={`${file.name}-${file.size}`}>
+                            {file.name} ({(file.size / 1024).toFixed(1)} KB)
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </label>
+                </div>
+
+                {/* Right column: Frame/cuadro images */}
+                <div className={styles.imageColumn}>
+                  <span className={styles.imageColumnTitle}>🖼️ Cuadro</span>
+
+                  {/* Existing frame images (only in Edit mode) */}
+                  {activeTab === 'edit' && existingFrameImageUrls.length > 0 && (
+                    <div className={styles.existingImages}>
+                      <span className={styles.labelRow}>
+                        <span>Imágenes guardadas</span>
+                        <span className={styles.hint}>
+                          ← → · ×
+                        </span>
+                      </span>
+                      <div className={styles.imageGrid}>
+                        {existingFrameImageUrls.map((url, index) => (
+                          <div key={url} className={styles.thumbnailWrapper}>
+                            <Image
+                              src={url}
+                              alt={`Cuadro ${index + 1}`}
+                              fill
+                              sizes="80px"
+                              className={styles.thumbnail}
+                            />
+                            <button
+                              type="button"
+                              className={styles.deleteImageBadge}
+                              onClick={() => handleDeleteExistingFrameImage(url)}
+                              title="Eliminar imagen"
+                            >
+                              ×
+                            </button>
+                            <div className={styles.imageMoveButtons}>
+                              <button
+                                type="button"
+                                className={styles.imageMoveBtn}
+                                onClick={() => moveFrameImage(index, 'left')}
+                                disabled={index === 0}
+                                title="Mover a la izquierda"
+                              >
+                                ←
+                              </button>
+                              <button
+                                type="button"
+                                className={styles.imageMoveBtn}
+                                onClick={() => moveFrameImage(index, 'right')}
+                                disabled={index === existingFrameImageUrls.length - 1}
+                                title="Mover a la derecha"
+                              >
+                                →
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <label className={styles.uploadBox}>
+                    <span className={styles.labelRow}>
+                      <span>
+                        {activeTab === 'edit'
+                          ? 'Subir nuevas fotos'
+                          : 'Fotos del cuadro'}
+                      </span>
+                      <span className={styles.hint}>{frameFiles.length} seleccionadas</span>
+                    </span>
+                    <input
+                      ref={frameFileInputRef}
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={updateFrameFiles}
+                      disabled={loading}
+                      className={styles.fileInput}
+                    />
+                    {frameFiles.length > 0 && (
+                      <ul className={styles.fileList}>
+                        {frameFiles.map((file) => (
+                          <li key={`frame-${file.name}-${file.size}`}>
+                            {file.name} ({(file.size / 1024).toFixed(1)} KB)
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </label>
+                </div>
+              </div>
             </div>
 
             <div className={styles.actions}>

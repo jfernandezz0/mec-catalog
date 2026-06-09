@@ -9,12 +9,17 @@ import styles from './article.module.css';
 type ArticleGalleryProps = {
   id: number;
   imageUrls: string[];
+  frameImageUrls?: string[];
   title: string;
 };
 
-export default function ArticleGallery({ id, imageUrls, title }: ArticleGalleryProps) {
+export default function ArticleGallery({ id, imageUrls, frameImageUrls = [], title }: ArticleGalleryProps) {
+  const [activeImageTab, setActiveImageTab] = useState<'vehicle' | 'frame'>('vehicle');
   const [currentImage, setCurrentImage] = useState(0);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  
+  const hasFrameImages = frameImageUrls.length > 0;
+  const displayedImages = activeImageTab === 'vehicle' ? imageUrls : frameImageUrls;
   
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -29,18 +34,24 @@ export default function ArticleGallery({ id, imageUrls, title }: ArticleGalleryP
     registerPageView();
   }, [id]);
 
-  const imageUrl = imageUrls[currentImage];
-  const hasMultipleImages = imageUrls.length > 1;
+  function handleTabChange(tab: 'vehicle' | 'frame') {
+    if (tab === activeImageTab) return;
+    setActiveImageTab(tab);
+    setCurrentImage(0);
+  }
+
+  const imageUrl = displayedImages[currentImage];
+  const hasMultipleImages = displayedImages.length > 1;
 
   function showPreviousImage() {
     setCurrentImage((current) =>
-      current === 0 ? imageUrls.length - 1 : current - 1,
+      current === 0 ? displayedImages.length - 1 : current - 1,
     );
   }
 
   function showNextImage() {
     setCurrentImage((current) =>
-      current === imageUrls.length - 1 ? 0 : current + 1,
+      current === displayedImages.length - 1 ? 0 : current + 1,
     );
   }
 
@@ -93,6 +104,25 @@ export default function ArticleGallery({ id, imageUrls, title }: ArticleGalleryP
 
   return (
     <section className={styles.galleryCard}>
+      {hasFrameImages && (
+        <div className={styles.galleryTabs}>
+          <button
+            type="button"
+            className={`${styles.galleryTab} ${activeImageTab === 'vehicle' ? styles.galleryTabActive : ''}`}
+            onClick={() => handleTabChange('vehicle')}
+          >
+            🚗 Vehículo MOC
+          </button>
+          <button
+            type="button"
+            className={`${styles.galleryTab} ${activeImageTab === 'frame' ? styles.galleryTabActive : ''}`}
+            onClick={() => handleTabChange('frame')}
+          >
+            🖼️ Expositor con Luz
+          </button>
+        </div>
+      )}
+
       <div 
         className={`${styles.heroImage} cursor-zoom-in`}
         onTouchStart={handleTouchStart}
@@ -140,7 +170,7 @@ export default function ArticleGallery({ id, imageUrls, title }: ArticleGalleryP
                   </svg>
                 </button>
                 <span className={styles.imageCount} onClick={(e) => e.stopPropagation()}>
-                  {currentImage + 1}/{imageUrls.length}
+                  {currentImage + 1}/{displayedImages.length}
                 </span>
               </>
             )}
@@ -155,7 +185,7 @@ export default function ArticleGallery({ id, imageUrls, title }: ArticleGalleryP
 
       {hasMultipleImages && (
         <div className={styles.thumbs} aria-label="Image thumbnails">
-          {imageUrls.map((url, index) => (
+          {displayedImages.map((url, index) => (
             <button
               key={`${url}-${index}`}
               type="button"
@@ -179,7 +209,7 @@ export default function ArticleGallery({ id, imageUrls, title }: ArticleGalleryP
 
       {isLightboxOpen && (
         <Lightbox
-          imageUrls={imageUrls}
+          imageUrls={displayedImages}
           initialIndex={currentImage}
           onClose={() => setIsLightboxOpen(false)}
           title={title}

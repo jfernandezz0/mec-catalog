@@ -20,6 +20,7 @@ type Article = {
   price: number | string;
   quantity: number;
   image_urls: string[] | null;
+  frame_image_urls?: string[] | null;
   discount_type?: string | null;
   discount_value?: number | null;
 };
@@ -103,14 +104,14 @@ export default async function ArticlePage({
   try {
     const { data, error } = await supabase
       .from('articles')
-      .select('id, category_id, title, description, price, quantity, image_urls, discount_type, discount_value')
+      .select('id, category_id, title, description, price, quantity, image_urls, frame_image_urls, discount_type, discount_value')
       .eq('id', articleId)
       .maybeSingle<Article>();
     if (error) {
       if (error.message.includes('discount_type') || error.message.includes('discount_value')) {
         const { data: fallbackData, error: fallbackError } = await supabase
           .from('articles')
-          .select('id, category_id, title, description, price, quantity, image_urls')
+          .select('id, category_id, title, description, price, quantity, image_urls, frame_image_urls')
           .eq('id', articleId)
           .maybeSingle<Article>();
         article = fallbackData ? { ...fallbackData, discount_type: null, discount_value: null } : null;
@@ -220,6 +221,7 @@ export default async function ArticlePage({
   const mecLogo = category ? await getMECLogo(category.country_code) : null;
 
   const imageUrls = article.image_urls?.filter(Boolean) ?? [];
+  const frameImageUrls = article.frame_image_urls?.filter(Boolean) ?? [];
 
   return (
     <main className={styles.page}>
@@ -245,7 +247,7 @@ export default async function ArticlePage({
           </header>
 
         <div className={styles.layout}>
-          <ArticleGallery id={article.id} imageUrls={imageUrls} title={article.title} />
+          <ArticleGallery id={article.id} imageUrls={imageUrls} frameImageUrls={frameImageUrls} title={article.title} />
 
           <section className={styles.detailsCard}>
             <span className={styles.refCode}>

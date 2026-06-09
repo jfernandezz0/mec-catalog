@@ -2601,3 +2601,41 @@
   width: 100%;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
 }
+
+/* Dual column layout for vehicle and frame images */
+.imageColumnsWrapper {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-top: 12px;
+}
+
+.imageColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: #fafafa;
+  border: 1px solid #e5e5e5;
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.imageColumnTitle {
+  font-size: 15px;
+  font-weight: 700;
+  color: #171717;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1.5px solid #e5e5e5;
+  padding-bottom: 8px;
+  margin-bottom: 4px;
+}
+
+@media (max-width: 768px) {
+  .imageColumnsWrapper {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
+

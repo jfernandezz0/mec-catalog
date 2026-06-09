@@ -643,4 +643,47 @@
   gap: 4px;
 }
 
+/* Gallery tabs for dual image types */
+.galleryTabs {
+  display: flex;
+  border-bottom: 1px solid var(--border-card);
+}
 
+.galleryTab {
+  flex: 1;
+  padding: 14px 16px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 200ms ease;
+  position: relative;
+}
+
+.galleryTab::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 16px;
+  right: 16px;
+  height: 2px;
+  background: transparent;
+  border-radius: 2px 2px 0 0;
+  transition: background 200ms ease;
+}
+
+.galleryTab:hover {
+  color: var(--text-primary);
+  background: var(--bg-card-glass);
+}
+
+.galleryTabActive {
+  color: var(--text-primary);
+  font-weight: 800;
+}
+
+.galleryTabActive::after {
+  background: var(--text-primary);
+}
