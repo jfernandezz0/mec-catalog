@@ -22,7 +22,7 @@
 .backLink {
   display: inline-flex;
   align-items: center;
-  border: 1px solid var(--border-card-glass);
+  border: 1px solid transparent;
   border-radius: 999px;
   background: var(--bg-card-glass);
   backdrop-filter: blur(8px);

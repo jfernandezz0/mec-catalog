@@ -210,7 +210,7 @@ export default async function CategoryPage({
             )}
 
             <div className={styles.topBar}>
-              <Link href="/" className={styles.backLink}>
+              <Link href="/" className={`${styles.backLink} neon-card ${category.country_code ? `neon-card-${category.country_code.toUpperCase()}` : ''}`}>
                 ← Principal
               </Link>
             </div>

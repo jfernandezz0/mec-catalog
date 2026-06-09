@@ -13,7 +13,7 @@ export default function CategoryError({ error, reset }: CategoryErrorProps) {
     <main className={styles.page}>
       <div className={styles.shell}>
         <div className={styles.topBar}>
-          <Link href="/" className={styles.backLink}>
+          <Link href="/" className={`${styles.backLink} neon-card`}>
             ← Principal
           </Link>
         </div>

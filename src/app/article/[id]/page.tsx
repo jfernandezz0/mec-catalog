@@ -220,6 +220,8 @@ export default async function ArticlePage({
 
   const mecLogo = category ? await getMECLogo(category.country_code) : null;
 
+  const countryUpper = category?.country_code?.toUpperCase() ?? '';
+
   const imageUrls = article.image_urls?.filter(Boolean) ?? [];
   const frameImageUrls = article.frame_image_urls?.filter(Boolean) ?? [];
 
@@ -240,7 +242,7 @@ export default async function ArticlePage({
               </div>
             )}
             <div className={styles.topBar} style={{ marginTop: '16px', marginBottom: 0 }}>
-              <Link href={categoryHref} className={styles.backLink}>
+              <Link href={categoryHref} className={`${styles.backLink} neon-card ${countryUpper ? `neon-card-${countryUpper}` : ''}`}>
                 ← Volver
               </Link>
             </div>
