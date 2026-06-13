@@ -141,7 +141,7 @@ export default function ArticleGallery({ id, imageUrls, frameImageUrls = [], tit
               fill
               priority
               sizes="(max-width: 860px) 100vw, 58vw"
-              className={styles.image}
+              className={`${styles.image} ${activeImageTab === 'frame' ? styles.imageFrame : ''}`}
             />
 
             {hasMultipleImages && (
