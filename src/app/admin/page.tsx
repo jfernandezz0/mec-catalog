@@ -4941,11 +4941,6 @@ ALTER TABLE categories ADD COLUMN IF NOT EXISTS discount_percent INTEGER CHECK (
                     <td>{catName}</td>
                     <td>
                       <div style={{ fontWeight: '600' }}>{article.title}</div>
-                      {article.description && (
-                        <div style={{ fontSize: '9px', color: '#555', marginTop: '2px', lineHeight: '1.2' }}>
-                          {article.description.substring(0, 100)}{article.description.length > 100 ? '...' : ''}
-                        </div>
-                      )}
                     </td>
                     <td style={{ textAlign: 'center', fontWeight: article.quantity === 0 ? 'bold' : 'normal', color: article.quantity === 0 ? '#cc0000' : '#000' }}>
                       {article.quantity} ud.
