@@ -1915,7 +1915,7 @@ export default function AdminPage() {
           }
           @page {
             size: A4;
-            margin: 15mm;
+            margin: 5mm;
           }
         }
       `}} />
@@ -4883,7 +4883,7 @@ ALTER TABLE categories ADD COLUMN IF NOT EXISTS discount_percent INTEGER CHECK (
 
     {/* PDF Container (only visible during print, pre-loaded in screen mode offscreen) */}
     <div className="print-only">
-      <div style={{ padding: '10px', fontFamily: 'system-ui, sans-serif' }}>
+      <div style={{ padding: '0px', fontFamily: 'system-ui, sans-serif' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', borderBottom: '2px solid #000', paddingBottom: '8px', marginBottom: '16px' }}>
           <div>
             <h1 style={{ fontSize: '20px', margin: 0, fontWeight: 'bold', color: '#000' }}>Control de Inventario</h1>
@@ -4951,7 +4951,7 @@ ALTER TABLE categories ADD COLUMN IF NOT EXISTS discount_percent INTEGER CHECK (
                           <img
                             src={primaryImageUrl}
                             alt={article.title}
-                            style={{ width: '40px', height: '40px', objectFit: 'contain', border: '1px solid #eee', borderRadius: '4px' }}
+                            style={{ width: '80px', height: '80px', objectFit: 'contain', border: '1px solid #eee', borderRadius: '4px' }}
                           />
                         ) : (
                           <span style={{ fontSize: '9px', color: '#999' }}>Sin foto</span>
