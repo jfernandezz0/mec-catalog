@@ -4951,7 +4951,7 @@ ALTER TABLE categories ADD COLUMN IF NOT EXISTS discount_percent INTEGER CHECK (
                           <img
                             src={primaryImageUrl}
                             alt={article.title}
-                            style={{ width: '80px', height: '80px', objectFit: 'contain', border: '1px solid #eee', borderRadius: '4px' }}
+                            style={{ width: '100%', maxWidth: '160px', height: 'auto', maxHeight: '120px', objectFit: 'contain', border: '1px solid #eee', borderRadius: '4px', display: 'block', margin: '0 auto' }}
                           />
                         ) : (
                           <span style={{ fontSize: '9px', color: '#999' }}>Sin foto</span>
