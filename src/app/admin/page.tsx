@@ -1875,7 +1875,9 @@ export default function AdminPage() {
           }
         }
         @media print {
-          .no-print {
+          .no-print,
+          .fixed,
+          [class*="fixed"] {
             display: none !important;
           }
           .print-only {
