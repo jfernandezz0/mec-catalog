@@ -4904,11 +4904,11 @@ ALTER TABLE categories ADD COLUMN IF NOT EXISTS discount_percent INTEGER CHECK (
           <thead>
             <tr>
               <th style={{ width: '10%' }}>ID</th>
-              <th style={{ width: '25%' }}>Categoría / País</th>
+              <th style={{ width: '20%' }}>Categoría / País</th>
               <th>Nombre del Artículo</th>
               <th style={{ width: '10%', textAlign: 'center' }}>Stock</th>
-              {listShowPhotos && <th style={{ width: '12%', textAlign: 'center' }}>Foto</th>}
-              {listShowPrices && <th style={{ width: '18%', textAlign: 'right' }}>Precio</th>}
+              {listShowPhotos && <th style={{ width: '26%', textAlign: 'center' }}>Foto</th>}
+              {listShowPrices && <th style={{ width: '9%', textAlign: 'right' }}>Precio</th>}
             </tr>
           </thead>
           <tbody>
