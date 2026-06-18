@@ -100,6 +100,24 @@ export default function ShareButtons({ id, title }: ShareButtonsProps) {
     }, 800);
   };
 
+  const handleShare = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (mounted && navigator.share) {
+      try {
+        await navigator.share({
+          title: title,
+          text: `Mira este artículo en MiniEngines Creations: ${title}`,
+          url: shareUrl,
+        });
+        registerShareClick();
+      } catch (err) {
+        console.log('Error sharing natively:', err);
+      }
+    } else {
+      setIsOpen(!isOpen);
+    }
+  };
+
   return (
     <div className={styles.container} ref={containerRef}>
       <div className={styles.buttonRow}>
@@ -158,7 +176,7 @@ export default function ShareButtons({ id, title }: ShareButtonsProps) {
 
         {/* iOS Share Trigger Button */}
         <button
-          onClick={() => setIsOpen(!isOpen)}
+          onClick={handleShare}
           className={`${styles.circleBtn} ${styles.shareBtn} ${isOpen ? styles.shareBtnActive : ''}`}
           title="Compartir artículo"
           aria-expanded={isOpen}
