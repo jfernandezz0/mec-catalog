@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase';
 import CategoryCard from './CategoryCard';
 import Image from 'next/image';
+import SearchBar from './components/SearchBar';
 
 import GlobeWrapper from './components/GlobeWrapper';
 
@@ -42,34 +43,55 @@ function Instagram({ size = 24, ...props }: IconProps) {
 }
 
 export default async function Home() {
-  // Fetch categories with their article count, filtering hidden categories if the field exists.
+  // Fetch categories with their article count and settings in parallel
   let categoryList: Category[] = [];
   let shouldFilterVisibility = false;
+  let settingsData = null;
+  let settingsError = null;
 
-  const { data: categories, error } = await supabase
-    .from('categories')
-    .select('id, name, country_code, is_visible, articles(count)')
-    .order('id', { ascending: true });
+  try {
+    const categoriesPromise = supabase
+      .from('categories')
+      .select('id, name, country_code, is_visible, articles(count)')
+      .order('id', { ascending: true });
 
-  if (error) {
-    if (error.message.includes('is_visible')) {
-      const { data: fallbackCategories, error: fallbackError } = await supabase
-        .from('categories')
-        .select('id, name, country_code, articles(count)')
-        .order('id', { ascending: true });
+    const settingsPromise = supabase
+      .from('settings')
+      .select('key, value');
 
-      if (fallbackError) {
-        console.error('Fallback error al cargar categorías:', JSON.stringify(fallbackError, null, 2));
+    const [categoriesResult, settingsResult] = await Promise.all([
+      categoriesPromise,
+      settingsPromise
+    ]);
+
+    let categories = categoriesResult.data;
+    let error = categoriesResult.error;
+
+    if (error) {
+      if (error.message.includes('is_visible')) {
+        const { data: fallbackCategories, error: fallbackError } = await supabase
+          .from('categories')
+          .select('id, name, country_code, articles(count)')
+          .order('id', { ascending: true });
+
+        if (fallbackError) {
+          console.error('Fallback error al cargar categorías:', JSON.stringify(fallbackError, null, 2));
+        }
+
+        categoryList = fallbackCategories ?? [];
+      } else {
+        console.error('Detalle del error de red:', JSON.stringify(error, null, 2));
+        categoryList = categories ?? [];
       }
-
-      categoryList = fallbackCategories ?? [];
     } else {
-      console.error('Detalle del error de red:', JSON.stringify(error, null, 2));
       categoryList = categories ?? [];
+      shouldFilterVisibility = true;
     }
-  } else {
-    categoryList = categories ?? [];
-    shouldFilterVisibility = true;
+
+    settingsData = settingsResult.data;
+    settingsError = settingsResult.error;
+  } catch (err) {
+    console.error('Error loading home data:', err);
   }
 
   if (shouldFilterVisibility) {
@@ -82,6 +104,15 @@ export default async function Home() {
     const countB = Array.isArray(b.articles) ? b.articles[0]?.count ?? 0 : 0;
     return countB - countA;
   });
+
+  // Parse settings
+  let hidePrices = false;
+  let generalDiscountPercent = '';
+  if (!settingsError && settingsData) {
+    const settingsMap = new Map(settingsData.map((s) => [s.key, s.value]));
+    hidePrices = settingsMap.get('hide_prices') === 'true';
+    generalDiscountPercent = settingsMap.get('general_discount_percent') || '';
+  }
 
   return (
     <main className="min-h-screen font-sans bg-[color:var(--bg-page)] text-[color:var(--text-primary)] pb-12">
@@ -108,6 +139,8 @@ export default async function Home() {
       </div>
 
       <div className="max-w-2xl mx-auto px-6">
+        <SearchBar hidePrices={hidePrices} generalDiscountPercent={generalDiscountPercent} />
+
         <section>
           <h2 className="text-lg font-semibold mb-4 text-center text-[color:var(--text-primary)]">Listado de creaciones por origen</h2>
           {/* 2 columns on mobile, 4 on md+ */}
