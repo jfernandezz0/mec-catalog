@@ -160,7 +160,6 @@ export default function SearchBar({
                   const categoryName = category ? category.name : '';
                   
                   // Calculate discount
-                  const isPriceHidden = hidePrices || article.quantity <= 0;
                   const discountInfo = calculateDiscount(
                     article.price,
                     article.discount_type,
@@ -209,7 +208,11 @@ export default function SearchBar({
 
                         {/* Price & Stock status */}
                         <div className="text-right flex-shrink-0">
-                          {!isPriceHidden ? (
+                          {article.quantity <= 0 ? (
+                            <span className="text-xs font-semibold px-2 py-0.5 rounded bg-red-500/10 text-red-500">
+                              Agotado
+                            </span>
+                          ) : !hidePrices ? (
                             <div className="flex flex-col items-end">
                               {hasDiscount && (
                                 <span className="text-[10px] font-bold text-red-500 line-through">
@@ -221,8 +224,8 @@ export default function SearchBar({
                               </span>
                             </div>
                           ) : (
-                            <span className="text-xs font-semibold px-2 py-0.5 rounded bg-red-500/10 text-red-500">
-                              Agotado
+                            <span className="text-xs font-semibold px-2 py-0.5 rounded bg-green-500/10 text-green-500">
+                              Disponible
                             </span>
                           )}
                         </div>
