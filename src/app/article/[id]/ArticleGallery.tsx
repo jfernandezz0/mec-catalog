@@ -139,7 +139,7 @@ export default function ArticleGallery({ id, imageUrls, frameImageUrls = [], tit
               src={imageUrl}
               alt={`${title} image ${currentImage + 1}`}
               fill
-              priority
+              priority={currentImage === 0}
               sizes="(max-width: 860px) 100vw, 58vw"
               className={`${styles.image} ${activeImageTab === 'frame' ? styles.imageFrame : ''}`}
             />
@@ -153,7 +153,7 @@ export default function ArticleGallery({ id, imageUrls, frameImageUrls = [], tit
                     e.stopPropagation();
                     showPreviousImage();
                   }}
-                  aria-label="Show previous image"
+                  aria-label="Mostrar imagen anterior"
                 >
                   <svg width="10" height="16" viewBox="0 0 10 16" fill="none" aria-hidden="true">
                     <path d="M8.5 1.5L1.5 8L8.5 14.5" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -166,7 +166,7 @@ export default function ArticleGallery({ id, imageUrls, frameImageUrls = [], tit
                     e.stopPropagation();
                     showNextImage();
                   }}
-                  aria-label="Show next image"
+                  aria-label="Mostrar imagen siguiente"
                 >
                   <svg width="10" height="16" viewBox="0 0 10 16" fill="none" aria-hidden="true">
                     <path d="M1.5 1.5L8.5 8L1.5 14.5" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -187,7 +187,7 @@ export default function ArticleGallery({ id, imageUrls, frameImageUrls = [], tit
       </div>
 
       {hasMultipleImages && (
-        <div className={styles.thumbs} aria-label="Image thumbnails">
+        <div className={styles.thumbs} aria-label="Miniaturas de imágenes">
           {displayedImages.map((url, index) => (
             <button
               key={`${url}-${index}`}
@@ -196,7 +196,7 @@ export default function ArticleGallery({ id, imageUrls, frameImageUrls = [], tit
                 index === currentImage ? styles.thumbActive : ''
               }`}
               onClick={() => setCurrentImage(index)}
-              aria-label={`Show image ${index + 1}`}
+              aria-label={`Mostrar imagen ${index + 1}`}
             >
               <Image
                 src={url}

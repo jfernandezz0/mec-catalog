@@ -71,6 +71,8 @@ export default function Lightbox({ imageUrls, initialIndex, onClose, title }: Li
 
   return (
     <div
+      role="dialog"
+      aria-modal="true"
       className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/95 backdrop-blur-sm select-none"
       onClick={onClose}
     >

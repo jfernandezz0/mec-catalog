@@ -13,17 +13,27 @@ export default function NotFound() {
           priority
         />
       </div>
-      <h1 className="text-xl md:text-2xl font-extrabold text-neutral-900 max-w-md leading-relaxed mb-4">
+      <h1
+        className="text-xl md:text-2xl font-extrabold max-w-md leading-relaxed mb-4"
+        style={{ color: 'var(--text-primary)' }}
+      >
         El ingeniero jefe hizo algo mal, lo sentimos.<br />
         Volveremos lo antes posible.
       </h1>
-      <p className="text-neutral-500 mb-8 text-sm">
+      <p
+        className="mb-8 text-sm"
+        style={{ color: 'var(--text-secondary)' }}
+      >
         Esta página no existe o ha sido movida.
       </p>
       <div className="flex flex-col sm:flex-row gap-4">
         <Link
           href="/"
-          className="inline-flex items-center justify-center px-6 py-3 border border-transparent text-sm font-bold rounded-lg text-white bg-neutral-900 hover:bg-neutral-800 transition-colors shadow-sm"
+          className="inline-flex items-center justify-center px-6 py-3 border border-transparent text-sm font-bold rounded-lg transition-colors shadow-sm"
+          style={{
+            color: 'var(--text-button-primary)',
+            backgroundColor: 'var(--bg-button-primary)',
+          }}
         >
           Ir al Catálogo
         </Link>
@@ -31,7 +41,12 @@ export default function NotFound() {
           href="https://www.instagram.com/minienginescreations"
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center justify-center px-6 py-3 border border-neutral-200 text-sm font-bold rounded-lg text-neutral-700 bg-white hover:bg-neutral-50 transition-colors"
+          className="inline-flex items-center justify-center px-6 py-3 border text-sm font-bold rounded-lg transition-colors"
+          style={{
+            color: 'var(--text-secondary)',
+            backgroundColor: 'var(--bg-card)',
+            borderColor: 'var(--text-secondary)',
+          }}
         >
           Instagram
         </a>

@@ -184,7 +184,7 @@ export default function ArticleCard({
                   type="button"
                   className={`${styles.imageButton} ${styles.prevButton}`}
                   onClick={showPreviousImage}
-                  aria-label="Show previous image"
+                  aria-label="Mostrar imagen anterior"
                 >
                   <svg width="10" height="16" viewBox="0 0 10 16" fill="none" aria-hidden="true">
                     <path d="M8.5 1.5L1.5 8L8.5 14.5" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -194,7 +194,7 @@ export default function ArticleCard({
                   type="button"
                   className={`${styles.imageButton} ${styles.nextButton}`}
                   onClick={showNextImage}
-                  aria-label="Show next image"
+                  aria-label="Mostrar imagen siguiente"
                 >
                   <svg width="10" height="16" viewBox="0 0 10 16" fill="none" aria-hidden="true">
                     <path d="M1.5 1.5L8.5 8L1.5 14.5" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -204,7 +204,7 @@ export default function ArticleCard({
                   {currentImage + 1}/{imageUrls.length}
                 </span>
                 {/* Dots inside imageWrap as overlay */}
-                <div className={styles.dots} aria-label="Image selector">
+                <div className={styles.dots} aria-label="Selector de imágenes">
                   {imageUrls.map((url, index) => (
                     <button
                       key={`${url}-${index}`}
@@ -213,7 +213,7 @@ export default function ArticleCard({
                         index === currentImage ? styles.dotActive : ''
                       }`}
                       onClick={() => setCurrentImage(index)}
-                      aria-label={`Show image ${index + 1}`}
+                      aria-label={`Mostrar imagen ${index + 1}`}
                     />
                   ))}
                 </div>
