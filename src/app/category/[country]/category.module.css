@@ -272,6 +272,9 @@
   display: grid;
   gap: 10px;
   padding: 16px;
+  overflow: hidden;
+  border-bottom-left-radius: 11px;
+  border-bottom-right-radius: 11px;
 }
 
 .titleRow {
@@ -598,6 +601,9 @@
   font-weight: 800;
   text-decoration: none;
   transition: background 150ms ease;
+  box-sizing: border-box;
+  max-width: 100%;
+  word-break: break-word;
 }
 
 .detailLink:hover {
@@ -797,6 +803,38 @@
   .alternateGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     gap: 12px !important;
+  }
+
+  .alternateGrid .content {
+    padding: 10px;
+    gap: 8px;
+  }
+
+  .alternateGrid .cardTitle {
+    font-size: 14px;
+  }
+
+  .alternateGrid .cardModelo {
+    font-size: 14px;
+  }
+
+  .alternateGrid .cardMarca {
+    font-size: 10px;
+  }
+
+  .alternateGrid .detailLink {
+    padding: 8px 8px;
+    font-size: 12px;
+  }
+
+  .alternateGrid .stockIn,
+  .alternateGrid .stockOut {
+    padding: 4px 7px;
+    font-size: 11px;
+  }
+
+  .alternateGrid .price {
+    font-size: 14px;
   }
 }
 
