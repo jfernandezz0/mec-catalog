@@ -4,11 +4,12 @@ import { getMECLogo } from '@/lib/utils.server';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import Image from 'next/image';
 import InfiniteArticleGrid from './InfiniteArticleGrid';
 import styles from './category.module.css';
 
 
-export const revalidate = 0;
+export const revalidate = 60;
 
 type Category = {
   id: number;
@@ -188,10 +189,13 @@ export default async function CategoryPage({
             {mecLogo && (
               <div className={styles.mecLogoWrapper}>
                 <div className={styles.logoContainer}>
-                  <img
+                  <Image
                     src={mecLogo}
                     alt={`MEC ${category.name}`}
                     className={styles.mecLogoHeader}
+                    width={320}
+                    height={90}
+                    priority
                     style={{ width: '100%', height: 'auto', objectFit: 'contain' }}
                   />
                   <span className={styles.availableBadge}>

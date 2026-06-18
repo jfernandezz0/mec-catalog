@@ -1,9 +1,10 @@
 import { supabase } from '@/lib/supabase';
 import CategoryCard from './CategoryCard';
+import Image from 'next/image';
 
 import GlobeWrapper from './components/GlobeWrapper';
 
-export const revalidate = 0;
+export const revalidate = 60;
 
 import type { SVGProps } from 'react';
 
@@ -86,9 +87,12 @@ export default async function Home() {
     <main className="min-h-screen font-sans bg-[color:var(--bg-page)] text-[color:var(--text-primary)] pb-12">
       <header className="w-full max-w-2xl mx-auto px-6 pt-6 pb-4 text-center">
         <div className="flex justify-center">
-          <img
+          <Image
             src="/logo.png"
             alt="MiniEngines Creations"
+            width={320}
+            height={90}
+            priority
             style={{ width: '100%', maxWidth: '320px', height: 'auto', filter: 'invert(var(--logo-invert, 0))' }}
           />
         </div>

@@ -2,13 +2,14 @@ import { supabase } from '@/lib/supabase';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import Image from 'next/image';
 import ArticleGallery from './ArticleGallery';
 import ShareButtons from './ShareButtons';
 import styles from './article.module.css';
 import { getMECLogo } from '@/lib/utils.server';
 
 
-export const revalidate = 0;
+export const revalidate = 60;
 
 import { calculateDiscount } from '@/lib/discounts';
 
@@ -232,10 +233,13 @@ export default async function ArticlePage({
             {mecLogo && (
               <div className={styles.articleLogoWrapper}>
                 <div className={styles.articleLogoContainer}>
-                  <img
+                  <Image
                     src={mecLogo}
                     alt={category?.name || 'MiniEngines Creations'}
                     className={styles.articleLogoImage}
+                    width={320}
+                    height={90}
+                    priority
                     style={{ width: '100%', height: 'auto', objectFit: 'contain' }}
                   />
                 </div>
