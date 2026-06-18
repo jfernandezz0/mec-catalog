@@ -7,25 +7,9 @@ import { Search, X, Loader2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { getFlagEmoji, formatPrice } from '@/lib/utils';
 import { calculateDiscount } from '@/lib/discounts';
+import { Category, Article } from '@/lib/types';
 
-type Category = {
-  id: number;
-  name: string;
-  country_code: string;
-  discount_percent?: number | null;
-};
 
-type Article = {
-  id: number;
-  category_id: number;
-  title: string;
-  description: string | null;
-  price: number | string;
-  quantity: number;
-  image_urls: string[] | null;
-  discount_type?: string | null;
-  discount_value?: number | null;
-};
 
 type SearchBarProps = {
   hidePrices?: boolean;

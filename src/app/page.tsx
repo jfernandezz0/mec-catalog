@@ -2,6 +2,7 @@ import { supabase } from '@/lib/supabase';
 import CategoryCard from './CategoryCard';
 import Image from 'next/image';
 import SearchBar from './components/SearchBar';
+import { Category } from '@/lib/types';
 
 import GlobeWrapper from './components/GlobeWrapper';
 
@@ -11,14 +12,6 @@ import type { SVGProps } from 'react';
 
 type IconProps = SVGProps<SVGSVGElement> & {
   size?: number;
-};
-
-type Category = {
-  id: number;
-  name: string;
-  country_code: string;
-  is_visible?: boolean;
-  articles?: Array<{ count: number }>;
 };
 
 function Instagram({ size = 24, ...props }: IconProps) {

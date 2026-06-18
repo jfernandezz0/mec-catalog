@@ -4,18 +4,9 @@ import { useState, useEffect, useRef } from 'react';
 import ArticleCard from './ArticleCard';
 import styles from './category.module.css';
 import { calculateDiscount } from '@/lib/discounts';
+import { Article } from '@/lib/types';
 
-type Article = {
-  id: number;
-  title: string;
-  description: string | null;
-  price: number | string;
-  quantity: number;
-  image_urls: string[] | null;
-  frame_image_urls?: string[] | null;
-  discount_type?: string | null;
-  discount_value?: number | null;
-};
+
 
 type InfiniteArticleGridProps = {
   articles: Article[];

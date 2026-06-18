@@ -6,29 +6,13 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import Image from 'next/image';
 import InfiniteArticleGrid from './InfiniteArticleGrid';
+import { Category, Article } from '@/lib/types';
 import styles from './category.module.css';
 
 
 export const revalidate = 60;
 
-type Category = {
-  id: number;
-  name: string;
-  country_code: string;
-  discount_percent?: number | null;
-};
 
-type Article = {
-  id: number;
-  title: string;
-  description: string | null;
-  price: number | string;
-  quantity: number;
-  image_urls: string[] | null;
-  frame_image_urls?: string[] | null;
-  discount_type?: string | null;
-  discount_value?: number | null;
-};
 
 export async function generateMetadata(
   { params }: { params: Promise<{ country: string }> }

@@ -8,30 +8,14 @@ import ShareButtons from './ShareButtons';
 import styles from './article.module.css';
 import { getMECLogo } from '@/lib/utils.server';
 import { formatPrice } from '@/lib/utils';
+import { Category, Article } from '@/lib/types';
 
 
 export const revalidate = 60;
 
 import { calculateDiscount } from '@/lib/discounts';
 
-type Article = {
-  id: number;
-  category_id: number;
-  title: string;
-  description: string | null;
-  price: number | string;
-  quantity: number;
-  image_urls: string[] | null;
-  frame_image_urls?: string[] | null;
-  discount_type?: string | null;
-  discount_value?: number | null;
-};
 
-type Category = {
-  name: string;
-  country_code: string;
-  discount_percent?: number | null;
-};
 
 
 

@@ -2,12 +2,7 @@
 
 import { getFlagEmoji } from '@/lib/utils';
 import Link from 'next/link';
-
-type Category = {
-  id: number;
-  name: string;
-  country_code: string;
-};
+import { Category } from '@/lib/types';
 
 export default function CategoryCard({ category }: { category: Category }) {
   const countryUpper = category.country_code.toUpperCase();
