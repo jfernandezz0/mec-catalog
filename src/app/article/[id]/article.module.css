@@ -185,7 +185,8 @@
   color: var(--text-primary);
   cursor: pointer;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
-  transition: background 150ms ease;
+  transition: background 150ms ease, opacity 150ms ease;
+  opacity: 0.5;
 }
 
 .imageButton:hover {
