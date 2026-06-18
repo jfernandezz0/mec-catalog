@@ -62,6 +62,9 @@ export async function generateMetadata(
   return {
     title: `${article.title} | MiniEngines Creations`,
     description,
+    alternates: {
+      canonical: `/article/${id}`,
+    },
     openGraph: {
       title: article.title,
       description,
@@ -397,6 +400,55 @@ export default async function ArticlePage({
           </section>
         </div>
       </div>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'Product',
+            'name': article.title,
+            'image': article.image_urls?.filter(Boolean) ?? [],
+            'description': article.description || `Miniatura de coche de bloques ${article.title}`,
+            'offers': {
+              '@type': 'Offer',
+              'url': `https://www.minienginescreations.com/article/${article.id}`,
+              'priceCurrency': 'EUR',
+              'price': article.price,
+              'availability': article.quantity > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+              'itemCondition': 'https://schema.org/NewCondition'
+            }
+          })
+        }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'BreadcrumbList',
+            'itemListElement': [
+              {
+                '@type': 'ListItem',
+                'position': 1,
+                'name': 'Inicio',
+                'item': 'https://www.minienginescreations.com'
+              },
+              {
+                '@type': 'ListItem',
+                'position': 2,
+                'name': category?.name || 'Categoría',
+                'item': category ? `https://www.minienginescreations.com/category/${category.country_code.toLowerCase()}` : 'https://www.minienginescreations.com'
+              },
+              {
+                '@type': 'ListItem',
+                'position': 3,
+                'name': article.title,
+                'item': `https://www.minienginescreations.com/article/${article.id}`
+              }
+            ]
+          })
+        }}
+      />
     </main>
   );
 }

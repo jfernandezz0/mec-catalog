@@ -135,6 +135,21 @@ export default async function Home() {
           </a>
         </div>
       </div>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'Organization',
+            'name': 'MiniEngines Creations',
+            'url': 'https://www.minienginescreations.com',
+            'logo': 'https://www.minienginescreations.com/logo.png',
+            'sameAs': [
+              'https://www.instagram.com/minienginescreations'
+            ]
+          })
+        }}
+      />
     </main>
   );
 }

@@ -12,8 +12,12 @@ const jakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://www.minienginescreations.com"),
   title: "MiniEngines Creations",
   description: "Catálogo digital de artículos y ediciones limitadas de miniaturas de coches.",
+  alternates: {
+    canonical: "/",
+  },
   icons: {
     icon: "/MEC_square.png",
     apple: "/MEC_square.png",

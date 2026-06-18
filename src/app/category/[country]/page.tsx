@@ -50,6 +50,9 @@ export async function generateMetadata(
   return {
     title,
     description,
+    alternates: {
+      canonical: `/category/${country.toLowerCase()}`,
+    },
     openGraph: {
       title,
       description,
@@ -238,6 +241,29 @@ export default async function CategoryPage({
           </section>
         )}
       </div>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'BreadcrumbList',
+            'itemListElement': [
+              {
+                '@type': 'ListItem',
+                'position': 1,
+                'name': 'Inicio',
+                'item': 'https://www.minienginescreations.com'
+              },
+              {
+                '@type': 'ListItem',
+                'position': 2,
+                'name': category.name,
+                'item': `https://www.minienginescreations.com/category/${country.toLowerCase()}`
+              }
+            ]
+          })
+        }}
+      />
     </main>
   );
 }
