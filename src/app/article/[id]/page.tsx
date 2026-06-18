@@ -102,17 +102,33 @@ export default async function ArticlePage({
     notFound();
   }
 
+  // 1. Fetch article and settings in parallel
   let article: Article | null = null;
   let articleError = null;
+  let settingsData = null;
+  let settingsError = null;
 
   try {
-    const { data, error } = await supabase
+    const articlePromise = supabase
       .from('articles')
       .select('id, category_id, title, description, price, quantity, image_urls, frame_image_urls, discount_type, discount_value')
       .eq('id', articleId)
       .maybeSingle<Article>();
-    if (error) {
-      if (error.message.includes('discount_type') || error.message.includes('discount_value')) {
+
+    const settingsPromise = supabase
+      .from('settings')
+      .select('key, value');
+
+    const [articleResult, settingsResult] = await Promise.all([
+      articlePromise,
+      settingsPromise
+    ]);
+
+    // Process article
+    let articleData = articleResult.data;
+    let artErr = articleResult.error;
+    if (artErr) {
+      if (artErr.message.includes('discount_type') || artErr.message.includes('discount_value')) {
         const { data: fallbackData, error: fallbackError } = await supabase
           .from('articles')
           .select('id, category_id, title, description, price, quantity, image_urls, frame_image_urls')
@@ -121,14 +137,18 @@ export default async function ArticlePage({
         article = fallbackData ? { ...fallbackData, discount_type: null, discount_value: null } : null;
         articleError = fallbackError;
       } else {
-        article = data;
-        articleError = error;
+        article = articleData;
+        articleError = artErr;
       }
     } else {
-      article = data;
+      article = articleData;
     }
+
+    // Process settings
+    settingsData = settingsResult.data;
+    settingsError = settingsResult.error;
   } catch (err) {
-    console.error('Error loading article:', err);
+    console.error('Error loading initial article and settings data:', err);
   }
 
   if (articleError) {
@@ -140,6 +160,7 @@ export default async function ArticlePage({
     notFound();
   }
 
+  // 2. Fetch category (depends on article's category_id)
   let category: Category | null = null;
   let categoryError = null;
 
@@ -174,28 +195,21 @@ export default async function ArticlePage({
     throw new Error('No se pudo cargar la categoría asociada al artículo.');
   }
 
+  // Parse settings
   let paymentsEnabled = false;
   let revolutEnabled = true;
   let paypalEnabled = true;
   let hidePrices = false;
   let hideAvailability = false;
   let generalDiscountPercent = '';
-  try {
-    const { data: settingsData, error: settingsError } = await supabase
-      .from('settings')
-      .select('key, value');
-
-    if (!settingsError && settingsData) {
-      const settingsMap = new Map(settingsData.map((s) => [s.key, s.value]));
-      paymentsEnabled = settingsMap.get('payments_enabled') === 'true';
-      revolutEnabled = settingsMap.get('revolut_enabled') !== 'false';
-      paypalEnabled = settingsMap.get('paypal_enabled') !== 'false';
-      hidePrices = settingsMap.get('hide_prices') === 'true';
-      hideAvailability = settingsMap.get('hide_availability') === 'true';
-      generalDiscountPercent = settingsMap.get('general_discount_percent') || '';
-    }
-  } catch (e) {
-    console.error('Error loading settings:', e);
+  if (!settingsError && settingsData) {
+    const settingsMap = new Map(settingsData.map((s) => [s.key, s.value]));
+    paymentsEnabled = settingsMap.get('payments_enabled') === 'true';
+    revolutEnabled = settingsMap.get('revolut_enabled') !== 'false';
+    paypalEnabled = settingsMap.get('paypal_enabled') !== 'false';
+    hidePrices = settingsMap.get('hide_prices') === 'true';
+    hideAvailability = settingsMap.get('hide_availability') === 'true';
+    generalDiscountPercent = settingsMap.get('general_discount_percent') || '';
   }
 
   const isPriceHidden = hidePrices || article.quantity <= 0;

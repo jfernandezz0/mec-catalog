@@ -85,19 +85,33 @@ export default async function CategoryPage({
   const { country } = await params;
   const countryCode = country.toUpperCase();
 
-  // 1. Fetch category
+  // 1. Fetch category and settings in parallel
   let category: Category | null = null;
   let categoryError = null;
+  let settingsData = null;
+  let settingsError = null;
 
   try {
-    const { data, error } = await supabase
+    const categoryPromise = supabase
       .from('categories')
       .select('id, name, country_code, discount_percent')
       .eq('country_code', countryCode)
       .maybeSingle<Category>();
-    
-    if (error) {
-      if (error.message.includes('discount_percent')) {
+
+    const settingsPromise = supabase
+      .from('settings')
+      .select('key, value');
+
+    const [categoryResult, settingsResult] = await Promise.all([
+      categoryPromise,
+      settingsPromise
+    ]);
+
+    // Process category
+    let categoryData = categoryResult.data;
+    let catErr = categoryResult.error;
+    if (catErr) {
+      if (catErr.message.includes('discount_percent')) {
         const { data: fallbackData, error: fallbackError } = await supabase
           .from('categories')
           .select('id, name, country_code')
@@ -106,14 +120,18 @@ export default async function CategoryPage({
         category = fallbackData ? { ...fallbackData, discount_percent: null } : null;
         categoryError = fallbackError;
       } else {
-        category = data;
-        categoryError = error;
+        category = categoryData;
+        categoryError = catErr;
       }
     } else {
-      category = data;
+      category = categoryData;
     }
+
+    // Process settings
+    settingsData = settingsResult.data;
+    settingsError = settingsResult.error;
   } catch (err) {
-    console.error('Error fetching category:', err);
+    console.error('Error fetching initial category and settings data:', err);
   }
 
   if (categoryError) {
@@ -125,7 +143,7 @@ export default async function CategoryPage({
     notFound();
   }
 
-  // 2. Fetch articles
+  // 2. Fetch articles (depends on category id)
   let articles: Article[] = [];
   let articlesError = null;
 
@@ -161,22 +179,15 @@ export default async function CategoryPage({
     throw new Error('No se pudo cargar los artículos de la categoría.');
   }
 
+  // Parse settings
   let hidePrices = false;
   let hideAvailability = false;
   let generalDiscountPercent = '';
-  try {
-    const { data: settingsData, error: settingsError } = await supabase
-      .from('settings')
-      .select('key, value');
-
-    if (!settingsError && settingsData) {
-      const settingsMap = new Map(settingsData.map((s) => [s.key, s.value]));
-      hidePrices = settingsMap.get('hide_prices') === 'true';
-      hideAvailability = settingsMap.get('hide_availability') === 'true';
-      generalDiscountPercent = settingsMap.get('general_discount_percent') || '';
-    }
-  } catch (e) {
-    console.error('Error loading settings:', e);
+  if (!settingsError && settingsData) {
+    const settingsMap = new Map(settingsData.map((s) => [s.key, s.value]));
+    hidePrices = settingsMap.get('hide_prices') === 'true';
+    hideAvailability = settingsMap.get('hide_availability') === 'true';
+    generalDiscountPercent = settingsMap.get('general_discount_percent') || '';
   }
 
   const allArticles = articles ?? [];
