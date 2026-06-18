@@ -6,6 +6,7 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { calculateDiscount } from '@/lib/discounts';
 import { formatPrice } from '@/lib/utils';
+import { useSwipe } from '@/lib/hooks/useSwipe';
 import styles from './category.module.css';
 
 type ArticleCardProps = {
@@ -103,40 +104,10 @@ export default function ArticleCard({
     );
   }
 
-  const touchStartX = useRef<number | null>(null);
-  const touchEndX = useRef<number | null>(null);
-  const swipeOccurred = useRef(false);
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    touchStartX.current = e.touches[0].clientX;
-    touchEndX.current = e.touches[0].clientX;
-    swipeOccurred.current = false;
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    touchEndX.current = e.touches[0].clientX;
-  };
-
-  const handleTouchEnd = () => {
-    if (touchStartX.current === null || touchEndX.current === null) return;
-    const diffX = touchStartX.current - touchEndX.current;
-    const threshold = 50; // pixels
-
-    if (Math.abs(diffX) > threshold) {
-      swipeOccurred.current = true;
-      if (diffX > 0) {
-        showNextImage();
-      } else {
-        showPreviousImage();
-      }
-      setTimeout(() => {
-        swipeOccurred.current = false;
-      }, 300);
-    }
-
-    touchStartX.current = null;
-    touchEndX.current = null;
-  };
+  const { onTouchStart, onTouchMove, onTouchEnd, swipeOccurred } = useSwipe({
+    onSwipeLeft: showNextImage,
+    onSwipeRight: showPreviousImage,
+  });
 
   const handleLinkClick = (e: React.MouseEvent) => {
     if (swipeOccurred.current) {
@@ -160,9 +131,9 @@ export default function ArticleCard({
               href={`/article/${article.id}`} 
               className={styles.imageLink} 
               aria-label={`Ver ficha de ${article.title}`}
-              onTouchStart={handleTouchStart}
-              onTouchMove={handleTouchMove}
-              onTouchEnd={handleTouchEnd}
+              onTouchStart={onTouchStart}
+              onTouchMove={onTouchMove}
+              onTouchEnd={onTouchEnd}
               onClick={handleLinkClick}
             >
               <Image

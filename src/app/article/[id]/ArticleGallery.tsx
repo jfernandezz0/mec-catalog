@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import Lightbox from '@/app/components/Lightbox';
+import { useSwipe } from '@/lib/hooks/useSwipe';
 import styles from './article.module.css';
 
 type ArticleGalleryProps = {
@@ -56,40 +57,10 @@ export default function ArticleGallery({ id, imageUrls, frameImageUrls = [], tit
     );
   }
 
-  const touchStartX = useRef<number | null>(null);
-  const touchEndX = useRef<number | null>(null);
-  const swipeOccurred = useRef(false);
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    touchStartX.current = e.touches[0].clientX;
-    touchEndX.current = e.touches[0].clientX;
-    swipeOccurred.current = false;
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    touchEndX.current = e.touches[0].clientX;
-  };
-
-  const handleTouchEnd = () => {
-    if (touchStartX.current === null || touchEndX.current === null) return;
-    const diffX = touchStartX.current - touchEndX.current;
-    const threshold = 50; // pixels
-
-    if (Math.abs(diffX) > threshold) {
-      swipeOccurred.current = true;
-      if (diffX > 0) {
-        showNextImage();
-      } else {
-        showPreviousImage();
-      }
-      setTimeout(() => {
-        swipeOccurred.current = false;
-      }, 300);
-    }
-
-    touchStartX.current = null;
-    touchEndX.current = null;
-  };
+  const { onTouchStart, onTouchMove, onTouchEnd, swipeOccurred } = useSwipe({
+    onSwipeLeft: showNextImage,
+    onSwipeRight: showPreviousImage,
+  });
 
   const handleHeroClick = (e: React.MouseEvent) => {
     if (swipeOccurred.current) {
@@ -128,9 +99,9 @@ export default function ArticleGallery({ id, imageUrls, frameImageUrls = [], tit
 
       <div 
         className={`${styles.heroImage} cursor-zoom-in`}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
         onClick={handleHeroClick}
       >
         {imageUrl ? (

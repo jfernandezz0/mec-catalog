@@ -1,7 +1,8 @@
 'use client';
 
 import Image from 'next/image';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
+import { useSwipe } from '@/lib/hooks/useSwipe';
 
 type LightboxProps = {
   imageUrls: string[];
@@ -12,8 +13,6 @@ type LightboxProps = {
 
 export default function Lightbox({ imageUrls, initialIndex, onClose, title }: LightboxProps) {
   const [activeIndex, setActiveIndex] = useState(initialIndex);
-  const touchStartX = useRef<number | null>(null);
-  const touchEndX = useRef<number | null>(null);
 
   const showPrevious = () => {
     setActiveIndex((prev) => (prev === 0 ? imageUrls.length - 1 : prev - 1));
@@ -22,6 +21,11 @@ export default function Lightbox({ imageUrls, initialIndex, onClose, title }: Li
   const showNext = () => {
     setActiveIndex((prev) => (prev === imageUrls.length - 1 ? 0 : prev + 1));
   };
+
+  const { onTouchStart, onTouchMove, onTouchEnd } = useSwipe({
+    onSwipeLeft: showNext,
+    onSwipeRight: showPrevious,
+  });
 
   // Keyboard navigation & lock body scroll
   useEffect(() => {
@@ -42,29 +46,7 @@ export default function Lightbox({ imageUrls, initialIndex, onClose, title }: Li
     };
   }, [imageUrls.length]);
 
-  // Mobile swipe gestures
-  const handleTouchStart = (e: React.TouchEvent) => {
-    touchStartX.current = e.touches[0].clientX;
-  };
 
-  const handleTouchMove = (e: React.TouchEvent) => {
-    touchEndX.current = e.touches[0].clientX;
-  };
-
-  const handleTouchEnd = () => {
-    if (touchStartX.current === null || touchEndX.current === null) return;
-    const diffX = touchStartX.current - touchEndX.current;
-    const threshold = 50; // swipe threshold in pixels
-
-    if (diffX > threshold) {
-      showNext();
-    } else if (diffX < -threshold) {
-      showPrevious();
-    }
-
-    touchStartX.current = null;
-    touchEndX.current = null;
-  };
 
   const currentUrl = imageUrls[activeIndex];
   const hasMultiple = imageUrls.length > 1;
@@ -115,9 +97,9 @@ export default function Lightbox({ imageUrls, initialIndex, onClose, title }: Li
       <div
         className="relative w-full h-[80vh] flex items-center justify-center px-4"
         onClick={(e) => e.stopPropagation()} // Prevent closing when clicking the image or arrows area
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
       >
         {currentUrl ? (
           <div className="relative w-full h-full max-w-4xl">
