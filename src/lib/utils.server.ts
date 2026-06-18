@@ -21,23 +21,31 @@ export async function getMECLogo(countryCode: string): Promise<string> {
   };
 
   const targetCode = aliases[code] ?? code;
-  const fileName = `MEC_${targetCode}.png`;
+  const fileNameWebP = `MEC_${targetCode}.webp`;
+  const fileNamePng = `MEC_${targetCode}.png`;
 
   // 1. Check Supabase Storage first to allow dynamic admin overrides
   try {
     const { data, error } = await supabase.storage
       .from('product-images')
       .list('logos', {
-        limit: 5,
-        search: fileName,
+        limit: 10,
+        search: `MEC_${targetCode}`,
       });
 
     if (!error && data && data.length > 0) {
-      const match = data.find((f) => f.name.toLowerCase() === fileName.toLowerCase());
-      if (match) {
+      const matchWebP = data.find((f) => f.name.toLowerCase() === fileNameWebP.toLowerCase());
+      if (matchWebP) {
         const { data: urlData } = supabase.storage
           .from('product-images')
-          .getPublicUrl(`logos/${match.name}`);
+          .getPublicUrl(`logos/${matchWebP.name}`);
+        return urlData.publicUrl;
+      }
+      const matchPng = data.find((f) => f.name.toLowerCase() === fileNamePng.toLowerCase());
+      if (matchPng) {
+        const { data: urlData } = supabase.storage
+          .from('product-images')
+          .getPublicUrl(`logos/${matchPng.name}`);
         return urlData.publicUrl;
       }
     }
@@ -47,9 +55,13 @@ export async function getMECLogo(countryCode: string): Promise<string> {
 
   // 2. Fallback check in local directory
   try {
-    const filePath = path.join(process.cwd(), 'public', fileName);
-    if (fs.existsSync(filePath)) {
-      return `/${fileName}`;
+    const filePathWebP = path.join(process.cwd(), 'public', fileNameWebP);
+    if (fs.existsSync(filePathWebP)) {
+      return `/${fileNameWebP}`;
+    }
+    const filePathPng = path.join(process.cwd(), 'public', fileNamePng);
+    if (fs.existsSync(filePathPng)) {
+      return `/${fileNamePng}`;
     }
   } catch (err) {
     console.error(`Error checking local logo file for country ${code}:`, err);
