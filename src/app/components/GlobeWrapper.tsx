@@ -20,7 +20,7 @@ const DynamicGlobe = dynamic(() => import('./Globe'), {
     <div className="w-full flex flex-col items-center justify-center py-6 gap-4">
       <div className="relative w-full h-[480px] sm:h-[560px] md:h-[660px] rounded-3xl border border-[color:var(--border-card-glass)] bg-[color:var(--bg-card-glass)] flex items-center justify-center shadow-inner animate-pulse">
         <span className="text-[color:var(--text-secondary)] text-sm font-semibold tracking-wider uppercase">
-          Iniciando Planeta...
+          Conectando con los Satélites de Elon...
         </span>
       </div>
     </div>
