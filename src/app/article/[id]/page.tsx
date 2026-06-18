@@ -140,18 +140,38 @@ export default async function ArticlePage({
     notFound();
   }
 
-  // 2. Fetch category (depends on article's category_id)
+  // 2. Fetch category and related articles in parallel (depends on article's category_id)
   let category: Category | null = null;
   let categoryError = null;
+  let relatedArticles: Article[] = [];
+  let relatedArticlesError = null;
 
   try {
-    const { data, error } = await supabase
+    const categoryPromise = supabase
       .from('categories')
       .select('name, country_code, discount_percent')
       .eq('id', article.category_id)
       .maybeSingle<Category>();
-    if (error) {
-      if (error.message.includes('discount_percent')) {
+
+    const relatedPromise = supabase
+      .from('articles')
+      .select('id, category_id, title, description, price, quantity, image_urls, discount_type, discount_value')
+      .eq('category_id', article.category_id)
+      .neq('id', article.id)
+      .order('sort_order', { ascending: true })
+      .order('id', { ascending: true })
+      .limit(4);
+
+    const [categoryResult, relatedResult] = await Promise.all([
+      categoryPromise,
+      relatedPromise
+    ]);
+
+    // Process category
+    let categoryData = categoryResult.data;
+    let catErr = categoryResult.error;
+    if (catErr) {
+      if (catErr.message.includes('discount_percent')) {
         const { data: fallbackData, error: fallbackError } = await supabase
           .from('categories')
           .select('name, country_code')
@@ -160,19 +180,45 @@ export default async function ArticlePage({
         category = fallbackData ? { ...fallbackData, discount_percent: null } : null;
         categoryError = fallbackError;
       } else {
-        category = data;
-        categoryError = error;
+        category = categoryData;
+        categoryError = catErr;
       }
     } else {
-      category = data;
+      category = categoryData;
+    }
+
+    // Process related articles
+    let relatedData = relatedResult.data;
+    let relErr = relatedResult.error;
+    if (relErr) {
+      if (relErr.message.includes('discount_type') || relErr.message.includes('discount_value')) {
+        const { data: fallbackRelated, error: fallbackRelatedError } = await supabase
+          .from('articles')
+          .select('id, category_id, title, description, price, quantity, image_urls')
+          .eq('category_id', article.category_id)
+          .neq('id', article.id)
+          .order('id', { ascending: true })
+          .limit(4);
+        relatedArticles = (fallbackRelated ?? []).map(a => ({ ...a, discount_type: null, discount_value: null })) as Article[];
+        relatedArticlesError = fallbackRelatedError;
+      } else {
+        relatedArticles = (relatedData ?? []) as Article[];
+        relatedArticlesError = relErr;
+      }
+    } else {
+      relatedArticles = (relatedData ?? []) as Article[];
     }
   } catch (err) {
-    console.error('Error loading category:', err);
+    console.error('Error loading category and related articles:', err);
   }
 
   if (categoryError) {
     console.error('Could not load category:', JSON.stringify(categoryError, null, 2));
     throw new Error('No se pudo cargar la categoría asociada al artículo.');
+  }
+
+  if (relatedArticlesError) {
+    console.error('Could not load related articles:', JSON.stringify(relatedArticlesError, null, 2));
   }
 
   // Parse settings
@@ -393,6 +439,66 @@ export default async function ArticlePage({
             </p>
           </section>
         </div>
+
+        {relatedArticles.length > 0 && (
+          <section className={styles.relatedSection}>
+            <h2 className={styles.relatedHeading}>También te puede interesar</h2>
+            <div className={styles.relatedGrid}>
+              {relatedArticles.map((rel) => {
+                const parts = rel.title.split(' – ');
+                const marca = parts[0];
+                const modelo = parts.slice(1).join(' – ');
+                
+                const relDiscountInfo = calculateDiscount(
+                  rel.price,
+                  rel.discount_type,
+                  rel.discount_value,
+                  category?.discount_percent,
+                  generalDiscountPercent
+                );
+                
+                return (
+                  <Link
+                    href={`/article/${rel.id}`}
+                    key={rel.id}
+                    className={`${styles.relatedCard} neon-card ${countryUpper ? `neon-card-${countryUpper}` : ''}`}
+                  >
+                    <div className={styles.relatedImageWrap}>
+                      {rel.image_urls?.[0] ? (
+                        <Image
+                          src={rel.image_urls[0]}
+                          alt={rel.title}
+                          fill
+                          sizes="(max-width: 768px) 100vw, 25vw"
+                          className={styles.relatedImage}
+                        />
+                      ) : (
+                        <div className={styles.relatedNoImage}>🚗</div>
+                      )}
+                    </div>
+                    
+                    <div className={styles.relatedContent}>
+                      <span className={styles.relatedMarca}>{marca}</span>
+                      <h3 className={styles.relatedTitle}>{modelo || rel.title}</h3>
+                      <div className={styles.relatedMeta}>
+                        {!hidePrices && (
+                          <span className={styles.relatedPrice}>
+                            {formatPrice(relDiscountInfo.finalPrice)}
+                          </span>
+                        )}
+                        {!hideAvailability && (
+                          <span className={rel.quantity > 0 ? styles.stockInSmall : styles.stockOutSmall}>
+                            {rel.quantity > 0 ? 'Disponible' : 'Agotado'}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
+        )}
       </div>
       <script
         type="application/ld+json"

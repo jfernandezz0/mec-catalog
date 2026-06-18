@@ -731,8 +731,16 @@
 .controlsLeft {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 16px;
   flex: 1;
+}
+
+.controlGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  max-width: 320px;
 }
 
 .controlsLabel {
@@ -826,12 +834,42 @@
 
 @media (max-width: 560px) {
   .controlsBar {
-    padding: 10px 12px;
+    display: grid;
+    grid-template-columns: 1fr auto;
     gap: 12px;
+    padding: 12px;
+  }
+  
+  .controlsLeft {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: stretch;
+  }
+  
+  .controlGroup {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    max-width: none;
+    width: 100%;
+  }
+
+  .controlGroup .controlsLabel {
+    flex-shrink: 0;
+    width: 95px;
+    font-size: 13px;
   }
   
   .sortSelect {
     max-width: none;
+    flex: 1;
+  }
+
+  .layoutButton {
+    align-self: center;
+    grid-row: span 2;
   }
   
   .alternateGrid {

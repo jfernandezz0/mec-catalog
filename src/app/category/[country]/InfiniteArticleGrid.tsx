@@ -27,11 +27,23 @@ export default function InfiniteArticleGrid({
 }: InfiniteArticleGridProps) {
   const [visibleCount, setVisibleCount] = useState(12);
   const [sortBy, setSortBy] = useState<string>('default');
+  const [filterStock, setFilterStock] = useState<string>('all');
   const [layoutMode, setLayoutMode] = useState<'default' | 'alternate'>('default');
   const observerTargetRef = useRef<HTMLDivElement>(null);
 
-  // Sort articles based on selection
-  const sortedArticles = [...articles].sort((a, b) => {
+  // Filter articles based on stock availability selection
+  const filteredArticles = articles.filter((article) => {
+    if (filterStock === 'available') {
+      return article.quantity > 0;
+    }
+    if (filterStock === 'soldout') {
+      return article.quantity <= 0;
+    }
+    return true;
+  });
+
+  // Sort filtered articles based on selection
+  const sortedArticles = [...filteredArticles].sort((a, b) => {
     if (sortBy === 'default') {
       return 0;
     }
@@ -76,14 +88,14 @@ export default function InfiniteArticleGrid({
     return 0;
   });
 
-  const finalArticlesToRender = sortBy === 'default' ? articles : sortedArticles;
+  const finalArticlesToRender = sortBy === 'default' ? filteredArticles : sortedArticles;
   const visibleArticles = finalArticlesToRender.slice(0, visibleCount);
   const hasMore = visibleCount < finalArticlesToRender.length;
 
   useEffect(() => {
-    // Reset visible count when sorting options change
+    // Reset visible count when sorting or filtering options change
     setVisibleCount(12);
-  }, [sortBy]);
+  }, [sortBy, filterStock]);
 
   useEffect(() => {
     if (!hasMore) return;
@@ -113,18 +125,33 @@ export default function InfiniteArticleGrid({
     <>
       <div className={styles.controlsBar}>
         <div className={styles.controlsLeft}>
-          <span className={styles.controlsLabel}>Ordenar:</span>
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
-            className={styles.sortSelect}
-          >
-            <option value="default">Por defecto</option>
-            <option value="alpha-asc">Nombre: A - Z</option>
-            <option value="alpha-desc">Nombre: Z - A</option>
-            <option value="price-asc">Precio: Menor a Mayor</option>
-            <option value="price-desc">Precio: Mayor a Menor</option>
-          </select>
+          <div className={styles.controlGroup}>
+            <span className={styles.controlsLabel}>Ordenar:</span>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className={styles.sortSelect}
+            >
+              <option value="default">Por defecto</option>
+              <option value="alpha-asc">Nombre: A - Z</option>
+              <option value="alpha-desc">Nombre: Z - A</option>
+              <option value="price-asc">Precio: Menor a Mayor</option>
+              <option value="price-desc">Precio: Mayor a Menor</option>
+            </select>
+          </div>
+
+          <div className={styles.controlGroup}>
+            <span className={styles.controlsLabel}>Disponibilidad:</span>
+            <select
+              value={filterStock}
+              onChange={(e) => setFilterStock(e.target.value)}
+              className={styles.sortSelect}
+            >
+              <option value="all">Todos</option>
+              <option value="available">Disponibles</option>
+              <option value="soldout">Agotados</option>
+            </select>
+          </div>
         </div>
         
         <button
