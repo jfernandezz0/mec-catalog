@@ -1,7 +1,7 @@
 'use client';
 
 import { supabase } from '@/lib/supabase';
-import { getFlagEmoji, isValidISOCode } from '@/lib/utils';
+import { getFlagEmoji, isValidISOCode, formatPrice } from '@/lib/utils';
 import { User } from '@supabase/supabase-js';
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react';
 import styles from './admin.module.css';
@@ -142,12 +142,7 @@ function compressImage(file: File, maxWidth = 1200, quality = 0.8): Promise<File
 }
 
 
-function formatPrice(value: number | string) {
-  return new Intl.NumberFormat('es-ES', {
-    style: 'currency',
-    currency: 'EUR',
-  }).format(Number(value));
-}
+
 
 export default function AdminPage() {
   const isProduction = typeof window !== 'undefined' && window.location.hostname !== 'localhost' && !window.location.hostname.includes('127.0.0.1');

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { calculateDiscount } from '@/lib/discounts';
+import { formatPrice } from '@/lib/utils';
 import styles from './category.module.css';
 
 type ArticleCardProps = {
@@ -27,12 +28,7 @@ type ArticleCardProps = {
   countryCode?: string;
 };
 
-function formatPrice(value: number | string) {
-  return new Intl.NumberFormat('es-ES', {
-    style: 'currency',
-    currency: 'EUR',
-  }).format(Number(value));
-}
+
 
 export default function ArticleCard({ 
   article, 

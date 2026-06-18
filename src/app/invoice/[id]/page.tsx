@@ -3,18 +3,14 @@
 import { use, useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
+import { formatPrice } from '@/lib/utils';
 import styles from './invoice.module.css';
 
 type Props = {
   params: Promise<{ id: string }>;
 };
 
-function formatPrice(value: number | string) {
-  return new Intl.NumberFormat('es-ES', {
-    style: 'currency',
-    currency: 'EUR',
-  }).format(Number(value));
-}
+
 
 function formatDate(isoString: string) {
   try {

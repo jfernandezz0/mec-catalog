@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Search, X, Loader2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import { getFlagEmoji } from '@/lib/utils';
+import { getFlagEmoji, formatPrice } from '@/lib/utils';
 import { calculateDiscount } from '@/lib/discounts';
 
 type Category = {
@@ -32,12 +32,7 @@ type SearchBarProps = {
   generalDiscountPercent?: string;
 };
 
-function formatPrice(value: number | string) {
-  return new Intl.NumberFormat('es-ES', {
-    style: 'currency',
-    currency: 'EUR',
-  }).format(Number(value));
-}
+
 
 export default function SearchBar({
   hidePrices = false,

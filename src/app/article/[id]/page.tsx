@@ -7,6 +7,7 @@ import ArticleGallery from './ArticleGallery';
 import ShareButtons from './ShareButtons';
 import styles from './article.module.css';
 import { getMECLogo } from '@/lib/utils.server';
+import { formatPrice } from '@/lib/utils';
 
 
 export const revalidate = 60;
@@ -32,12 +33,7 @@ type Category = {
   discount_percent?: number | null;
 };
 
-function formatPrice(value: number | string) {
-  return new Intl.NumberFormat('es-ES', {
-    style: 'currency',
-    currency: 'EUR',
-  }).format(Number(value));
-}
+
 
 export async function generateMetadata(
   { params }: { params: Promise<{ id: string }> }
