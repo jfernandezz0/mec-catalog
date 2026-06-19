@@ -66,9 +66,45 @@ function getSafeFilePath(file: File) {
 }
 
 function compressImage(file: File, maxWidth = 1200, quality = 0.8): Promise<File> {
-  return new Promise((resolve) => {
-    if (typeof window === 'undefined' || !file.type.startsWith('image/')) {
+  return new Promise(async (resolve) => {
+    if (typeof window === 'undefined') {
       return resolve(file);
+    }
+
+    const fileNameLower = file.name.toLowerCase();
+    const isHeic =
+      fileNameLower.endsWith('.heic') ||
+      fileNameLower.endsWith('.heif') ||
+      file.type === 'image/heic' ||
+      file.type === 'image/heif';
+
+    if (!isHeic && !file.type.startsWith('image/')) {
+      return resolve(file);
+    }
+
+    let fileToProcess = file;
+
+    if (isHeic) {
+      try {
+        const heic2any = (await import('heic2any')).default;
+        let convertedBlob = await heic2any({
+          blob: file,
+          toType: 'image/jpeg',
+          quality: 0.8,
+        });
+
+        if (Array.isArray(convertedBlob)) {
+          convertedBlob = convertedBlob[0];
+        }
+
+        const originalNameWithoutExt = file.name.replace(/\.[^/.]+$/, "");
+        fileToProcess = new File([convertedBlob], `${originalNameWithoutExt}.jpg`, {
+          type: 'image/jpeg',
+          lastModified: Date.now(),
+        });
+      } catch (err) {
+        console.error('Error converting HEIC to JPEG:', err);
+      }
     }
 
     const reader = new FileReader();
@@ -89,7 +125,7 @@ function compressImage(file: File, maxWidth = 1200, quality = 0.8): Promise<File
 
         const ctx = canvas.getContext('2d');
         if (!ctx) {
-          return resolve(file);
+          return resolve(fileToProcess);
         }
 
         ctx.drawImage(img, 0, 0, width, height);
@@ -97,9 +133,9 @@ function compressImage(file: File, maxWidth = 1200, quality = 0.8): Promise<File
         canvas.toBlob(
           (blob) => {
             if (!blob) {
-              return resolve(file);
+              return resolve(fileToProcess);
             }
-            const originalNameWithoutExt = file.name.replace(/\.[^/.]+$/, "");
+            const originalNameWithoutExt = fileToProcess.name.replace(/\.[^/.]+$/, "");
             const newName = `${originalNameWithoutExt}.jpg`;
             const compressedFile = new File([blob], newName, {
               type: 'image/jpeg',
@@ -111,11 +147,11 @@ function compressImage(file: File, maxWidth = 1200, quality = 0.8): Promise<File
           quality
         );
       };
-      img.onerror = () => resolve(file);
+      img.onerror = () => resolve(fileToProcess);
       img.src = event.target?.result as string;
     };
-    reader.onerror = () => resolve(file);
-    reader.readAsDataURL(file);
+    reader.onerror = () => resolve(fileToProcess);
+    reader.readAsDataURL(fileToProcess);
   });
 }
 
@@ -2389,7 +2425,7 @@ export default function AdminPage() {
                     <input
                       ref={fileInputRef}
                       type="file"
-                      accept="image/*"
+                      accept="image/*,.heic,.heif,.HEIC,.HEIF"
                       multiple
                       onChange={updateFiles}
                       disabled={loading}
@@ -2476,7 +2512,7 @@ export default function AdminPage() {
                     <input
                       ref={frameFileInputRef}
                       type="file"
-                      accept="image/*"
+                      accept="image/*,.heic,.heif,.HEIC,.HEIF"
                       multiple
                       onChange={updateFrameFiles}
                       disabled={loading}
