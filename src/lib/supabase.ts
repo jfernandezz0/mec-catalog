@@ -10,3 +10,15 @@ if (!supabaseUrl || !supabaseKey) {
 const normalizedSupabaseUrl = supabaseUrl.replace(/\/rest\/v1\/?$/, '');
 
 export const supabase = createClient(normalizedSupabaseUrl, supabaseKey);
+
+if (typeof window !== 'undefined') {
+  supabase.auth.onAuthStateChange((_event, session) => {
+    const cookieName = 'sb-session';
+    if (session) {
+      document.cookie = `${cookieName}=${session.access_token};path=/;max-age=31536000;SameSite=Lax;Secure`;
+    } else {
+      document.cookie = `${cookieName}=;path=/;max-age=0;SameSite=Lax;Secure`;
+    }
+  });
+}
+

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mec-cache-v1';
+const CACHE_NAME = 'mec-cache-v2';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
@@ -22,6 +22,11 @@ self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
   const url = new URL(event.request.url);
+
+  // Disable caching on localhost/development environments
+  if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') {
+    return;
+  }
 
   // Exclude admin, api, and supabase database/storage calls from service worker caching
   if (

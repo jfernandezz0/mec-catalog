@@ -23,3 +23,77 @@ export interface Article {
   discount_type?: string | null;
   discount_value?: number | null;
 }
+
+export interface Sale {
+  id: string;
+  buyer_phone: string | null;
+  buyer_email: string | null;
+  buyer_instagram: string | null;
+  location: string;
+  payment_type: 'REVOLUT' | 'PAYPAL' | 'EFECTIVO';
+  total_price: number;
+  total_articles: number;
+  status: 'COMPLETADA' | 'PRECOMPRA';
+  created_at: string;
+}
+
+export interface SaleItem {
+  id: number;
+  sale_id: string;
+  article_id: number | null;
+  title: string;
+  quantity: number;
+  price: number;
+  is_prepurchase: boolean;
+}
+
+export interface StatsSnapshot {
+  id: number;
+  period_name: string;
+  total_views: number;
+  total_contact_clicks: number;
+  total_share_clicks: number;
+  article_count: number;
+  created_at: string;
+}
+
+export interface Setting {
+  key: string;
+  value: string;
+}
+
+export type ImportRow = {
+  rowIndex: number;
+  categoria: string;
+  marca: string;
+  modelo: string;
+  precio: string;
+  cantidad: string;
+  descripcion: string;
+  errors: string[];
+  categoryId: number | null;
+};
+
+export type FormState = {
+  categoryId: string;
+  marca: string;
+  modelo: string;
+  description: string;
+  price: string;
+  quantity: string;
+  discountType: string;
+  discountValue: string;
+};
+
+export const initialFormState: FormState = {
+  categoryId: '',
+  marca: '',
+  modelo: '',
+  description: '',
+  price: '',
+  quantity: '1',
+  discountType: '',
+  discountValue: '',
+};
+
+export type AdminTab = 'catalog' | 'create' | 'edit' | 'categories' | 'import' | 'config' | 'sales' | 'sales-create' | 'analytics' | 'generate_list';
