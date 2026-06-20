@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { formatPrice } from '@/lib/utils';
 import { Sale, SaleItem, Article } from '@/lib/types';
+import { WhatsAppIcon, TelegramIcon, EmailIcon } from '@/app/components/Icons';
 import styles from '../admin.module.css';
 
 interface SalesTabProps {
@@ -685,13 +686,16 @@ export default function SalesTab({ articles, loadArticles }: SalesTabProps) {
               <div style={{ borderTop: '1px solid var(--border-card-glass)', marginTop: '20px', paddingTop: '16px' }}>
                 <span style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-secondary)' }}>Compartir Factura:</span>
                 <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
-                  <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className={`${styles.shareLink} ${styles.waShare}`} style={{ flex: 1, textDecoration: 'none', padding: '10px', borderRadius: '8px', textAlign: 'center', fontSize: '12px', fontWeight: 'bold' }}>
+                  <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className={`${styles.shareLink} ${styles.waShare}`} style={{ flex: 1, textDecoration: 'none', padding: '10px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '12px', fontWeight: 'bold' }}>
+                    <WhatsAppIcon width="16" height="16" />
                     WhatsApp
                   </a>
-                  <a href={telegramUrl} target="_blank" rel="noopener noreferrer" className={`${styles.shareLink} ${styles.tgShare}`} style={{ flex: 1, textDecoration: 'none', padding: '10px', borderRadius: '8px', textAlign: 'center', fontSize: '12px', fontWeight: 'bold' }}>
+                  <a href={telegramUrl} target="_blank" rel="noopener noreferrer" className={`${styles.shareLink} ${styles.tgShare}`} style={{ flex: 1, textDecoration: 'none', padding: '10px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '12px', fontWeight: 'bold' }}>
+                    <TelegramIcon width="16" height="16" />
                     Telegram
                   </a>
-                  <a href={emailUrl} className={`${styles.shareLink} ${styles.emailShare}`} style={{ flex: 1, textDecoration: 'none', padding: '10px', borderRadius: '8px', textAlign: 'center', fontSize: '12px', fontWeight: 'bold' }}>
+                  <a href={emailUrl} className={`${styles.shareLink} ${styles.emailShare}`} style={{ flex: 1, textDecoration: 'none', padding: '10px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '12px', fontWeight: 'bold' }}>
+                    <EmailIcon width="16" height="16" />
                     Email
                   </a>
                 </div>
