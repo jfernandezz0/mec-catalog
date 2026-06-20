@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { Category, Article } from '@/lib/types';
 import type { User } from '@supabase/supabase-js';
+import { safeFetchCategories, safeFetchArticles } from '@/lib/supabase-helpers';
 
 export interface UseAdminDataReturn {
   // Core data
@@ -92,99 +93,30 @@ export function useAdminData(onUserReady?: () => void): UseAdminDataReturn {
   // --- Data loading functions ---
 
   const loadCategories = useCallback(async function loadCategories() {
-    const { data, error } = await supabase
-      .from('categories')
-      .select('id, name, country_code, is_visible, discount_percent')
-      .order('id', { ascending: true });
-
-    if (error) {
-      if (error.message.includes('discount_percent')) {
-        setHasDiscountColumns(false);
-        const { data: fallbackData, error: fallbackError } = await supabase
-          .from('categories')
-          .select('id, name, country_code, is_visible')
-          .order('id', { ascending: true });
-
-        if (fallbackError) {
-          if (fallbackError.message.includes('is_visible')) {
-            setHasVisibilityColumn(false);
-            const { data: doubleFallback, error: doubleError } = await supabase
-              .from('categories')
-              .select('id, name, country_code')
-              .order('id', { ascending: true });
-            if (doubleError) {
-              alert(`Could not load categories: ${doubleError.message}`);
-              setCategories([]);
-            } else {
-              setCategories((doubleFallback ?? []).map(c => ({ ...c, is_visible: true, discount_percent: null })));
-            }
-          } else {
-            alert(`Could not load categories: ${fallbackError.message}`);
-            setCategories([]);
-          }
-        } else {
-          setCategories((fallbackData ?? []).map(c => ({ ...c, discount_percent: null })));
-        }
-      } else if (error.message.includes('is_visible')) {
-        setHasVisibilityColumn(false);
-        const { data: fallbackData, error: fallbackError } = await supabase
-          .from('categories')
-          .select('id, name, country_code')
-          .order('id', { ascending: true });
-
-        if (fallbackError) {
-          alert(`Could not load categories: ${fallbackError.message}`);
-          setCategories([]);
-        } else {
-          setCategories(
-            (fallbackData ?? []).map((category) => ({
-              ...category,
-              is_visible: true,
-              discount_percent: null
-            }))
-          );
-        }
-      } else {
-        alert(`Could not load categories: ${error.message}`);
-        setCategories([]);
-      }
-    } else {
-      setHasDiscountColumns(true);
-      setHasVisibilityColumn(true);
-      setCategories(data ?? []);
+    setLoadingCategories(true);
+    try {
+      const { categories, hasVisibilityColumn, hasDiscountColumns } = await safeFetchCategories();
+      setCategories(categories);
+      setHasVisibilityColumn(hasVisibilityColumn);
+      setHasDiscountColumns(hasDiscountColumns);
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setLoadingCategories(false);
     }
-
-    setLoadingCategories(false);
   }, []);
 
   const loadArticles = useCallback(async function loadArticles() {
     setLoadingArticles(true);
-    const { data, error } = await supabase
-      .from('articles')
-      .select('id, category_id, title, description, price, quantity, image_urls, frame_image_urls, sort_order, contact_clicks, share_clicks, views, discount_type, discount_value')
-      .order('sort_order', { ascending: true })
-      .order('id', { ascending: true });
-
-    if (error) {
-      if (error.message.includes('discount_type') || error.message.includes('discount_value')) {
-        setHasDiscountColumns(false);
-        const { data: fallbackData, error: fallbackError } = await supabase
-          .from('articles')
-          .select('id, category_id, title, description, price, quantity, image_urls, frame_image_urls, sort_order, contact_clicks, share_clicks, views')
-          .order('sort_order', { ascending: true })
-          .order('id', { ascending: true });
-        if (fallbackError) {
-          alert(`Could not load articles: ${fallbackError.message}`);
-        } else {
-          setArticles((fallbackData ?? []).map(a => ({ ...a, discount_type: null, discount_value: null })));
-        }
-      } else {
-        alert(`Could not load articles: ${error.message}`);
-      }
-    } else {
-      setArticles(data ?? []);
+    try {
+      const { articles, hasDiscountColumns } = await safeFetchArticles();
+      setArticles(articles);
+      setHasDiscountColumns(hasDiscountColumns);
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setLoadingArticles(false);
     }
-    setLoadingArticles(false);
   }, []);
 
   const loadPaymentsSetting = useCallback(async function loadPaymentsSetting() {
@@ -267,62 +199,14 @@ export function useAdminData(onUserReady?: () => void): UseAdminDataReturn {
   }, [hasSettingsTable]);
 
   const reloadCategories = useCallback(async function reloadCategories() {
-    const { data: catData, error: catError } = await supabase
-      .from('categories')
-      .select('id, name, country_code, is_visible, discount_percent')
-      .order('id', { ascending: true });
-
-    if (catError) {
-      if (catError.message.includes('discount_percent')) {
-        setHasDiscountColumns(false);
-        const { data: fallbackCatData, error: fallbackCatError } = await supabase
-          .from('categories')
-          .select('id, name, country_code, is_visible')
-          .order('id', { ascending: true });
-
-        if (fallbackCatError) {
-          if (fallbackCatError.message.includes('is_visible')) {
-            setHasVisibilityColumn(false);
-            const { data: doubleFallback, error: doubleError } = await supabase
-              .from('categories')
-              .select('id, name, country_code')
-              .order('id', { ascending: true });
-            if (doubleError) throw new Error(doubleError.message);
-            setCategories((doubleFallback ?? []).map(c => ({ ...c, is_visible: true, discount_percent: null })));
-          } else {
-            throw new Error(fallbackCatError.message);
-          }
-        } else {
-          setCategories((fallbackCatData ?? []).map(c => ({ ...c, discount_percent: null })));
-        }
-        return;
-      }
-      if (catError.message.includes('is_visible')) {
-        setHasVisibilityColumn(false);
-        const { data: fallbackCatData, error: fallbackCatError } = await supabase
-          .from('categories')
-          .select('id, name, country_code')
-          .order('id', { ascending: true });
-
-        if (fallbackCatError) {
-          throw new Error(fallbackCatError.message);
-        }
-
-        setCategories(
-          (fallbackCatData ?? []).map((category) => ({
-            ...category,
-            is_visible: true,
-            discount_percent: null
-          }))
-        );
-        return;
-      }
-
-      throw new Error(catError.message);
+    try {
+      const { categories, hasVisibilityColumn, hasDiscountColumns } = await safeFetchCategories();
+      setCategories(categories);
+      setHasVisibilityColumn(hasVisibilityColumn);
+      setHasDiscountColumns(hasDiscountColumns);
+    } catch (err: any) {
+      throw new Error(err.message);
     }
-
-    setHasVisibilityColumn(true);
-    setCategories(catData ?? []);
   }, []);
 
   // --- Initial data loading effect ---

@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import { useState, useEffect } from 'react';
 import { getFlagEmoji, formatPrice } from '@/lib/utils';
 import { Article, Category } from '@/lib/types';
 import styles from '../admin.module.css';
@@ -30,6 +31,14 @@ export default function CatalogTab({
   moveArticle,
   startEditing,
 }: CatalogTabProps) {
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 12;
+
+  // Reset page when search or category filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedCatalogCategoryId, searchQuery]);
+
   let displayedArticles = selectedCatalogCategoryId === null
     ? articles
     : articles.filter((a) => a.category_id === selectedCatalogCategoryId);
@@ -45,6 +54,15 @@ export default function CatalogTab({
       return idMatch || titleMatch || descMatch;
     });
   }
+
+  // Pagination calculations
+  const totalItems = displayedArticles.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
+  const activePage = Math.min(Math.max(1, currentPage), totalPages);
+
+  const startIndex = (activePage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedArticles = displayedArticles.slice(startIndex, endIndex);
 
   return (
     <div>
@@ -118,108 +136,159 @@ export default function CatalogTab({
 
       {loadingArticles ? (
         <div className={styles.loading}>Cargando catálogo...</div>
-      ) : displayedArticles.length > 0 ? (
-        <div className={styles.catalogGrid}>
-          {displayedArticles.map((article) => {
-            const catName =
-              categories.find((c) => c.id === article.category_id)?.name ||
-              'Sin categoría';
-            const primaryImageUrl =
-              article.image_urls && article.image_urls.length > 0
-                ? article.image_urls[0]
-                : null;
+      ) : paginatedArticles.length > 0 ? (
+        <div>
+          <div className={styles.catalogGrid}>
+            {paginatedArticles.map((article) => {
+              const catName =
+                categories.find((c) => c.id === article.category_id)?.name ||
+                'Sin categoría';
+              const primaryImageUrl =
+                article.image_urls && article.image_urls.length > 0
+                  ? article.image_urls[0]
+                  : null;
 
-            return (
-              <article key={article.id} className={styles.catalogCard}>
-                <div className={styles.cardImageWrap}>
-                  {primaryImageUrl ? (
-                    <Image
-                      src={primaryImageUrl}
-                      alt={article.title}
-                      fill
-                      sizes="(max-width: 640px) 100vw, 400px"
-                      className={styles.cardImage}
-                    />
-                  ) : (
-                    <div className={styles.cardNoImage}>
-                      El fotógrafo se está tomando unos días libres.<br />
-                      🏖️☀️🍹
+              return (
+                <article key={article.id} className={styles.catalogCard}>
+                  <div className={styles.cardImageWrap}>
+                    {primaryImageUrl ? (
+                      <Image
+                        src={primaryImageUrl}
+                        alt={article.title}
+                        fill
+                        sizes="(max-width: 640px) 100vw, 400px"
+                        className={styles.cardImage}
+                      />
+                    ) : (
+                      <div className={styles.cardNoImage}>
+                        El fotógrafo se está tomando unos días libres.<br />
+                        🏖️☀️🍹
+                      </div>
+                    )}
+                  </div>
+                  <div className={styles.cardContent}>
+                    <div className={styles.cardHeader}>
+                      <div className={styles.cardInfoCol}>
+                        <span className={styles.cardCategory}>
+                          {catName} <span className={styles.cardIdBadge}>ID: {article.id}</span>
+                        </span>
+                        {(() => {
+                          const parts = article.title.split(' – ');
+                          const marca = parts[0];
+                          const modelo = parts.slice(1).join(' – ');
+                          return modelo ? (
+                            <h2 className={styles.cardTitle}>
+                              <span className={styles.cardBrand}>{marca}</span>
+                              <span>{modelo}</span>
+                            </h2>
+                          ) : (
+                            <h2 className={styles.cardTitle}>{article.title}</h2>
+                          );
+                        })()}
+                      </div>
+                      <div className={styles.cardStatsRow}>
+                        <span className={styles.cardViews} title="Visualizaciones de la ficha">
+                          👁️ {article.views ?? 0}
+                        </span>
+                        <span className={styles.cardClicks} title="Clics de contacto recibidos">
+                          📞 {article.contact_clicks ?? 0}
+                        </span>
+                        <span className={styles.cardShareClicks} title="Clics de compartir recibidos">
+                          🔗 {article.share_clicks ?? 0}
+                        </span>
+                      </div>
                     </div>
-                  )}
-                </div>
-                <div className={styles.cardContent}>
-                  <div className={styles.cardHeader}>
-                    <div className={styles.cardInfoCol}>
-                      <span className={styles.cardCategory}>
-                        {catName} <span className={styles.cardIdBadge}>ID: {article.id}</span>
+                    <div className={styles.cardMeta}>
+                      <span className={styles.cardPrice}>
+                        {formatPrice(article.price)}
                       </span>
-                      {(() => {
-                        const parts = article.title.split(' – ');
-                        const marca = parts[0];
-                        const modelo = parts.slice(1).join(' – ');
-                        return modelo ? (
-                          <h2 className={styles.cardTitle}>
-                            <span className={styles.cardBrand}>{marca}</span>
-                            <span>{modelo}</span>
-                          </h2>
-                        ) : (
-                          <h2 className={styles.cardTitle}>{article.title}</h2>
-                        );
-                      })()}
+                      <div className="flex gap-2 items-center">
+                        <span className={styles.cardStock}>
+                          {article.quantity} ud.
+                        </span>
+                      </div>
                     </div>
-                    <div className={styles.cardStatsRow}>
-                      <span className={styles.cardViews} title="Visualizaciones de la ficha">
-                        👁️ {article.views ?? 0}
-                      </span>
-                      <span className={styles.cardClicks} title="Clics de contacto recibidos">
-                        📞 {article.contact_clicks ?? 0}
-                      </span>
-                      <span className={styles.cardShareClicks} title="Clics de compartir recibidos">
-                        🔗 {article.share_clicks ?? 0}
-                      </span>
+                    <div className={styles.cardActions}>
+                      <button
+                        type="button"
+                        className={styles.cardOrderButton}
+                        onClick={() => moveArticle(article.id, 'up', displayedArticles)}
+                        aria-label="Subir"
+                        title="Subir en esta categoría"
+                      >
+                        ↑
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.cardOrderButton}
+                        onClick={() => moveArticle(article.id, 'down', displayedArticles)}
+                        aria-label="Bajar"
+                        title="Bajar en esta categoría"
+                      >
+                        ↓
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.cardEditButton}
+                        onClick={() => startEditing(article)}
+                      >
+                        Abrir Ficha / Editar
+                      </button>
                     </div>
                   </div>
-                  <div className={styles.cardMeta}>
-                    <span className={styles.cardPrice}>
-                      {formatPrice(article.price)}
-                    </span>
-                    <div className="flex gap-2 items-center">
-                      <span className={styles.cardStock}>
-                        {article.quantity} ud.
-                      </span>
-                    </div>
-                  </div>
-                  <div className={styles.cardActions}>
-                    <button
-                      type="button"
-                      className={styles.cardOrderButton}
-                      onClick={() => moveArticle(article.id, 'up', displayedArticles)}
-                      aria-label="Subir"
-                      title="Subir en esta categoría"
-                    >
-                      ↑
-                    </button>
-                    <button
-                      type="button"
-                      className={styles.cardOrderButton}
-                      onClick={() => moveArticle(article.id, 'down', displayedArticles)}
-                      aria-label="Bajar"
-                      title="Bajar en esta categoría"
-                    >
-                      ↓
-                    </button>
-                    <button
-                      type="button"
-                      className={styles.cardEditButton}
-                      onClick={() => startEditing(article)}
-                    >
-                      Abrir Ficha / Editar
-                    </button>
-                  </div>
-                </div>
-              </article>
-            );
-          })}
+                </article>
+              );
+            })}
+          </div>
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className={styles.paginationRow} style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '15px', marginTop: '25px', padding: '10px 0' }}>
+              <button
+                type="button"
+                disabled={activePage === 1}
+                onClick={() => setCurrentPage(activePage - 1)}
+                className={styles.paginationButton}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: '8px',
+                  border: '1px solid var(--border-card)',
+                  background: 'var(--bg-card)',
+                  color: 'var(--text-primary)',
+                  cursor: activePage === 1 ? 'not-allowed' : 'pointer',
+                  opacity: activePage === 1 ? 0.5 : 1,
+                  fontWeight: 'bold',
+                  fontSize: '13px',
+                  transition: 'opacity 0.2s ease'
+                }}
+              >
+                Anterior
+              </button>
+              <span style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--text-secondary)' }}>
+                Página {activePage} de {totalPages}
+              </span>
+              <button
+                type="button"
+                disabled={activePage === totalPages}
+                onClick={() => setCurrentPage(activePage + 1)}
+                className={styles.paginationButton}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: '8px',
+                  border: '1px solid var(--border-card)',
+                  background: 'var(--bg-card)',
+                  color: 'var(--text-primary)',
+                  cursor: activePage === totalPages ? 'not-allowed' : 'pointer',
+                  opacity: activePage === totalPages ? 0.5 : 1,
+                  fontWeight: 'bold',
+                  fontSize: '13px',
+                  transition: 'opacity 0.2s ease'
+                }}
+              >
+                Siguiente
+              </button>
+            </div>
+          )}
         </div>
       ) : articles.length > 0 ? (
         <div className={styles.emptyState}>

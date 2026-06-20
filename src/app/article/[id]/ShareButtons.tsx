@@ -37,8 +37,8 @@ export default function ShareButtons({ id, title }: ShareButtonsProps) {
   };
 
   // Pre-filled texts
-  const contactPhoneNumber = '34619148601';
-  const contactEmail = 'minienginescreations@gmail.com';
+  const contactPhoneNumber = process.env.NEXT_PUBLIC_CONTACT_PHONE || '34619148601';
+  const contactEmail = process.env.NEXT_PUBLIC_CONTACT_EMAIL || 'minienginescreations@gmail.com';
   const defaultContactMessage = `Hola, estoy interesado en el artículo ${title}, ¿podrías darme mas información?`;
 
   // Contact Links

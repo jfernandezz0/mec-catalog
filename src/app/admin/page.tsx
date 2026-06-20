@@ -10,17 +10,20 @@ import styles from './admin.module.css';
 // Hooks
 import { useAdminData } from './hooks/useAdminData';
 
+import dynamic from 'next/dynamic';
+
 // Components
 import AdminLogin from './components/AdminLogin';
-import CatalogTab from './components/CatalogTab';
-import ArticleForm from './components/ArticleForm';
-import CategoriesManager from './components/CategoriesManager';
-import CSVImportTab from './components/CSVImportTab';
-import ConfigTab from './components/ConfigTab';
-import SalesTab from './components/SalesTab';
-import SalesCreateTab from './components/SalesCreateTab';
-import AnalyticsTab from './components/AnalyticsTab';
-import PDFListGenerator from './components/PDFListGenerator';
+
+const CatalogTab = dynamic(() => import('./components/CatalogTab'), { ssr: false });
+const ArticleForm = dynamic(() => import('./components/ArticleForm'), { ssr: false });
+const CategoriesManager = dynamic(() => import('./components/CategoriesManager'), { ssr: false });
+const CSVImportTab = dynamic(() => import('./components/CSVImportTab'), { ssr: false });
+const ConfigTab = dynamic(() => import('./components/ConfigTab'), { ssr: false });
+const SalesTab = dynamic(() => import('./components/SalesTab'), { ssr: false });
+const SalesCreateTab = dynamic(() => import('./components/SalesCreateTab'), { ssr: false });
+const AnalyticsTab = dynamic(() => import('./components/AnalyticsTab'), { ssr: false });
+const PDFListGenerator = dynamic(() => import('./components/PDFListGenerator'), { ssr: false });
 
 // Image helpers
 function getSafeFilePath(file: File) {

@@ -56,6 +56,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Validar tamaño de archivo (máx 2MB)
+    const MAX_SIZE = 2 * 1024 * 1024;
+    if (file.size > MAX_SIZE) {
+      return NextResponse.json(
+        { error: 'El logotipo no debe superar los 2 MB.' },
+        { status: 400 }
+      );
+    }
+
     // 3. Validar el código de país
     const code = countryCode.toUpperCase().trim();
     if (!isValidISOCode(code)) {

@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { safeFetchCategoriesWithArticleCount } from '@/lib/supabase-helpers';
 import CategoryCard from './CategoryCard';
 import Image from 'next/image';
 import SearchBar from './components/SearchBar';
@@ -43,10 +44,7 @@ export default async function Home() {
   let settingsError = null;
 
   try {
-    const categoriesPromise = supabase
-      .from('categories')
-      .select('id, name, country_code, is_visible, articles(count)')
-      .order('id', { ascending: true });
+    const categoriesPromise = safeFetchCategoriesWithArticleCount();
 
     const settingsPromise = supabase
       .from('settings')
@@ -57,29 +55,8 @@ export default async function Home() {
       settingsPromise
     ]);
 
-    let categories = categoriesResult.data;
-    let error = categoriesResult.error;
-
-    if (error) {
-      if (error.message.includes('is_visible')) {
-        const { data: fallbackCategories, error: fallbackError } = await supabase
-          .from('categories')
-          .select('id, name, country_code, articles(count)')
-          .order('id', { ascending: true });
-
-        if (fallbackError) {
-          console.error('Fallback error al cargar categorías:', JSON.stringify(fallbackError, null, 2));
-        }
-
-        categoryList = fallbackCategories ?? [];
-      } else {
-        console.error('Detalle del error de red:', JSON.stringify(error, null, 2));
-        categoryList = categories ?? [];
-      }
-    } else {
-      categoryList = categories ?? [];
-      shouldFilterVisibility = true;
-    }
+    categoryList = categoriesResult.categories;
+    shouldFilterVisibility = categoriesResult.hasVisibilityColumn;
 
     settingsData = settingsResult.data;
     settingsError = settingsResult.error;

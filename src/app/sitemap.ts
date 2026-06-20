@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { safeFetchCategories } from '@/lib/supabase-helpers';
 import { MetadataRoute } from 'next';
 
 export const revalidate = 3600; // Revalidate every hour
@@ -17,16 +18,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ];
 
   try {
-    // 2. Fetch categories
-    const { data: categories } = await supabase
-      .from('categories')
-      .select('id, country_code, is_visible');
+    // 2. Fetch categories safely
+    const { categories, hasVisibilityColumn } = await safeFetchCategories();
 
     const visibleCategoryIds: number[] = [];
 
     if (categories) {
       categories.forEach((cat) => {
-        if (cat.is_visible !== false) {
+        if (!hasVisibilityColumn || cat.is_visible !== false) {
           visibleCategoryIds.push(cat.id);
           routes.push({
             url: `${baseUrl}/category/${cat.country_code.toLowerCase()}`,
