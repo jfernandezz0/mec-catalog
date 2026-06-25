@@ -104,8 +104,11 @@ export default function AnalyticsTab({
   const totalContactClicks = articles.reduce((sum, a) => sum + (a.contact_clicks || 0), 0);
   const totalShareClicks = articles.reduce((sum, a) => sum + (a.share_clicks || 0), 0);
   const conversionRate = totalViews > 0 ? ((totalContactClicks / totalViews) * 100).toFixed(2) : '0';
-  const totalSalesCount = sales.length;
+  const totalSalesCount = sales.filter(s => s.status !== 'CANCELADA').length;
   const totalRevenue = sales.reduce((sum, s) => {
+    if (s.status === 'CANCELADA') {
+      return sum;
+    }
     if (s.payment_type === 'RESERVA' && s.status === 'PRECOMPRA') {
       return sum;
     }
@@ -135,6 +138,9 @@ export default function AnalyticsTab({
   const maxConversion = Math.max(...topConversion.map(a => a.rate || 1), 1);
 
   const revenueByPayment = sales.reduce((acc, s) => {
+    if (s.status === 'CANCELADA') {
+      return acc;
+    }
     if (s.payment_type === 'RESERVA' && s.status === 'PRECOMPRA') {
       return acc;
     }

@@ -33,7 +33,7 @@ export interface Sale {
   payment_type: 'REVOLUT' | 'PAYPAL' | 'EFECTIVO' | 'RESERVA';
   total_price: number;
   total_articles: number;
-  status: 'COMPLETADA' | 'PRECOMPRA';
+  status: 'COMPLETADA' | 'PRECOMPRA' | 'CANCELADA';
   created_at: string;
 }
 

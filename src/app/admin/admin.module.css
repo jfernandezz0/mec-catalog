@@ -1900,6 +1900,11 @@
   color: var(--text-available);
 }
 
+.statusBadgeCancelled {
+  background: var(--bg-soldout);
+  color: var(--text-soldout);
+}
+
 .viewDetailBtn {
   background: var(--bg-input);
   border: 1px solid var(--border-input);

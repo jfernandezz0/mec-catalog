@@ -19,7 +19,7 @@ export default function SalesTab({ articles, loadArticles }: SalesTabProps) {
   const [salesSubmenu, setSalesSubmenu] = useState<'all' | 'prepurchase' | 'completed'>('all');
   const [salesSearch, setSalesSearch] = useState('');
   const [salesFilterPayment, setSalesFilterPayment] = useState<'all' | 'REVOLUT' | 'PAYPAL' | 'EFECTIVO' | 'RESERVA'>('all');
-  const [salesFilterStatus, setSalesFilterStatus] = useState<'all' | 'COMPLETADA' | 'PRECOMPRA'>('all');
+  const [salesFilterStatus, setSalesFilterStatus] = useState<'all' | 'COMPLETADA' | 'PRECOMPRA' | 'CANCELADA'>('all');
   const [salesFilterDate, setSalesFilterDate] = useState<'all' | 'today' | 'week' | 'month'>('all');
   const [exportingSales, setExportingSales] = useState(false);
   const [selectedSaleDetail, setSelectedSaleDetail] = useState<Sale | null>(null);
@@ -236,6 +236,52 @@ export default function SalesTab({ articles, loadArticles }: SalesTabProps) {
     }
   }
 
+  async function handleCancelSale(sale: Sale) {
+    if (!confirm('¿Estás seguro de que deseas cancelar o realizar la devolución de esta venta? Esta acción devolverá los artículos al stock y marcará el pedido como CANCELADO/DEVUELTO.')) {
+      return;
+    }
+
+    try {
+      // 1. Update sale status to CANCELADA in database
+      const { error: saleError } = await supabase
+        .from('sales')
+        .update({ status: 'CANCELADA' })
+        .eq('id', sale.id);
+
+      if (saleError) throw saleError;
+
+      // 2. Return articles to stock
+      for (const item of saleDetailItems) {
+        if (item.article_id) {
+          const { data: artData } = await supabase
+            .from('articles')
+            .select('quantity')
+            .eq('id', item.article_id)
+            .single();
+
+          const currentQty = artData ? artData.quantity : 0;
+
+          const { error: stockError } = await supabase
+            .from('articles')
+            .update({ quantity: currentQty + item.quantity })
+            .eq('id', item.article_id);
+
+          if (stockError) {
+            console.error(`Error updating stock for article ID ${item.article_id} on cancellation:`, stockError);
+          }
+        }
+      }
+
+      setSelectedSaleDetail({ ...sale, status: 'CANCELADA' });
+      alert('¡La venta ha sido cancelada y los artículos han sido devueltos al stock!');
+
+      await loadSales();
+      await loadArticles();
+    } catch (e: any) {
+      alert(`Error al cancelar la venta: ${e.message || e}`);
+    }
+  }
+
   // Filtering logic
   let filteredSales = sales;
   
@@ -283,6 +329,9 @@ export default function SalesTab({ articles, loadArticles }: SalesTabProps) {
 
   // Dynamic Financial Summary calculation
   const totalRevenue = filteredSales.reduce((sum, s) => {
+    if (s.status === 'CANCELADA') {
+      return sum;
+    }
     if (s.payment_type === 'RESERVA' && s.status === 'PRECOMPRA') {
       return sum;
     }
@@ -290,6 +339,9 @@ export default function SalesTab({ articles, loadArticles }: SalesTabProps) {
   }, 0);
   const totalSalesCount = filteredSales.length;
   const revenueByPayment = filteredSales.reduce((acc, s) => {
+    if (s.status === 'CANCELADA') {
+      return acc;
+    }
     if (s.payment_type === 'RESERVA' && s.status === 'PRECOMPRA') {
       return acc;
     }
@@ -301,6 +353,7 @@ export default function SalesTab({ articles, loadArticles }: SalesTabProps) {
   const completedSalesCount = filteredSales.filter(s => s.status === 'COMPLETADA').length;
   const pendingReservationsCount = filteredSales.filter(s => s.payment_type === 'RESERVA' && s.status === 'PRECOMPRA').length;
   const pendingPrepurchasesCount = filteredSales.filter(s => s.payment_type !== 'RESERVA' && s.status === 'PRECOMPRA').length;
+  const cancelledSalesCount = filteredSales.filter(s => s.status === 'CANCELADA').length;
 
   return (
     <div className={styles.salesTabContainer}>
@@ -458,6 +511,7 @@ export default function SalesTab({ articles, loadArticles }: SalesTabProps) {
           <option value="all">Todos los Estados</option>
           <option value="COMPLETADA">Completada</option>
           <option value="PRECOMPRA">Precompra</option>
+          <option value="CANCELADA">Cancelada/Devuelta</option>
         </select>
 
         <select
@@ -504,6 +558,12 @@ export default function SalesTab({ articles, loadArticles }: SalesTabProps) {
               <div className={styles.salesSummaryPayItem}>
                 <span className={styles.payName}>Precompras:</span>
                 <span className={styles.payVal}><strong>{pendingPrepurchasesCount}</strong></span>
+              </div>
+            )}
+            {cancelledSalesCount > 0 && (
+              <div className={styles.salesSummaryPayItem}>
+                <span className={styles.payName}>Canceladas:</span>
+                <span className={styles.payVal}><strong>{cancelledSalesCount}</strong></span>
               </div>
             )}
           </div>
@@ -590,8 +650,13 @@ export default function SalesTab({ articles, loadArticles }: SalesTabProps) {
                     {formatPrice(sale.total_price)}
                   </td>
                   <td style={{ textAlign: 'center' }}>
-                    <span className={`${styles.statusBadge} ${sale.status === 'PRECOMPRA' ? styles.statusBadgePrepurchase : styles.statusBadgeCompleted}`}>
-                      {sale.payment_type === 'RESERVA' && sale.status === 'PRECOMPRA' ? 'RESERVADO' : sale.status}
+                    <span className={`${styles.statusBadge} ${
+                      sale.status === 'CANCELADA' ? styles.statusBadgeCancelled :
+                      sale.status === 'PRECOMPRA' ? styles.statusBadgePrepurchase : 
+                      styles.statusBadgeCompleted
+                    }`}>
+                      {sale.status === 'CANCELADA' ? 'CANCELADO/DEVUELTO' : 
+                       (sale.payment_type === 'RESERVA' && sale.status === 'PRECOMPRA' ? 'RESERVADO' : sale.status)}
                     </span>
                   </td>
                   <td style={{ textAlign: 'center' }}>
@@ -663,8 +728,13 @@ export default function SalesTab({ articles, loadArticles }: SalesTabProps) {
                 )}
                 <div className={styles.summaryRow}>
                   <span>Estado:</span>
-                  <strong style={{ color: selectedSaleDetail.status === 'PRECOMPRA' ? 'var(--text-soldout)' : 'var(--text-available)' }}>
-                    {selectedSaleDetail.payment_type === 'RESERVA' && selectedSaleDetail.status === 'PRECOMPRA' ? 'RESERVADO' : selectedSaleDetail.status}
+                  <strong style={{ color: 
+                    selectedSaleDetail.status === 'CANCELADA' ? 'var(--text-soldout)' :
+                    selectedSaleDetail.status === 'PRECOMPRA' ? 'var(--text-soldout)' : 
+                    'var(--text-available)' 
+                  }}>
+                    {selectedSaleDetail.status === 'CANCELADA' ? 'CANCELADO/DEVUELTO' :
+                     (selectedSaleDetail.payment_type === 'RESERVA' && selectedSaleDetail.status === 'PRECOMPRA' ? 'RESERVADO' : selectedSaleDetail.status)}
                   </strong>
                 </div>
               </div>
@@ -744,6 +814,16 @@ export default function SalesTab({ articles, loadArticles }: SalesTabProps) {
                 >
                   Ver Online / PDF 📄
                 </a>
+                {selectedSaleDetail.status !== 'CANCELADA' && (
+                  <button
+                    type="button"
+                    onClick={() => handleCancelSale(selectedSaleDetail)}
+                    className={`${styles.dangerButton} ${styles.solidRedButton}`}
+                    style={{ flex: 1, padding: '12px', borderRadius: '8px', border: 'none', fontWeight: 'bold', cursor: 'pointer', fontSize: '13px' }}
+                  >
+                    Devolución / Cancelar ✕
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => {

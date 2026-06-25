@@ -178,6 +178,14 @@ export default function InvoicePage(props: Props) {
                   </span>
                 </p>
               )}
+              {sale.status === 'CANCELADA' && (
+                <p>
+                  <strong>Estado:</strong>{' '}
+                  <span className={`${styles.badge} ${styles.badgePrepurchase}`}>
+                    CANCELADA / DEVUELTA
+                  </span>
+                </p>
+              )}
             </div>
           </div>
         </section>
