@@ -282,9 +282,17 @@ export default function SalesTab({ articles, loadArticles }: SalesTabProps) {
   }
 
   // Dynamic Financial Summary calculation
-  const totalRevenue = filteredSales.reduce((sum, s) => sum + Number(s.total_price), 0);
+  const totalRevenue = filteredSales.reduce((sum, s) => {
+    if (s.payment_type === 'RESERVA' && s.status === 'PRECOMPRA') {
+      return sum;
+    }
+    return sum + Number(s.total_price);
+  }, 0);
   const totalSalesCount = filteredSales.length;
   const revenueByPayment = filteredSales.reduce((acc, s) => {
+    if (s.payment_type === 'RESERVA' && s.status === 'PRECOMPRA') {
+      return acc;
+    }
     const type = s.payment_type || 'OTRO';
     acc[type] = (acc[type] || 0) + Number(s.total_price);
     return acc;
@@ -494,6 +502,10 @@ export default function SalesTab({ articles, loadArticles }: SalesTabProps) {
             <div className={styles.salesSummaryPayItem}>
               <span className={styles.payName}>Efectivo:</span>
               <span className={styles.payVal}>{formatPrice(revenueByPayment['EFECTIVO'] || 0)}</span>
+            </div>
+            <div className={styles.salesSummaryPayItem}>
+              <span className={styles.payName}>Reserva:</span>
+              <span className={styles.payVal}>{formatPrice(revenueByPayment['RESERVA'] || 0)}</span>
             </div>
           </div>
         </div>

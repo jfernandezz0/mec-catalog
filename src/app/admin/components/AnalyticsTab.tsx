@@ -105,7 +105,12 @@ export default function AnalyticsTab({
   const totalShareClicks = articles.reduce((sum, a) => sum + (a.share_clicks || 0), 0);
   const conversionRate = totalViews > 0 ? ((totalContactClicks / totalViews) * 100).toFixed(2) : '0';
   const totalSalesCount = sales.length;
-  const totalRevenue = sales.reduce((sum, s) => sum + Number(s.total_price), 0);
+  const totalRevenue = sales.reduce((sum, s) => {
+    if (s.payment_type === 'RESERVA' && s.status === 'PRECOMPRA') {
+      return sum;
+    }
+    return sum + Number(s.total_price);
+  }, 0);
   const averageTicket = totalSalesCount > 0 ? (totalRevenue / totalSalesCount) : 0;
 
   const topViews = [...articles]
@@ -130,6 +135,9 @@ export default function AnalyticsTab({
   const maxConversion = Math.max(...topConversion.map(a => a.rate || 1), 1);
 
   const revenueByPayment = sales.reduce((acc, s) => {
+    if (s.payment_type === 'RESERVA' && s.status === 'PRECOMPRA') {
+      return acc;
+    }
     const type = s.payment_type || 'OTRO';
     acc[type] = (acc[type] || 0) + Number(s.total_price);
     return acc;
