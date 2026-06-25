@@ -31,7 +31,7 @@ export default function SalesCreateTab({
   const [saleBuyerEmail, setSaleBuyerEmail] = useState('');
   const [saleBuyerInstagram, setSaleBuyerInstagram] = useState('');
   const [saleLocation, setSaleLocation] = useState('online');
-  const [salePaymentType, setSalePaymentType] = useState<'REVOLUT' | 'PAYPAL' | 'EFECTIVO'>('REVOLUT');
+  const [salePaymentType, setSalePaymentType] = useState<'REVOLUT' | 'PAYPAL' | 'EFECTIVO' | 'RESERVA'>('REVOLUT');
   const [showSaleSummary, setShowSaleSummary] = useState(false);
   const [registeringSale, setRegisteringSale] = useState(false);
   const [salesCreateSearch, setSalesCreateSearch] = useState('');
@@ -86,7 +86,7 @@ export default function SalesCreateTab({
           ? (saleItemPrices.get(id) ?? 0)
           : getFinalPriceForArticle(article);
 
-        const isPrepurchase = qty > article.quantity;
+        const isPrepurchase = salePaymentType === 'RESERVA' || qty > article.quantity;
         if (isPrepurchase) {
           hasPrepurchase = true;
         }
@@ -448,6 +448,7 @@ export default function SalesCreateTab({
                       <option value="REVOLUT">Revolut</option>
                       <option value="PAYPAL">PayPal</option>
                       <option value="EFECTIVO">Efectivo</option>
+                      <option value="RESERVA">Reserva</option>
                     </select>
                   </div>
                 </div>

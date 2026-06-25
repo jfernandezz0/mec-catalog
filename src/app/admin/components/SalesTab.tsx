@@ -18,7 +18,7 @@ export default function SalesTab({ articles, loadArticles }: SalesTabProps) {
   const [loadingSales, setLoadingSales] = useState(true);
   const [salesSubmenu, setSalesSubmenu] = useState<'all' | 'prepurchase' | 'completed'>('all');
   const [salesSearch, setSalesSearch] = useState('');
-  const [salesFilterPayment, setSalesFilterPayment] = useState<'all' | 'REVOLUT' | 'PAYPAL' | 'EFECTIVO'>('all');
+  const [salesFilterPayment, setSalesFilterPayment] = useState<'all' | 'REVOLUT' | 'PAYPAL' | 'EFECTIVO' | 'RESERVA'>('all');
   const [salesFilterStatus, setSalesFilterStatus] = useState<'all' | 'COMPLETADA' | 'PRECOMPRA'>('all');
   const [salesFilterDate, setSalesFilterDate] = useState<'all' | 'today' | 'week' | 'month'>('all');
   const [exportingSales, setExportingSales] = useState(false);
@@ -187,7 +187,7 @@ export default function SalesTab({ articles, loadArticles }: SalesTabProps) {
 
       if (itemError) throw itemError;
 
-      if (item.article_id) {
+      if (selectedSaleDetail.payment_type !== 'RESERVA' && item.article_id) {
         const { data: artData } = await supabase
           .from('articles')
           .select('quantity')
@@ -435,6 +435,7 @@ export default function SalesTab({ articles, loadArticles }: SalesTabProps) {
           <option value="REVOLUT">Revolut</option>
           <option value="PAYPAL">PayPal</option>
           <option value="EFECTIVO">Efectivo</option>
+          <option value="RESERVA">Reserva</option>
         </select>
 
         <select
@@ -558,7 +559,7 @@ export default function SalesTab({ articles, loadArticles }: SalesTabProps) {
                   </td>
                   <td style={{ textAlign: 'center' }}>
                     <span className={`${styles.statusBadge} ${sale.status === 'PRECOMPRA' ? styles.statusBadgePrepurchase : styles.statusBadgeCompleted}`}>
-                      {sale.status}
+                      {sale.payment_type === 'RESERVA' && sale.status === 'PRECOMPRA' ? 'RESERVADO' : sale.status}
                     </span>
                   </td>
                   <td style={{ textAlign: 'center' }}>
@@ -631,7 +632,7 @@ export default function SalesTab({ articles, loadArticles }: SalesTabProps) {
                 <div className={styles.summaryRow}>
                   <span>Estado:</span>
                   <strong style={{ color: selectedSaleDetail.status === 'PRECOMPRA' ? 'var(--text-soldout)' : 'var(--text-available)' }}>
-                    {selectedSaleDetail.status}
+                    {selectedSaleDetail.payment_type === 'RESERVA' && selectedSaleDetail.status === 'PRECOMPRA' ? 'RESERVADO' : selectedSaleDetail.status}
                   </strong>
                 </div>
               </div>
@@ -667,7 +668,7 @@ export default function SalesTab({ articles, loadArticles }: SalesTabProps) {
                             type="button"
                             onClick={() => completePrepurchaseItem(item)}
                             className={styles.completeItemBtn}
-                            title="Marcar como listo y subir stock en 1"
+                            title={selectedSaleDetail.payment_type === 'RESERVA' ? 'Cerrar pago y completar reserva' : 'Marcar como listo y subir stock en 1'}
                           >
                             ✓ Completar
                           </button>

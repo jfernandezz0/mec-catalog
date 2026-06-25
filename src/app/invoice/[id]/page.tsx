@@ -163,7 +163,7 @@ export default function InvoicePage(props: Props) {
                 <p>
                   <strong>Estado:</strong>{' '}
                   <span className={`${styles.badge} ${styles.badgePrepurchase}`}>
-                    PRECOMPRA (Pendiente de envío)
+                    {sale.payment_type === 'RESERVA' ? 'RESERVADO (Pendiente de pago)' : 'PRECOMPRA (Pendiente de envío)'}
                   </span>
                 </p>
               )}
@@ -171,7 +171,7 @@ export default function InvoicePage(props: Props) {
                 <p>
                   <strong>Estado:</strong>{' '}
                   <span className={`${styles.badge} ${styles.badgeAvailable}`}>
-                    COMPLETADA / ENTREGADA
+                    {sale.payment_type === 'RESERVA' ? 'RESERVA COMPLETADA' : 'COMPLETADA / ENTREGADA'}
                   </span>
                 </p>
               )}
@@ -212,7 +212,7 @@ export default function InvoicePage(props: Props) {
                   <td className={`${styles.td} ${styles.alignCenter} noPrint`}>
                     {item.is_prepurchase ? (
                       <span className={`${styles.badge} ${styles.badgePrepurchase}`}>
-                        Precompra*
+                        {sale.payment_type === 'RESERVA' ? 'Reservado*' : 'Precompra*'}
                       </span>
                     ) : (
                       <span className={`${styles.badge} ${styles.badgeAvailable}`}>

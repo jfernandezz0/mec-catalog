@@ -30,7 +30,7 @@ export interface Sale {
   buyer_email: string | null;
   buyer_instagram: string | null;
   location: string;
-  payment_type: 'REVOLUT' | 'PAYPAL' | 'EFECTIVO';
+  payment_type: 'REVOLUT' | 'PAYPAL' | 'EFECTIVO' | 'RESERVA';
   total_price: number;
   total_articles: number;
   status: 'COMPLETADA' | 'PRECOMPRA';
