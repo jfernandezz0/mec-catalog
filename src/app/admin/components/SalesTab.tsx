@@ -298,6 +298,10 @@ export default function SalesTab({ articles, loadArticles }: SalesTabProps) {
     return acc;
   }, {} as Record<string, number>);
 
+  const completedSalesCount = filteredSales.filter(s => s.status === 'COMPLETADA').length;
+  const pendingReservationsCount = filteredSales.filter(s => s.payment_type === 'RESERVA' && s.status === 'PRECOMPRA').length;
+  const pendingPrepurchasesCount = filteredSales.filter(s => s.payment_type !== 'RESERVA' && s.status === 'PRECOMPRA').length;
+
   return (
     <div className={styles.salesTabContainer}>
       {/* Submenu tabs */}
@@ -487,6 +491,22 @@ export default function SalesTab({ articles, loadArticles }: SalesTabProps) {
         <div className={styles.salesSummaryCard}>
           <span className={styles.salesSummaryLabel}>Ventas Registradas</span>
           <span className={styles.salesSummaryValue}>{totalSalesCount}</span>
+          <div className={styles.salesSummaryPayments} style={{ marginTop: '8px', borderTop: '1px solid var(--border-card-glass)', paddingTop: '6px' }}>
+            <div className={styles.salesSummaryPayItem}>
+              <span className={styles.payName}>Completadas:</span>
+              <span className={styles.payVal}><strong>{completedSalesCount}</strong></span>
+            </div>
+            <div className={styles.salesSummaryPayItem}>
+              <span className={styles.payName}>Reservas:</span>
+              <span className={styles.payVal}><strong>{pendingReservationsCount}</strong></span>
+            </div>
+            {pendingPrepurchasesCount > 0 && (
+              <div className={styles.salesSummaryPayItem}>
+                <span className={styles.payName}>Precompras:</span>
+                <span className={styles.payVal}><strong>{pendingPrepurchasesCount}</strong></span>
+              </div>
+            )}
+          </div>
         </div>
         <div className={styles.salesSummaryCard}>
           <span className={styles.salesSummaryLabel}>Por Método de Pago</span>
