@@ -583,10 +583,6 @@ export default function SalesTab({ articles, loadArticles }: SalesTabProps) {
               <span className={styles.payName}>Efectivo:</span>
               <span className={styles.payVal}>{formatPrice(revenueByPayment['EFECTIVO'] || 0)}</span>
             </div>
-            <div className={styles.salesSummaryPayItem}>
-              <span className={styles.payName}>Reserva:</span>
-              <span className={styles.payVal}>{formatPrice(revenueByPayment['RESERVA'] || 0)}</span>
-            </div>
           </div>
         </div>
       </div>

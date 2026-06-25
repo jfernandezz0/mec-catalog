@@ -222,10 +222,6 @@ export default function AnalyticsTab({
                 <span>Efectivo:</span>
                 <strong>{formatPrice(revenueByPayment['EFECTIVO'] || 0)}</strong>
               </div>
-              <div className={styles.payRow}>
-                <span>Reserva:</span>
-                <strong>{formatPrice(revenueByPayment['RESERVA'] || 0)}</strong>
-              </div>
             </div>
           </div>
         </div>
