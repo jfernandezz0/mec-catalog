@@ -492,7 +492,7 @@ export default function SalesCreateTab({
             ? (saleItemPrices.get(id) ?? 0)
             : getFinalPriceForArticle(art);
           
-          const isPrepurchase = qty > art.quantity;
+          const isPrepurchase = salePaymentType === 'RESERVA' || qty > art.quantity;
           if (isPrepurchase) hasPrepurchase = true;
 
           summaryTotal += price * qty;
@@ -527,7 +527,9 @@ export default function SalesCreateTab({
                       <span style={{ fontSize: '12px' }}>
                         ud: <strong>{qty}</strong>{' '}
                         {isPrepurchase ? (
-                          <span style={{ color: 'var(--text-soldout)', fontSize: '11px', fontWeight: 'bold' }}>(Precompra*)</span>
+                          <span style={{ color: 'var(--text-soldout)', fontSize: '11px', fontWeight: 'bold' }}>
+                            {salePaymentType === 'RESERVA' ? '(Reservado*)' : '(Precompra*)'}
+                          </span>
                         ) : (
                           <span style={{ color: 'var(--text-available)', fontSize: '11px' }}>(Stock OK)</span>
                         )}
@@ -573,7 +575,7 @@ export default function SalesCreateTab({
                 <div className={styles.summaryRow}>
                   <span>Estado venta:</span>
                   <strong style={{ color: hasPrepurchase ? 'var(--text-soldout)' : 'var(--text-available)' }}>
-                    {hasPrepurchase ? 'PRECOMPRA' : 'COMPLETADA'}
+                    {salePaymentType === 'RESERVA' ? 'PENDIENTE' : (hasPrepurchase ? 'PRECOMPRA' : 'COMPLETADA')}
                   </strong>
                 </div>
                 
