@@ -354,4 +354,10 @@ a {
   --neon-hover-bg: var(--cc-hover-bg-DNK);
 }
 
+@media print {
+  .noPrint {
+    display: none !important;
+  }
+}
+
 

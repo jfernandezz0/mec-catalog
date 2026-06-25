@@ -12,7 +12,7 @@ export default function Footer() {
   }
 
   return (
-    <footer className="py-8 flex flex-col items-center gap-6 border-t border-[color:var(--border-card)]">
+    <footer className="py-8 flex flex-col items-center gap-6 border-t border-[color:var(--border-card)] noPrint">
       <div className="flex flex-col items-center text-center text-xs text-[color:var(--text-secondary)] px-4 max-w-md leading-relaxed gap-2.5">
         <span>Colabora con el equipo de ingeniería aquí:</span>
         <a

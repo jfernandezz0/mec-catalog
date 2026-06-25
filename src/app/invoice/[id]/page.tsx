@@ -65,7 +65,7 @@ export default function InvoicePage(props: Props) {
         // 2. Fetch sale items data
         const { data: itemsData, error: itemsErr } = await supabase
           .from('sale_items')
-          .select('*')
+          .select('*, articles(image_urls)')
           .eq('sale_id', id);
 
         if (itemsErr) {
@@ -127,8 +127,11 @@ export default function InvoicePage(props: Props) {
         {/* Invoice Header */}
         <header className={styles.header}>
           <div className={styles.brand}>
-            <span className={styles.brandName}>MINIENGINES CREATIONS</span>
-            <span className={styles.brandSubtitle}>Catálogo Exclusivo de Modelismo</span>
+            <img 
+              src="/logo.png" 
+              alt="MiniEngines Creations" 
+              className={styles.brandLogo} 
+            />
           </div>
           <div className={styles.invoiceInfo}>
             <h1 className={styles.invoiceTitle}>FACTURA / RECIBO</h1>
@@ -195,9 +198,22 @@ export default function InvoicePage(props: Props) {
               {items.map((item) => (
                 <tr key={item.id}>
                   <td className={styles.td}>
-                    <strong>{item.title}</strong>
-                    <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-                      ID Ref: MEC-{String(item.article_id).padStart(4, '0')}
+                    <div className={styles.articleDescContainer}>
+                      {item.articles?.image_urls?.[0] ? (
+                        <img 
+                          src={item.articles.image_urls[0]} 
+                          alt={item.title} 
+                          className={styles.articleThumb} 
+                        />
+                      ) : (
+                        <div className={styles.articleThumbPlaceholder}>📦</div>
+                      )}
+                      <div>
+                        <strong>{item.title}</strong>
+                        <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                          ID Ref: MEC-{String(item.article_id).padStart(4, '0')}
+                        </div>
+                      </div>
                     </div>
                   </td>
                   <td className={`${styles.td} ${styles.alignCenter}`}>
