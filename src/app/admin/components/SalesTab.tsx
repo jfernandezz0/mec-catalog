@@ -337,7 +337,7 @@ export default function SalesTab({ articles, loadArticles }: SalesTabProps) {
     }
     return sum + Number(s.total_price);
   }, 0);
-  const totalSalesCount = filteredSales.length;
+  const totalSalesCount = filteredSales.filter(s => s.status !== 'CANCELADA').length;
   const revenueByPayment = filteredSales.reduce((acc, s) => {
     if (s.status === 'CANCELADA') {
       return acc;
