@@ -691,7 +691,19 @@ export default function SalesTab({ articles, loadArticles }: SalesTabProps) {
         return (
           <div className={styles.modalOverlay}>
             <div className={styles.salesConfirmModal} style={{ maxWidth: '640px' }}>
-              <h3 className={styles.modalTitle}>Detalle de Venta</h3>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', gap: '16px' }}>
+                <h3 className={styles.modalTitle} style={{ margin: 0 }}>Detalle de Venta</h3>
+                {selectedSaleDetail.status !== 'CANCELADA' && (
+                  <button
+                    type="button"
+                    onClick={() => handleCancelSale(selectedSaleDetail)}
+                    className={`${styles.dangerButton} ${styles.solidRedButton}`}
+                    style={{ padding: '8px 14px', borderRadius: '8px', border: 'none', fontWeight: 'bold', cursor: 'pointer', fontSize: '12px', textWrap: 'nowrap' }}
+                  >
+                    Devolución / Cancelar ✕
+                  </button>
+                )}
+              </div>
               
               <div className={styles.confirmSummaryInfo} style={{ background: 'none', padding: 0, gap: '6px' }}>
                 <div className={styles.summaryRow}>
@@ -814,16 +826,6 @@ export default function SalesTab({ articles, loadArticles }: SalesTabProps) {
                 >
                   Ver Online / PDF 📄
                 </a>
-                {selectedSaleDetail.status !== 'CANCELADA' && (
-                  <button
-                    type="button"
-                    onClick={() => handleCancelSale(selectedSaleDetail)}
-                    className={`${styles.dangerButton} ${styles.solidRedButton}`}
-                    style={{ flex: 1, padding: '12px', borderRadius: '8px', border: 'none', fontWeight: 'bold', cursor: 'pointer', fontSize: '13px' }}
-                  >
-                    Devolución / Cancelar ✕
-                  </button>
-                )}
                 <button
                   type="button"
                   onClick={() => {
