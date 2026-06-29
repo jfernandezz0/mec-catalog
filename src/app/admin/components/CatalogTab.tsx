@@ -33,15 +33,23 @@ export default function CatalogTab({
 }: CatalogTabProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 12;
+  const [stockFilter, setStockFilter] = useState<'in' | 'out' | 'all'>('in');
 
-  // Reset page when search or category filter changes
+  // Reset page when search, category, or stock filter changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedCatalogCategoryId, searchQuery]);
+  }, [selectedCatalogCategoryId, searchQuery, stockFilter]);
 
   let displayedArticles = selectedCatalogCategoryId === null
     ? articles
     : articles.filter((a) => a.category_id === selectedCatalogCategoryId);
+
+  // Filter by stock
+  if (stockFilter === 'in') {
+    displayedArticles = displayedArticles.filter((a) => a.quantity > 0);
+  } else if (stockFilter === 'out') {
+    displayedArticles = displayedArticles.filter((a) => a.quantity === 0);
+  }
 
   if (searchQuery.trim()) {
     const query = searchQuery.trim().toLowerCase();
@@ -96,8 +104,8 @@ export default function CatalogTab({
 
       {/* Search Bar */}
       {!loadingArticles && (
-        <div className={styles.searchBar}>
-          <div className={styles.searchInputWrapper}>
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '20px' }}>
+          <div className={styles.searchInputWrapper} style={{ flex: 1, marginBottom: 0 }}>
             <svg
               xmlns="http://www.w3.org/2000/svg"
               width="16"
@@ -131,6 +139,17 @@ export default function CatalogTab({
               </button>
             )}
           </div>
+
+          <select
+            value={stockFilter}
+            onChange={(e) => setStockFilter(e.target.value as 'in' | 'out' | 'all')}
+            className={styles.salesSelectFilter}
+            style={{ height: '44px', minWidth: '130px' }}
+          >
+            <option value="in">En stock</option>
+            <option value="out">Sin stock</option>
+            <option value="all">Todos</option>
+          </select>
         </div>
       )}
 
