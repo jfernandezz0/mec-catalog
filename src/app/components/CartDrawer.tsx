@@ -5,8 +5,19 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useCart } from '@/lib/contexts/CartContext';
 import { formatPrice } from '@/lib/utils';
+import { usePathname } from 'next/navigation';
 
 export default function CartDrawer() {
+  const pathname = usePathname();
+
+  if (
+    pathname.startsWith('/admin') ||
+    pathname.startsWith('/checkout') ||
+    pathname.startsWith('/invoice')
+  ) {
+    return null;
+  }
+
   const {
     items,
     total,

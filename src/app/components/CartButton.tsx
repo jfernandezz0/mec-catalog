@@ -1,9 +1,19 @@
 'use client';
 
 import { useCart } from '@/lib/contexts/CartContext';
+import { usePathname } from 'next/navigation';
 
 export default function CartButton() {
   const { itemCount, openDrawer } = useCart();
+  const pathname = usePathname();
+
+  if (
+    pathname.startsWith('/admin') ||
+    pathname.startsWith('/checkout') ||
+    pathname.startsWith('/invoice')
+  ) {
+    return null;
+  }
 
   return (
     <button
