@@ -226,8 +226,9 @@ export async function createManualSale(params: {
   buyer: BuyerInfo;
   total: number;
   baseUrl?: string;
+  delayEmail?: boolean;
 }): Promise<{ orderNumber: string; saleId: string; whatsappLink: string | null }> {
-  const { paymentMethod, cart, buyer, total, baseUrl = 'https://www.minienginescreations.com' } = params;
+  const { paymentMethod, cart, buyer, total, baseUrl = 'https://www.minienginescreations.com', delayEmail = false } = params;
 
   const orderNumber = await generateOrderNumber();
   const db = getSupabaseAdmin();
@@ -284,48 +285,49 @@ export async function createManualSale(params: {
 
   const paymentMethodLabel = paymentMethod === 'BIZUM' ? 'Bizum / Transferencia' : 'PayPal';
 
-  // 3. Receipt email to buyer
-  try {
-    const shippingInfo = buyer.shippingAddress as any;
-    const shippingMethodLabel = shippingInfo?.method === 'recogida' ? 'Recogida en taller' : 'Envío a domicilio (Península)';
-    const shippingCost = shippingInfo?.price ?? 0;
+  // 3. Receipt email to buyer & Admin notification (if not delayed)
+  if (!delayEmail) {
+    try {
+      const shippingInfo = buyer.shippingAddress as any;
+      const shippingMethodLabel = shippingInfo?.method === 'recogida' ? 'Recogida en taller' : 'Envío a domicilio (Península)';
+      const shippingCost = shippingInfo?.price ?? 0;
 
-    await sendReceiptEmail({
-      to: buyer.email,
-      buyerName: buyer.name,
-      orderNumber,
-      items: cart.map((i) => ({ title: i.title, price: i.priceAtCheckout })),
-      total,
-      paymentMethod: paymentMethodLabel,
-      shippingMethodLabel,
-      shippingCost,
-      saleId: sale.id,
-      baseUrl,
-      isReservation: true,
-    });
+      await sendReceiptEmail({
+        to: buyer.email,
+        buyerName: buyer.name,
+        orderNumber,
+        items: cart.map((i) => ({ title: i.title, price: i.priceAtCheckout })),
+        total,
+        paymentMethod: paymentMethodLabel,
+        shippingMethodLabel,
+        shippingCost,
+        saleId: sale.id,
+        baseUrl,
+        isReservation: true,
+      });
 
-    await db
-      .from('sales')
-      .update({ receipt_sent_at: new Date().toISOString() })
-      .eq('id', sale.id);
-  } catch (emailErr) {
-    console.error('[createManualSale] Receipt email failed:', emailErr);
-  }
+      await db
+        .from('sales')
+        .update({ receipt_sent_at: new Date().toISOString() })
+        .eq('id', sale.id);
+    } catch (emailErr) {
+      console.error('[createManualSale] Receipt email failed:', emailErr);
+    }
 
-  // 4. Admin notification email
-  try {
-    await sendAdminOrderEmail({
-      orderNumber,
-      buyerName: buyer.name,
-      buyerEmail: buyer.email,
-      buyerWhatsapp: buyer.whatsapp,
-      items: cart.map((i) => ({ title: i.title, price: i.priceAtCheckout })),
-      total,
-      shippingAddress: buyer.shippingAddress,
-      paymentMethod: paymentMethodLabel,
-    });
-  } catch (err) {
-    console.error('[createManualSale] Admin email failed:', err);
+    try {
+      await sendAdminOrderEmail({
+        orderNumber,
+        buyerName: buyer.name,
+        buyerEmail: buyer.email,
+        buyerWhatsapp: buyer.whatsapp,
+        items: cart.map((i) => ({ title: i.title, price: i.priceAtCheckout })),
+        total,
+        shippingAddress: buyer.shippingAddress,
+        paymentMethod: paymentMethodLabel,
+      });
+    } catch (err) {
+      console.error('[createManualSale] Admin email failed:', err);
+    }
   }
 
   // 5. WhatsApp link (if provided)

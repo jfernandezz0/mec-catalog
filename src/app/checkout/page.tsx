@@ -29,6 +29,16 @@ const STEP_LABELS: { id: Step; label: string; icon: string }[] = [
   { id: 'pago', label: 'Pago', icon: '💳' },
 ];
 
+const MOTOR_QUOTES = [
+  { text: "Si todo parece bajo control, es que no vas lo suficientemente rápido.", author: "Mario Andretti" },
+  { text: "El coche más bello es el que todavía no hemos construido.", author: "Enzo Ferrari" },
+  { text: "Aerodinámica es para gente que no sabe construir motores.", author: "Enzo Ferrari" },
+  { text: "Yo no diseño coches para moverme de un sitio a otro, diseño obras de arte con ruedas.", author: "Ettore Bugatti" },
+  { text: "El segundo es el primero de los perdedores.", author: "Ayrton Senna" },
+  { text: "Para ser el primero, primero tienes que terminar.", author: "Enzo Ferrari" },
+  { text: "Correr es vivir. Todo lo que ocurre antes o después, es simplemente esperar.", author: "Steve McQueen" }
+];
+
 export default function CheckoutPage() {
   const router = useRouter();
   const { items, total, clearCart, validateStock, stockStatuses } = useCart();
@@ -56,6 +66,13 @@ export default function CheckoutPage() {
   const [reservationExpiry, setReservationExpiry] = useState<Date | null>(null);
   const [countdown, setCountdown] = useState<string>('');
   const [payError, setPayError] = useState<string>('');
+
+  // Countdown & Quotes Carousel states
+  const [countdownActive, setCountdownActive] = useState(false);
+  const [countdownValue, setCountdownValue] = useState(60);
+  const [pendingSaleId, setPendingSaleId] = useState<string | null>(null);
+  const [pendingOrderNumber, setPendingOrderNumber] = useState<string | null>(null);
+  const [currentQuoteIndex, setCurrentQuoteIndex] = useState(0);
 
   const unavailableIds = reserved
     ? []
@@ -233,6 +250,48 @@ export default function CheckoutPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reserved]);
 
+  // Countdown and Quotes effect for waiting payment validation
+  useEffect(() => {
+    if (!countdownActive) return;
+
+    // Rotate quote every 7 seconds
+    const quoteInterval = setInterval(() => {
+      setCurrentQuoteIndex((prev) => (prev + 1) % MOTOR_QUOTES.length);
+    }, 7000);
+
+    // Countdown tick down
+    const tickInterval = setInterval(() => {
+      setCountdownValue((prev) => {
+        if (prev <= 1) {
+          clearInterval(tickInterval);
+          clearInterval(quoteInterval);
+          // Trigger manual sale email dispatch on backend after timer finishes
+          (async () => {
+            try {
+              await fetch('/api/checkout/send-manual-sale-email', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ saleId: pendingSaleId }),
+              });
+            } catch (err) {
+              console.error('Failed to trigger reservation email:', err);
+            } finally {
+              clearCart();
+              router.push(`/checkout/success?order=${pendingOrderNumber ?? ''}`);
+            }
+          })();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => {
+      clearInterval(tickInterval);
+      clearInterval(quoteInterval);
+    };
+  }, [countdownActive, pendingSaleId, pendingOrderNumber, clearCart, router]);
+
   // ── Validation ────────────────────────────────────────────
 
   function validateBuyer(): boolean {
@@ -382,6 +441,7 @@ export default function CheckoutPage() {
             shippingAddress,
             total: availableTotal,
             paymentMethod: 'BIZUM',
+            delayEmail: true,
           }),
         });
 
@@ -399,8 +459,11 @@ export default function CheckoutPage() {
         const bizumPayUrl = `https://revolut.me/jfernandezz?currency=EUR&amount=${amountInCents}&note=${encodeURIComponent(noteText)}`;
         window.open(bizumPayUrl, '_blank');
 
-        clearCart();
-        router.push(`/checkout/success?order=${data.orderNumber ?? ''}`);
+        setPendingSaleId(data.saleId);
+        setPendingOrderNumber(data.orderNumber);
+        setCountdownValue(60);
+        setCountdownActive(true);
+        setPaying(false);
       } catch (err) {
         console.error('[handlePay Bizum]', err);
         setPayError('Error registrando tu pedido Bizum. Inténtalo de nuevo.');
@@ -419,6 +482,7 @@ export default function CheckoutPage() {
             shippingAddress,
             total: availableTotal,
             paymentMethod: 'PAYPAL',
+            delayEmail: true,
           }),
         });
 
@@ -436,8 +500,11 @@ export default function CheckoutPage() {
         const paypalPayUrl = `https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=javifzlvdc@gmail.com&item_name=${encodeURIComponent(noteText)}&amount=${paypalPrice}&currency_code=EUR&no_shipping=1`;
         window.open(paypalPayUrl, '_blank');
 
-        clearCart();
-        router.push(`/checkout/success?order=${data.orderNumber ?? ''}`);
+        setPendingSaleId(data.saleId);
+        setPendingOrderNumber(data.orderNumber);
+        setCountdownValue(60);
+        setCountdownActive(true);
+        setPaying(false);
       } catch (err) {
         console.error('[handlePay PayPal]', err);
         setPayError('Error registrando tu pedido PayPal. Inténtalo de nuevo.');
@@ -460,6 +527,167 @@ export default function CheckoutPage() {
   // ── UI ────────────────────────────────────────────────────
 
   const currentStepIndex = STEP_LABELS.findIndex((s) => s.id === step);
+
+  if (countdownActive) {
+    const minutes = Math.floor(countdownValue / 60);
+    const seconds = countdownValue % 60;
+    const formattedTime = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    const quote = MOTOR_QUOTES[currentQuoteIndex];
+
+    return (
+      <main
+        style={{
+          minHeight: '100vh',
+          background: 'var(--bg-page)',
+          color: 'var(--text-primary)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '40px 24px',
+          textAlign: 'center',
+        }}
+      >
+        <div style={{ maxWidth: '480px', width: '100%' }}>
+          {/* Spinner */}
+          <div style={{ marginBottom: '32px', position: 'relative', display: 'inline-block' }}>
+            <div
+              style={{
+                width: '96px',
+                height: '96px',
+                borderRadius: '50%',
+                border: '4px solid rgba(99, 102, 241, 0.1)',
+                borderTopColor: 'var(--accent-primary, #6366f1)',
+                animation: 'spin 2s linear infinite',
+              }}
+            />
+            <style dangerouslySetInnerHTML={{__html: `
+              @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+              }
+            `}} />
+            <div
+              style={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                fontSize: '28px',
+              }}
+            >
+              🏎️
+            </div>
+          </div>
+
+          <h1
+            style={{
+              fontSize: '24px',
+              fontWeight: 800,
+              marginBottom: '12px',
+              letterSpacing: '-0.02em',
+            }}
+          >
+            Procesando reserva...
+          </h1>
+
+          <p
+            style={{
+              fontSize: '14px',
+              color: 'var(--text-secondary)',
+              lineHeight: 1.6,
+              marginBottom: '24px',
+            }}
+          >
+            Por favor, completa el pago en la pestaña de Revolut o PayPal que se acaba de abrir. La web confirmará tu reserva en unos segundos. No cierres esta ventana.
+          </p>
+
+          {/* Timer Display */}
+          <div
+            style={{
+              background: 'rgba(255,255,255,0.03)',
+              border: '1px solid rgba(255,255,255,0.08)',
+              borderRadius: '16px',
+              padding: '20px 24px',
+              marginBottom: '40px',
+            }}
+          >
+            <div
+              style={{
+                fontSize: '40px',
+                fontWeight: 800,
+                color: 'var(--accent-primary, #6366f1)',
+                fontFamily: 'monospace',
+                letterSpacing: '2px',
+                marginBottom: '4px',
+              }}
+            >
+              {formattedTime}
+            </div>
+            <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-secondary)' }}>
+              Espera de validación
+            </div>
+          </div>
+
+          {/* Carousel box */}
+          <div
+            style={{
+              minHeight: '120px',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+              background: 'linear-gradient(180deg, rgba(99,102,241,0.03) 0%, rgba(139,92,246,0.03) 100%)',
+              border: '1px solid rgba(99,102,241,0.08)',
+              borderRadius: '16px',
+              padding: '24px',
+              position: 'relative',
+              overflow: 'hidden',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+            }}
+          >
+            <div
+              key={currentQuoteIndex}
+              style={{
+                animation: 'fadeInOut 7s ease-in-out infinite',
+              }}
+            >
+              <p
+                style={{
+                  fontStyle: 'italic',
+                  fontSize: '14px',
+                  lineHeight: 1.6,
+                  color: 'var(--text-primary)',
+                  marginBottom: '10px',
+                  fontWeight: 500,
+                }}
+              >
+                "{quote.text}"
+              </p>
+              <p
+                style={{
+                  fontSize: '12px',
+                  color: 'var(--accent-primary, #8b5cf6)',
+                  fontWeight: 600,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.04em',
+                }}
+              >
+                — {quote.author}
+              </p>
+            </div>
+            <style dangerouslySetInnerHTML={{__html: `
+              @keyframes fadeInOut {
+                0% { opacity: 0; transform: translateY(4px); }
+                10% { opacity: 1; transform: translateY(0); }
+                90% { opacity: 1; transform: translateY(0); }
+                100% { opacity: 0; transform: translateY(-4px); }
+              }
+            `}} />
+          </div>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main

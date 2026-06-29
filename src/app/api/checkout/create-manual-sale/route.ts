@@ -12,6 +12,7 @@ export async function POST(request: NextRequest) {
       shippingAddress,
       total,
       paymentMethod,
+      delayEmail,
     } = body;
 
     // Validate inputs
@@ -40,6 +41,7 @@ export async function POST(request: NextRequest) {
       },
       total,
       baseUrl,
+      delayEmail: !!delayEmail,
     });
 
     return NextResponse.json({
