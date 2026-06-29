@@ -57,9 +57,11 @@ export default function CheckoutPage() {
   const [countdown, setCountdown] = useState<string>('');
   const [payError, setPayError] = useState<string>('');
 
-  const unavailableIds = stockStatuses
-    .filter((s) => !s.available)
-    .map((s) => s.articleId);
+  const unavailableIds = reserved
+    ? []
+    : stockStatuses
+        .filter((s) => !s.available)
+        .map((s) => s.articleId);
 
   const availableItems = items.filter((i) => !unavailableIds.includes(i.article.id));
   const subtotal = availableItems.reduce((s, i) => s + i.priceAtAdd, 0);
@@ -203,6 +205,7 @@ export default function CheckoutPage() {
       if (remaining <= 0) {
         setCountdown('00:00');
         setPayError('Tu reserva ha expirado. Vuelve al carrito e inténtalo de nuevo.');
+        setReserved(false);
         return;
       }
       const m = Math.floor(remaining / 60000);
