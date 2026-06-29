@@ -1,11 +1,18 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { SunIcon, MoonIcon } from '@/app/components/Icons';
 
 export default function ThemeToggle() {
+  const pathname = usePathname();
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [mounted, setMounted] = useState(false);
+
+  // Hide theme toggle on admin panel routes
+  if (pathname?.startsWith('/admin')) {
+    return null;
+  }
 
   useEffect(() => {
     // Find current active theme on client
@@ -38,7 +45,7 @@ export default function ThemeToggle() {
   if (!mounted) {
     // Render a placeholder button with matching size and shape to avoid layout shift
     return (
-      <div className="fixed top-4 right-4 z-50 w-10 h-10 rounded-full border border-[color:var(--border-card)] bg-[color:var(--bg-card)]/50 backdrop-blur-md opacity-0" />
+      <div className="fixed top-4 right-4 z-50 w-10 h-10 rounded-full border border-[color:var(--border-card)] bg-[color:var(--bg-card)]/50 backdrop-blur-md opacity-0 noPrint" />
     );
   }
 
@@ -46,7 +53,7 @@ export default function ThemeToggle() {
     <button
       type="button"
       onClick={toggleTheme}
-      className="fixed top-4 right-4 z-50 flex items-center justify-center w-10 h-10 rounded-full border border-[color:var(--border-card)] bg-[color:var(--bg-card)]/50 text-[color:var(--text-primary)] backdrop-blur-md hover:bg-[color:var(--bg-card)] shadow-sm hover:shadow transition-all duration-300 focus:outline-none cursor-pointer"
+      className="fixed top-4 right-4 z-50 flex items-center justify-center w-10 h-10 rounded-full border border-[color:var(--border-card)] bg-[color:var(--bg-card)]/50 text-[color:var(--text-primary)] backdrop-blur-md hover:bg-[color:var(--bg-card)] shadow-sm hover:shadow transition-all duration-300 focus:outline-none cursor-pointer noPrint"
       aria-label={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
       title={theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}
     >

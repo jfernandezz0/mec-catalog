@@ -211,8 +211,8 @@ export default function AnalyticsTab({
             <span className={styles.analyticsSalesLabel}>Métodos de Pago</span>
             <div className={styles.analyticsSalesPayments}>
               <div className={styles.payRow}>
-                <span>Revolut:</span>
-                <strong>{formatPrice(revenueByPayment['REVOLUT'] || 0)}</strong>
+                <span>Bizum:</span>
+                <strong>{formatPrice((revenueByPayment['BIZUM'] || 0) + (revenueByPayment['REVOLUT'] || 0))}</strong>
               </div>
               <div className={styles.payRow}>
                 <span>PayPal:</span>
@@ -221,6 +221,10 @@ export default function AnalyticsTab({
               <div className={styles.payRow}>
                 <span>Efectivo:</span>
                 <strong>{formatPrice(revenueByPayment['EFECTIVO'] || 0)}</strong>
+              </div>
+              <div className={styles.payRow}>
+                <span>Tarjeta (Square):</span>
+                <strong>{formatPrice(revenueByPayment['SQUARE'] || 0)}</strong>
               </div>
             </div>
           </div>

@@ -89,7 +89,7 @@ export default function ShareButtons({ id, title }: ShareButtonsProps) {
   return (
     <div className={styles.container} ref={containerRef}>
       <div className={styles.prompt}>
-        ¿Te interesa este motor artesanal? Contáctame por cualquiera de estas vías para consultar dudas, coordinar envío o concretar detalles de compra.
+        ¿Te interesa este MEC artesanal? Contáctanos por cualquiera de estas vías para consultar dudas, coordinar envío o concretar detalles de compra.
       </div>
       <div className={styles.buttonRow}>
         {/* WhatsApp Contact */}

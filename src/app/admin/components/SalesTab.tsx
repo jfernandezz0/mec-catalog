@@ -18,13 +18,29 @@ export default function SalesTab({ articles, loadArticles }: SalesTabProps) {
   const [loadingSales, setLoadingSales] = useState(true);
   const [salesSubmenu, setSalesSubmenu] = useState<'all' | 'prepurchase' | 'completed'>('all');
   const [salesSearch, setSalesSearch] = useState('');
-  const [salesFilterPayment, setSalesFilterPayment] = useState<'all' | 'REVOLUT' | 'PAYPAL' | 'EFECTIVO' | 'RESERVA'>('all');
+  const [salesFilterPayment, setSalesFilterPayment] = useState<'all' | 'BIZUM' | 'PAYPAL' | 'EFECTIVO' | 'RESERVA' | 'SQUARE'>('all');
   const [salesFilterStatus, setSalesFilterStatus] = useState<'all' | 'COMPLETADA' | 'PRECOMPRA' | 'CANCELADA'>('all');
   const [salesFilterDate, setSalesFilterDate] = useState<'all' | 'today' | 'week' | 'month'>('all');
   const [exportingSales, setExportingSales] = useState(false);
   const [selectedSaleDetail, setSelectedSaleDetail] = useState<Sale | null>(null);
   const [saleDetailItems, setSaleDetailItems] = useState<SaleItem[]>([]);
   const [loadingSaleItems, setLoadingSaleItems] = useState(false);
+
+  // Edit states for details modal
+  const [isEditingSale, setIsEditingSale] = useState(false);
+  const [editBuyerName, setEditBuyerName] = useState('');
+  const [editBuyerEmail, setEditBuyerEmail] = useState('');
+  const [editBuyerPhone, setEditBuyerPhone] = useState('');
+  const [editBuyerInstagram, setEditBuyerInstagram] = useState('');
+  const [editPaymentType, setEditPaymentType] = useState('');
+  const [editLocation, setEditLocation] = useState('');
+  const [editShippingStatus, setEditShippingStatus] = useState('PENDIENTE');
+
+  // Shipping states
+  const [shippingInputVisible, setShippingInputVisible] = useState(false);
+  const [trackingLinkInput, setTrackingLinkInput] = useState('');
+  const [savingShipping, setSavingShipping] = useState(false);
+  const [copiedTracking, setCopiedTracking] = useState(false);
 
   // Load sales on mount
   useEffect(() => {
@@ -48,6 +64,49 @@ export default function SalesTab({ articles, loadArticles }: SalesTabProps) {
       console.error(e);
     } finally {
       setLoadingSales(false);
+    }
+  }
+
+  async function handleUpdateShipping(sale: Sale, newStatus: string, trackingLink?: string) {
+    setSavingShipping(true);
+    try {
+      const updates: Record<string, unknown> = { shipping_status: newStatus };
+      if (trackingLink !== undefined) updates.tracking_link = trackingLink;
+
+      const { error } = await supabase
+        .from('sales')
+        .update(updates)
+        .eq('id', sale.id);
+
+      if (error) throw error;
+
+      // Send shipping notification email when marking as ENVIADO
+      if (newStatus === 'ENVIADO') {
+        const buyerEmail = sale.receipt_email || sale.buyer_email;
+        if (buyerEmail) {
+          try {
+            await fetch('/api/sales/notify-shipped', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ saleId: sale.id, trackingLink: trackingLink || null }),
+            });
+          } catch (emailErr) {
+            // Non-blocking — log but don't fail the status update
+            console.warn('[notify-shipped] Email failed (non-critical):', emailErr);
+          }
+        }
+      }
+
+      // Update local state
+      setSales((prev) => prev.map((s) => s.id === sale.id ? { ...s, ...updates } : s));
+      setSelectedSaleDetail((prev) => prev ? { ...prev, ...updates } : prev);
+      setShippingInputVisible(false);
+      setTrackingLinkInput('');
+    } catch (e) {
+      console.error('Error updating shipping:', e);
+      alert('Error al actualizar el envío.');
+    } finally {
+      setSavingShipping(false);
     }
   }
 
@@ -165,7 +224,7 @@ export default function SalesTab({ articles, loadArticles }: SalesTabProps) {
       } else {
         setSaleDetailItems(data ?? []);
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
     } finally {
       setLoadingSaleItems(false);
@@ -187,7 +246,12 @@ export default function SalesTab({ articles, loadArticles }: SalesTabProps) {
 
       if (itemError) throw itemError;
 
-      if (selectedSaleDetail.payment_type !== 'RESERVA' && item.article_id) {
+      if (
+        selectedSaleDetail.payment_type !== 'RESERVA' &&
+        selectedSaleDetail.payment_type !== 'BIZUM' &&
+        selectedSaleDetail.payment_type !== 'PAYPAL' &&
+        item.article_id
+      ) {
         const { data: artData } = await supabase
           .from('articles')
           .select('quantity')
@@ -279,6 +343,91 @@ export default function SalesTab({ articles, loadArticles }: SalesTabProps) {
       await loadArticles();
     } catch (e: any) {
       alert(`Error al cancelar la venta: ${e.message || e}`);
+    }
+  }
+
+  async function handleDeleteSale(saleId: string) {
+    if (!confirm('¿Estás seguro de que deseas eliminar permanentemente este registro de venta? Esta acción no se puede deshacer y borrará también su historial de artículos.')) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('sales')
+        .delete()
+        .eq('id', saleId);
+
+      if (error) throw error;
+
+      alert('¡Venta eliminada permanentemente!');
+      await loadSales();
+    } catch (e: any) {
+      alert(`Error al eliminar la venta: ${e.message || e}`);
+    }
+  }
+
+  async function handleConfirmPayment(sale: Sale) {
+    if (!confirm('¿Estás seguro de que deseas confirmar el pago de este pedido? Esto cambiará su estado a COMPLETADA.')) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('sales')
+        .update({ status: 'COMPLETADA' })
+        .eq('id', sale.id);
+
+      if (error) throw error;
+
+      setSelectedSaleDetail({ ...sale, status: 'COMPLETADA' });
+      alert('¡El pago ha sido confirmado y la venta ha sido marcada como COMPLETADA!');
+
+      await loadSales();
+    } catch (e: any) {
+      alert(`Error al confirmar el pago: ${e.message || e}`);
+    }
+  }
+
+  async function handleSaveSaleEdit() {
+    if (!selectedSaleDetail) return;
+    try {
+      const { error } = await supabase
+        .from('sales')
+        .update({
+          buyer_name: editBuyerName || null,
+          buyer_email: editBuyerEmail || null,
+          receipt_email: editBuyerEmail || null,
+          buyer_phone: editBuyerPhone || null,
+          receipt_whatsapp: editBuyerPhone || null,
+          buyer_instagram: editBuyerInstagram || null,
+          payment_type: editPaymentType || null,
+          location: editLocation || null,
+          shipping_status: editShippingStatus || 'PENDIENTE',
+        })
+        .eq('id', selectedSaleDetail.id);
+
+      if (error) throw error;
+
+      const updatedSale = {
+        ...selectedSaleDetail,
+        buyer_name: editBuyerName,
+        buyer_email: editBuyerEmail,
+        receipt_email: editBuyerEmail,
+        buyer_phone: editBuyerPhone,
+        receipt_whatsapp: editBuyerPhone,
+        buyer_instagram: editBuyerInstagram,
+        payment_type: editPaymentType as any,
+        location: editLocation,
+        shipping_status: editShippingStatus,
+      };
+
+      setSelectedSaleDetail(updatedSale);
+      setIsEditingSale(false);
+      alert('¡Pedido actualizado con éxito!');
+
+      await loadSales();
+    } catch (e: any) {
+      alert(`Error al guardar los cambios del pedido: ${e.message || e}`);
     }
   }
 
@@ -497,10 +646,11 @@ export default function SalesTab({ articles, loadArticles }: SalesTabProps) {
           className={styles.salesSelectFilter}
         >
           <option value="all">Todos los Pagos</option>
-          <option value="REVOLUT">Revolut</option>
+          <option value="BIZUM">Bizum / Transferencia</option>
           <option value="PAYPAL">PayPal</option>
           <option value="EFECTIVO">Efectivo</option>
           <option value="RESERVA">Reserva</option>
+          <option value="SQUARE">Tarjeta (Square)</option>
         </select>
 
         <select
@@ -572,8 +722,8 @@ export default function SalesTab({ articles, loadArticles }: SalesTabProps) {
           <span className={styles.salesSummaryLabel}>Por Método de Pago</span>
           <div className={styles.salesSummaryPayments}>
             <div className={styles.salesSummaryPayItem}>
-              <span className={styles.payName}>Revolut:</span>
-              <span className={styles.payVal}>{formatPrice(revenueByPayment['REVOLUT'] || 0)}</span>
+              <span className={styles.payName}>Bizum:</span>
+              <span className={styles.payVal}>{formatPrice((revenueByPayment['BIZUM'] || 0) + (revenueByPayment['REVOLUT'] || 0))}</span>
             </div>
             <div className={styles.salesSummaryPayItem}>
               <span className={styles.payName}>PayPal:</span>
@@ -637,7 +787,27 @@ export default function SalesTab({ articles, loadArticles }: SalesTabProps) {
                   </td>
                   <td>{sale.location}</td>
                   <td>
-                    <span className={styles.paymentBadge}>{sale.payment_type}</span>
+                    {(() => {
+                      const pt = sale.payment_type;
+                      const cfg: Record<string, { emoji: string; label: string; bg: string; color: string }> = {
+                        BIZUM:    { emoji: 'Ⓑ', label: 'Bizum',   bg: 'rgba(99,102,241,0.12)', color: '#6366f1' },
+                        PAYPAL:   { emoji: 'Ⓟ', label: 'PayPal',  bg: 'rgba(0,112,243,0.12)',  color: '#0070f3' },
+                        SQUARE:   { emoji: '💳', label: 'Tarjeta', bg: 'rgba(16,185,129,0.12)', color: '#10b981' },
+                        EFECTIVO: { emoji: '💵', label: 'Efectivo',bg: 'rgba(245,158,11,0.12)', color: '#d97706' },
+                        RESERVA:  { emoji: '📋', label: 'Reserva', bg: 'rgba(37,99,235,0.12)',  color: '#2563eb' },
+                      };
+                      const c = cfg[pt] || { emoji: '?', label: pt, bg: 'rgba(107,114,128,0.12)', color: '#6b7280' };
+                      return (
+                        <span style={{
+                          display: 'inline-flex', alignItems: 'center', gap: '4px',
+                          padding: '3px 8px', borderRadius: '6px',
+                          background: c.bg, color: c.color,
+                          fontSize: '11px', fontWeight: 'bold', whiteSpace: 'nowrap',
+                        }}>
+                          {c.emoji} {c.label}
+                        </span>
+                      );
+                    })()}
                   </td>
                   <td style={{ textAlign: 'center', fontWeight: 'bold' }}>
                     {sale.total_articles}
@@ -648,6 +818,7 @@ export default function SalesTab({ articles, loadArticles }: SalesTabProps) {
                   <td style={{ textAlign: 'center' }}>
                     <span className={`${styles.statusBadge} ${
                       sale.status === 'CANCELADA' ? styles.statusBadgeCancelled :
+                      (sale.payment_type === 'RESERVA' && sale.status === 'PRECOMPRA') ? styles.statusBadgeReserved :
                       sale.status === 'PRECOMPRA' ? styles.statusBadgePrepurchase : 
                       styles.statusBadgeCompleted
                     }`}>
@@ -656,13 +827,61 @@ export default function SalesTab({ articles, loadArticles }: SalesTabProps) {
                     </span>
                   </td>
                   <td style={{ textAlign: 'center' }}>
-                    <button
-                      type="button"
-                      onClick={() => viewSaleDetail(sale)}
-                      className={styles.viewDetailBtn}
-                    >
-                      Ver Detalle
-                    </button>
+                    <div style={{ display: 'flex', gap: '6px', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
+                      {/* WhatsApp pending badge */}
+                      {sale.receipt_whatsapp && !sale.whatsapp_sent && (
+                        <a
+                          href={`https://wa.me/${(sale.receipt_whatsapp || '').replace(/\D/g, '')}?text=${encodeURIComponent(`Hola${sale.buyer_name ? ' ' + sale.buyer_name : ''}, tu pedido MEC-${sale.id.substring(0,8).toUpperCase()} está listo.`)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="WhatsApp pendiente de envío — pulsa para abrir"
+                          style={{
+                            display: 'inline-flex', alignItems: 'center', gap: '4px',
+                            padding: '4px 8px', borderRadius: '6px',
+                            background: '#f97316', color: '#fff',
+                            fontSize: '10px', fontWeight: 'bold',
+                            textDecoration: 'none', whiteSpace: 'nowrap',
+                            animation: 'pulse 2s infinite',
+                          }}
+                          onClick={async (e) => {
+                            // Mark as sent after clicking
+                            await (await import('@/lib/supabase')).supabase
+                              .from('sales').update({ whatsapp_sent: true }).eq('id', sale.id);
+                          }}
+                        >
+                          📱 WA
+                        </a>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => viewSaleDetail(sale)}
+                        className={styles.viewDetailBtn}
+                      >
+                        Ver Detalle
+                      </button>
+                      {sale.status === 'CANCELADA' && (
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteSale(sale.id)}
+                          style={{
+                            padding: '6px 10px',
+                            borderRadius: '6px',
+                            border: 'none',
+                            background: '#ef4444',
+                            color: '#fff',
+                            fontSize: '12px',
+                            fontWeight: 'bold',
+                            cursor: 'pointer',
+                            transition: 'background 0.2s',
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = '#dc2626'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = '#ef4444'}
+                          title="Eliminar venta permanentemente"
+                        >
+                          Eliminar 🗑️
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -687,18 +906,122 @@ export default function SalesTab({ articles, loadArticles }: SalesTabProps) {
         return (
           <div className={styles.modalOverlay}>
             <div className={styles.salesConfirmModal} style={{ maxWidth: '640px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', gap: '16px' }}>
+               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', gap: '16px' }}>
                 <h3 className={styles.modalTitle} style={{ margin: 0 }}>Detalle de Venta</h3>
-                {selectedSaleDetail.status !== 'CANCELADA' && (
-                  <button
-                    type="button"
-                    onClick={() => handleCancelSale(selectedSaleDetail)}
-                    className={`${styles.dangerButton} ${styles.solidRedButton}`}
-                    style={{ padding: '8px 14px', borderRadius: '8px', border: 'none', fontWeight: 'bold', cursor: 'pointer', fontSize: '12px', textWrap: 'nowrap' }}
-                  >
-                    Devolución / Cancelar ✕
-                  </button>
-                )}
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  {isEditingSale ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={handleSaveSaleEdit}
+                        style={{
+                          padding: '8px 14px',
+                          borderRadius: '8px',
+                          border: 'none',
+                          fontWeight: 'bold',
+                          cursor: 'pointer',
+                          fontSize: '12px',
+                          background: '#10b981',
+                          color: '#fff',
+                          transition: 'background 0.2s',
+                          whiteSpace: 'nowrap',
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = '#059669'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = '#10b981'}
+                      >
+                        Guardar ✓
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setIsEditingSale(false)}
+                        style={{
+                          padding: '8px 14px',
+                          borderRadius: '8px',
+                          border: 'none',
+                          fontWeight: 'bold',
+                          cursor: 'pointer',
+                          fontSize: '12px',
+                          background: '#6b7280',
+                          color: '#fff',
+                          transition: 'background 0.2s',
+                          whiteSpace: 'nowrap',
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = '#4b5563'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = '#6b7280'}
+                      >
+                        Cancelar ✕
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditBuyerName(selectedSaleDetail.buyer_name || '');
+                          setEditBuyerEmail(selectedSaleDetail.buyer_email || selectedSaleDetail.receipt_email || '');
+                          setEditBuyerPhone(selectedSaleDetail.buyer_phone || selectedSaleDetail.receipt_whatsapp || '');
+                          setEditBuyerInstagram(selectedSaleDetail.buyer_instagram || '');
+                          setEditPaymentType(selectedSaleDetail.payment_type || '');
+                          setEditLocation(selectedSaleDetail.location || '');
+                          setEditShippingStatus(selectedSaleDetail.shipping_status || 'PENDIENTE');
+                          setIsEditingSale(true);
+                        }}
+                        style={{
+                          padding: '8px 14px',
+                          borderRadius: '8px',
+                          border: '1.5px solid #6366f1',
+                          color: '#6366f1',
+                          background: 'none',
+                          fontWeight: 'bold',
+                          cursor: 'pointer',
+                          fontSize: '12px',
+                          transition: 'all 0.2s',
+                          whiteSpace: 'nowrap',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = 'rgba(99,102,241,0.06)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = 'none';
+                        }}
+                      >
+                        Editar Pedido ✏️
+                      </button>
+                      {selectedSaleDetail.status === 'PRECOMPRA' && (
+                        <button
+                          type="button"
+                          onClick={() => handleConfirmPayment(selectedSaleDetail)}
+                          style={{
+                            padding: '8px 14px',
+                            borderRadius: '8px',
+                            border: 'none',
+                            fontWeight: 'bold',
+                            cursor: 'pointer',
+                            fontSize: '12px',
+                            background: '#10b981',
+                            color: '#fff',
+                            transition: 'background 0.2s',
+                            whiteSpace: 'nowrap',
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = '#059669'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = '#10b981'}
+                        >
+                          Confirmar Pago ✓
+                        </button>
+                      )}
+                      {selectedSaleDetail.status !== 'CANCELADA' && (
+                        <button
+                          type="button"
+                          onClick={() => handleCancelSale(selectedSaleDetail)}
+                          className={`${styles.dangerButton} ${styles.solidRedButton}`}
+                          style={{ padding: '8px 14px', borderRadius: '8px', border: 'none', fontWeight: 'bold', cursor: 'pointer', fontSize: '12px', textWrap: 'nowrap' }}
+                        >
+                          Devolución / Cancelar ✕
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
               </div>
               
               <div className={styles.confirmSummaryInfo} style={{ background: 'none', padding: 0, gap: '6px' }}>
@@ -710,36 +1033,180 @@ export default function SalesTab({ articles, loadArticles }: SalesTabProps) {
                   <span>Fecha:</span>
                   <strong>{new Date(selectedSaleDetail.created_at).toLocaleString('es-ES')}</strong>
                 </div>
-                <div className={styles.summaryRow}>
-                  <span>Pago:</span>
-                  <strong>{selectedSaleDetail.payment_type}</strong>
-                </div>
-                <div className={styles.summaryRow}>
-                  <span>Lugar:</span>
-                  <strong>{selectedSaleDetail.location}</strong>
-                </div>
-                <div className={styles.summaryRow}>
-                  <span>Cliente:</span>
-                  <strong>
-                    {selectedSaleDetail.buyer_email || selectedSaleDetail.buyer_phone
-                      ? `${selectedSaleDetail.buyer_email || ''} ${selectedSaleDetail.buyer_phone || ''}`
-                      : 'Venta Directa'}
-                  </strong>
-                </div>
-                {selectedSaleDetail.buyer_instagram && (
-                  <div className={styles.summaryRow}>
-                    <span>Instagram:</span>
-                    <strong style={{ color: '#e1306c' }}>
-                      {selectedSaleDetail.buyer_instagram}
-                    </strong>
-                  </div>
+
+                {isEditingSale ? (
+                  <>
+                    <div className={styles.summaryRow} style={{ alignItems: 'center' }}>
+                      <span>Pago:</span>
+                      <input
+                        type="text"
+                        value={editPaymentType}
+                        onChange={(e) => setEditPaymentType(e.target.value)}
+                        style={{
+                          padding: '6px 10px',
+                          borderRadius: '6px',
+                          border: '1px solid var(--border-input)',
+                          fontSize: '13px',
+                          background: 'var(--bg-input)',
+                          color: 'var(--text-primary)',
+                          width: '180px',
+                          fontWeight: 'bold',
+                        }}
+                      />
+                    </div>
+                    <div className={styles.summaryRow} style={{ alignItems: 'center' }}>
+                      <span>Lugar:</span>
+                      <input
+                        type="text"
+                        value={editLocation}
+                        onChange={(e) => setEditLocation(e.target.value)}
+                        style={{
+                          padding: '6px 10px',
+                          borderRadius: '6px',
+                          border: '1px solid var(--border-input)',
+                          fontSize: '13px',
+                          background: 'var(--bg-input)',
+                          color: 'var(--text-primary)',
+                          width: '180px',
+                          fontWeight: 'bold',
+                        }}
+                      />
+                    </div>
+                    <div className={styles.summaryRow} style={{ alignItems: 'center' }}>
+                      <span>Nombre Cliente:</span>
+                      <input
+                        type="text"
+                        value={editBuyerName}
+                        onChange={(e) => setEditBuyerName(e.target.value)}
+                        style={{
+                          padding: '6px 10px',
+                          borderRadius: '6px',
+                          border: '1px solid var(--border-input)',
+                          fontSize: '13px',
+                          background: 'var(--bg-input)',
+                          color: 'var(--text-primary)',
+                          width: '240px',
+                          fontWeight: 'bold',
+                        }}
+                      />
+                    </div>
+                    <div className={styles.summaryRow} style={{ alignItems: 'center' }}>
+                      <span>Email Cliente:</span>
+                      <input
+                        type="text"
+                        value={editBuyerEmail}
+                        onChange={(e) => setEditBuyerEmail(e.target.value)}
+                        style={{
+                          padding: '6px 10px',
+                          borderRadius: '6px',
+                          border: '1px solid var(--border-input)',
+                          fontSize: '13px',
+                          background: 'var(--bg-input)',
+                          color: 'var(--text-primary)',
+                          width: '240px',
+                          fontWeight: 'bold',
+                        }}
+                      />
+                    </div>
+                    <div className={styles.summaryRow} style={{ alignItems: 'center' }}>
+                      <span>Teléfono Cliente:</span>
+                      <input
+                        type="text"
+                        value={editBuyerPhone}
+                        onChange={(e) => setEditBuyerPhone(e.target.value)}
+                        style={{
+                          padding: '6px 10px',
+                          borderRadius: '6px',
+                          border: '1px solid var(--border-input)',
+                          fontSize: '13px',
+                          background: 'var(--bg-input)',
+                          color: 'var(--text-primary)',
+                          width: '240px',
+                          fontWeight: 'bold',
+                        }}
+                      />
+                    </div>
+                    <div className={styles.summaryRow} style={{ alignItems: 'center' }}>
+                      <span>Instagram Cliente:</span>
+                      <input
+                        type="text"
+                        value={editBuyerInstagram}
+                        onChange={(e) => setEditBuyerInstagram(e.target.value)}
+                        style={{
+                          padding: '6px 10px',
+                          borderRadius: '6px',
+                          border: '1px solid var(--border-input)',
+                          fontSize: '13px',
+                          background: 'var(--bg-input)',
+                          width: '240px',
+                          color: '#e1306c',
+                          fontWeight: 'bold',
+                        }}
+                      />
+                    </div>
+                    {/* Shipping status — only editable here, locked in the status panel */}
+                    <div className={styles.summaryRow} style={{ alignItems: 'center' }}>
+                      <span>Estado Envío:</span>
+                      <select
+                        value={editShippingStatus}
+                        onChange={(e) => setEditShippingStatus(e.target.value)}
+                        style={{
+                          padding: '6px 10px',
+                          borderRadius: '6px',
+                          border: '1px solid var(--border-input)',
+                          fontSize: '13px',
+                          background: 'var(--bg-input)',
+                          color: 'var(--text-primary)',
+                          fontWeight: 'bold',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <option value="PENDIENTE">📦 Pendiente</option>
+                        <option value="ENVIADO">🚚 Enviado</option>
+                      </select>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className={styles.summaryRow}>
+                      <span>Pago:</span>
+                      <strong>{selectedSaleDetail.payment_type}</strong>
+                    </div>
+                    <div className={styles.summaryRow}>
+                      <span>Lugar:</span>
+                      <strong>{selectedSaleDetail.location}</strong>
+                    </div>
+                    <div className={styles.summaryRow}>
+                      <span>Cliente:</span>
+                      <strong>
+                        {selectedSaleDetail.buyer_email || selectedSaleDetail.buyer_phone ? (
+                          <>
+                            {selectedSaleDetail.buyer_name && `${selectedSaleDetail.buyer_name} - `}
+                            {selectedSaleDetail.buyer_email || ''} {selectedSaleDetail.buyer_phone || ''}
+                          </>
+                        ) : (
+                          'Venta Directa'
+                        )}
+                      </strong>
+                    </div>
+                    {selectedSaleDetail.buyer_instagram && (
+                      <div className={styles.summaryRow}>
+                        <span>Instagram:</span>
+                        <strong style={{ color: '#e1306c' }}>
+                          {selectedSaleDetail.buyer_instagram}
+                        </strong>
+                      </div>
+                    )}
+                  </>
                 )}
+
                 <div className={styles.summaryRow}>
                   <span>Estado:</span>
                   <strong style={{ color: 
-                    selectedSaleDetail.status === 'CANCELADA' ? 'var(--text-soldout)' :
-                    selectedSaleDetail.status === 'PRECOMPRA' ? 'var(--text-soldout)' : 
-                    'var(--text-available)' 
+                    selectedSaleDetail.status === 'CANCELADA' ? '#dc2626' :
+                    (selectedSaleDetail.payment_type === 'RESERVA' && selectedSaleDetail.status === 'PRECOMPRA') ? '#2563eb' :
+                    selectedSaleDetail.status === 'PRECOMPRA' ? '#d97706' : 
+                    '#16a34a' 
                   }}>
                     {selectedSaleDetail.status === 'CANCELADA' ? 'CANCELADO/DEVUELTO' :
                      (selectedSaleDetail.payment_type === 'RESERVA' && selectedSaleDetail.status === 'PRECOMPRA' ? 'RESERVADO' : selectedSaleDetail.status)}
@@ -748,51 +1215,245 @@ export default function SalesTab({ articles, loadArticles }: SalesTabProps) {
               </div>
 
               <h4 style={{ fontSize: '13px', fontWeight: 'bold', margin: '16px 0 8px 0', borderBottom: '1px solid var(--border-card-glass)', paddingBottom: '4px' }}>Artículos Vendidos</h4>
-              <div style={{ maxHeight: '180px', overflowY: 'auto', border: '1px solid var(--border-card-glass)', borderRadius: '8px', marginBottom: '16px' }}>
+              <div style={{ maxHeight: '180px', overflowY: 'auto', border: '1px solid var(--border-card-glass)', borderRadius: '8px', marginBottom: '16px', flexShrink: 0 }}>
                 {loadingSaleItems ? (
                   <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-secondary)' }}>Cargando artículos...</div>
                 ) : saleDetailItems.length === 0 ? (
                   <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-tertiary)' }}>No hay artículos vinculados a esta venta.</div>
                 ) : (
-                  saleDetailItems.map((item) => (
-                    <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 12px', borderBottom: '1px solid var(--border-card-glass)', alignItems: 'center' }}>
-                      <div>
-                        <div style={{ fontSize: '13px', fontWeight: 'bold' }}>{item.title}</div>
-                        <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>ID Ref: MEC-{String(item.article_id).padStart(4, '0')}</div>
-                      </div>
-                      <div style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
-                        <span style={{ fontSize: '12px' }}>
-                          Cant: <strong>{item.quantity}</strong>{' '}
-                          {item.is_prepurchase ? (
-                            <span style={{ color: 'var(--text-soldout)', fontSize: '11px', fontWeight: 'bold' }}>(Precompra)</span>
-                          ) : (
-                            <span style={{ color: 'var(--text-available)', fontSize: '11px' }}>(Completado)</span>
-                          )}
-                        </span>
-                        <span style={{ fontWeight: 'bold', fontFamily: 'monospace', fontSize: '13px' }}>
-                          {formatPrice(item.price * item.quantity)}
-                        </span>
+                  saleDetailItems.map((item) => {
+                    const article = articles.find((a) => a.id === item.article_id);
+                    const imageUrl = article?.image_urls?.[0];
 
-                        {item.is_prepurchase && (
+                    return (
+                      <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 12px', borderBottom: '1px solid var(--border-card-glass)', alignItems: 'center' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          {imageUrl && (
+                            <img
+                              src={imageUrl}
+                              alt={item.title}
+                              style={{
+                                width: '40px',
+                                height: '40px',
+                                objectFit: 'cover',
+                                borderRadius: '6px',
+                                border: '1px solid var(--border-card-glass)',
+                                background: '#f5f5f5',
+                              }}
+                            />
+                          )}
+                          <div>
+                            <div style={{ fontSize: '13px', fontWeight: 'bold' }}>{item.title}</div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>ID Ref: MEC-{String(item.article_id).padStart(4, '0')}</div>
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
+                          <span style={{ fontSize: '12px' }}>
+                            Cant: <strong>{item.quantity}</strong>{' '}
+                            {(() => {
+                              const isReserva = selectedSaleDetail.payment_type === 'RESERVA' && item.is_prepurchase;
+                              const isPrepurchase = !isReserva && (item.is_prepurchase || (
+                                selectedSaleDetail.status === 'PRECOMPRA' &&
+                                (selectedSaleDetail.payment_type === 'BIZUM' || selectedSaleDetail.payment_type === 'PAYPAL')
+                              ));
+                              if (isReserva) return (
+                                <span style={{ color: '#3b82f6', fontSize: '11px', fontWeight: 'bold' }}>(Reserva)</span>
+                              );
+                              if (isPrepurchase) return (
+                                <span style={{ color: 'var(--text-soldout)', fontSize: '11px', fontWeight: 'bold' }}>(Precompra)</span>
+                              );
+                              return (
+                                <span style={{ color: 'var(--text-available)', fontSize: '11px' }}>(Completado)</span>
+                              );
+                            })()}
+                          </span>
+                          <span style={{ fontWeight: 'bold', fontFamily: 'monospace', fontSize: '13px' }}>
+                            {formatPrice(item.price * item.quantity)}
+                          </span>
+
+                          {(item.is_prepurchase || (
+                            selectedSaleDetail.status === 'PRECOMPRA' &&
+                            (selectedSaleDetail.payment_type === 'BIZUM' || selectedSaleDetail.payment_type === 'PAYPAL')
+                        )) && (
                           <button
                             type="button"
                             onClick={() => completePrepurchaseItem(item)}
                             className={styles.completeItemBtn}
-                            title={selectedSaleDetail.payment_type === 'RESERVA' ? 'Cerrar pago y completar reserva' : 'Marcar como listo y subir stock en 1'}
+                            title={selectedSaleDetail.payment_type === 'RESERVA' ? 'Cerrar pago y completar reserva' : 'Marcar como enviado y completar pedido'}
                           >
                             ✓ Completar
                           </button>
                         )}
                       </div>
                     </div>
-                  ))
+                  );
+                })
                 )}
               </div>
 
-              <div className={styles.summaryRow} style={{ fontSize: '16px', fontWeight: 'bold', borderTop: '1px solid var(--border-card-glass)', paddingTop: '10px' }}>
-                <span>Total Facturado:</span>
-                <span style={{ fontFamily: 'monospace' }}>{formatPrice(selectedSaleDetail.total_price)}</span>
-              </div>
+              {/* Shipping status section */}
+              {selectedSaleDetail.location !== 'presencial' && (
+                <div style={{ borderTop: '1px solid var(--border-card-glass)', marginTop: '16px', paddingTop: '14px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                    <span style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-secondary)' }}>Estado de Envío:</span>
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      <button
+                        type="button"
+                        disabled={selectedSaleDetail.shipping_status === 'ENVIADO'}
+                        onClick={() => {
+                          if (!selectedSaleDetail.shipping_status || selectedSaleDetail.shipping_status === 'PENDIENTE') return;
+                          // Only reachable in edit mode (button is disabled when ENVIADO)
+                        }}
+                        title={selectedSaleDetail.shipping_status === 'ENVIADO' ? '🔒 Ya enviado — solo editable desde "Editar Pedido"' : undefined}
+                        style={{
+                          padding: '5px 10px',
+                          borderRadius: '6px',
+                          border: 'none',
+                          fontSize: '11px',
+                          fontWeight: 'bold',
+                          cursor: selectedSaleDetail.shipping_status === 'ENVIADO' ? 'not-allowed' : 'default',
+                          background: (!selectedSaleDetail.shipping_status || selectedSaleDetail.shipping_status === 'PENDIENTE') ? '#d97706' : 'rgba(107,114,128,0.15)',
+                          color: (!selectedSaleDetail.shipping_status || selectedSaleDetail.shipping_status === 'PENDIENTE') ? '#fff' : '#9ca3af',
+                          opacity: selectedSaleDetail.shipping_status === 'ENVIADO' ? 0.5 : 1,
+                          transition: 'all 0.2s',
+                        }}
+                      >
+                        📦 Pendiente
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (selectedSaleDetail.shipping_status !== 'ENVIADO') {
+                            setShippingInputVisible(true);
+                            setTrackingLinkInput(selectedSaleDetail.tracking_link || '');
+                          }
+                        }}
+                        style={{
+                          padding: '5px 10px',
+                          borderRadius: '6px',
+                          border: 'none',
+                          fontSize: '11px',
+                          fontWeight: 'bold',
+                          cursor: selectedSaleDetail.shipping_status === 'ENVIADO' ? 'default' : 'pointer',
+                          background: selectedSaleDetail.shipping_status === 'ENVIADO' ? '#10b981' : 'rgba(16,185,129,0.15)',
+                          color: selectedSaleDetail.shipping_status === 'ENVIADO' ? '#fff' : '#10b981',
+                          transition: 'all 0.2s',
+                        }}
+                      >
+                        🚚 Enviado
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Tracking link input — appears when clicking Enviado */}
+                  {shippingInputVisible && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.25)', borderRadius: '8px', padding: '10px' }}>
+                      <label style={{ fontSize: '11px', fontWeight: 'bold', color: '#10b981' }}>Link de seguimiento (opcional):</label>
+                      <input
+                        type="url"
+                        value={trackingLinkInput}
+                        onChange={(e) => setTrackingLinkInput(e.target.value)}
+                        placeholder="https://tracking.correos.es/..."
+                        style={{
+                          padding: '7px 10px',
+                          borderRadius: '6px',
+                          border: '1px solid rgba(16,185,129,0.4)',
+                          fontSize: '12px',
+                          background: 'var(--bg-input)',
+                          color: 'var(--text-primary)',
+                          width: '100%',
+                          boxSizing: 'border-box',
+                        }}
+                      />
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button
+                          type="button"
+                          onClick={() => handleUpdateShipping(selectedSaleDetail, 'ENVIADO', trackingLinkInput || undefined)}
+                          disabled={savingShipping}
+                          style={{
+                            flex: 1, padding: '7px', borderRadius: '6px', border: 'none',
+                            background: '#10b981', color: '#fff', fontWeight: 'bold', fontSize: '12px', cursor: 'pointer',
+                          }}
+                        >
+                          {savingShipping ? 'Guardando...' : '✓ Confirmar Envío'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setShippingInputVisible(false); setTrackingLinkInput(''); }}
+                          style={{
+                            padding: '7px 12px', borderRadius: '6px', border: 'none',
+                            background: 'var(--bg-card)', color: 'var(--text-secondary)', fontWeight: 'bold', fontSize: '12px', cursor: 'pointer',
+                          }}
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Show tracking link if set */}
+                  {selectedSaleDetail.shipping_status === 'ENVIADO' && selectedSaleDetail.tracking_link && !shippingInputVisible && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: '8px', padding: '8px 10px' }}>
+                      <span style={{ fontSize: '11px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>🔗 Seguimiento:</span>
+                      <a
+                        href={selectedSaleDetail.tracking_link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ fontSize: '11px', color: '#10b981', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textDecoration: 'none', fontWeight: 'bold' }}
+                      >
+                        {selectedSaleDetail.tracking_link}
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(selectedSaleDetail.tracking_link!);
+                          setCopiedTracking(true);
+                          setTimeout(() => setCopiedTracking(false), 2000);
+                        }}
+                        style={{
+                          padding: '4px 8px', borderRadius: '5px', border: 'none',
+                          background: copiedTracking ? '#10b981' : 'var(--bg-card)',
+                          color: copiedTracking ? '#fff' : 'var(--text-secondary)',
+                          fontSize: '11px', cursor: 'pointer', whiteSpace: 'nowrap', fontWeight: 'bold', transition: 'all 0.2s',
+                        }}
+                      >
+                        {copiedTracking ? '✓ Copiado' : '📋 Copiar'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setShippingInputVisible(true); setTrackingLinkInput(selectedSaleDetail.tracking_link || ''); }}
+                        style={{ padding: '4px 8px', borderRadius: '5px', border: 'none', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: '11px', cursor: 'pointer' }}
+                      >
+                        ✏️
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {(() => {
+                const shippingInfo = selectedSaleDetail.shipping_address as any;
+                const shippingCost = shippingInfo?.price ?? 0;
+                const shippingLabel = shippingInfo?.description || (shippingInfo?.method === 'recogida' ? 'Recogida en taller' : 'Envío Peninsular');
+                const subtotal = Number(selectedSaleDetail.total_price) - Number(shippingCost);
+
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', borderTop: '1px solid var(--border-card-glass)', paddingTop: '10px' }}>
+                    <div className={styles.summaryRow} style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+                      <span>Subtotal artículos:</span>
+                      <span style={{ fontFamily: 'monospace' }}>{formatPrice(subtotal)}</span>
+                    </div>
+                    <div className={styles.summaryRow} style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+                      <span>Gastos de envío ({shippingLabel}):</span>
+                      <span style={{ fontFamily: 'monospace' }}>{shippingCost === 0 ? 'Gratis' : formatPrice(shippingCost)}</span>
+                    </div>
+                    <div className={styles.summaryRow} style={{ fontSize: '16px', fontWeight: 'bold', borderTop: '1px dashed var(--border-card-glass)', paddingTop: '6px', marginTop: '4px' }}>
+                      <span>Total Facturado:</span>
+                      <span style={{ fontFamily: 'monospace' }}>{formatPrice(selectedSaleDetail.total_price)}</span>
+                    </div>
+                  </div>
+                );
+              })()}
 
               <div style={{ borderTop: '1px solid var(--border-card-glass)', marginTop: '20px', paddingTop: '16px' }}>
                 <span style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-secondary)' }}>Compartir Factura:</span>
@@ -827,6 +1488,7 @@ export default function SalesTab({ articles, loadArticles }: SalesTabProps) {
                   onClick={() => {
                     setSelectedSaleDetail(null);
                     setSaleDetailItems([]);
+                    setIsEditingSale(false);
                   }}
                   className={`${styles.secondaryButton} ${styles.solidGrayButton}`}
                   style={{ flex: 1, padding: '12px', borderRadius: '8px', border: 'none', fontWeight: 'bold', cursor: 'pointer', fontSize: '13px' }}

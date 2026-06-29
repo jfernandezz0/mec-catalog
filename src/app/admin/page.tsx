@@ -148,8 +148,9 @@ export default function AdminPage() {
     hasDiscountColumns,
     hasSettingsTable,
     paymentsEnabled,
-    revolutEnabled,
+    bizumEnabled,
     paypalEnabled,
+    squareEnabled,
     hidePrices,
     hideAvailability,
     generalDiscountPercent,
@@ -178,6 +179,7 @@ export default function AdminPage() {
   const [selectedDiscountTarget, setSelectedDiscountTarget] = useState('');
   const [targetDiscountPercent, setTargetDiscountPercent] = useState('');
   const [savingDiscount, setSavingDiscount] = useState(false);
+  const [syncingCatalog, setSyncingCatalog] = useState(false);
 
   // Warning modal states
   const [showDiscountWarnModal, setShowDiscountWarnModal] = useState(false);
@@ -668,6 +670,40 @@ export default function AdminPage() {
     }
   };
 
+  const handleSyncSquareCatalog = async () => {
+    setSyncingCatalog(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) {
+        throw new Error('No se encontró sesión activa.');
+      }
+
+      const res = await fetch('/api/admin/sync-square-catalog', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Error al sincronizar el catálogo.');
+      }
+
+      if (data.syncedCount > 0) {
+        alert(`¡Sincronización completada con éxito!\n- Sincronizados: ${data.syncedCount} artículos.\n- Fallidos: ${data.failedCount || 0}`);
+        await loadArticles();
+      } else {
+        alert(data.message || 'Todos los artículos ya están sincronizados.');
+      }
+    } catch (err: any) {
+      alert(`Error de sincronización: ${err.message || err}`);
+    } finally {
+      setSyncingCatalog(false);
+    }
+  };
+
   if (checkingAuth) {
     return (
       <main className={styles.page}>
@@ -906,19 +942,21 @@ export default function AdminPage() {
           {activeTab === 'config' && (
             <ConfigTab
               paymentsEnabled={paymentsEnabled}
-              revolutEnabled={revolutEnabled}
+              bizumEnabled={bizumEnabled}
               paypalEnabled={paypalEnabled}
+              squareEnabled={squareEnabled}
               hidePrices={hidePrices}
               hideAvailability={hideAvailability}
-              loadingPaymentsSetting={loadingArticles} // using loadingArticles or loadingPaymentsSetting
+              loadingPaymentsSetting={loadingArticles}
               hasSettingsTable={hasSettingsTable}
               hasDiscountColumns={hasDiscountColumns}
               generalDiscountPercent={generalDiscountPercent}
               categories={categories}
               articles={articles}
               togglePayments={(enabled) => updateSetting('payments_enabled', String(enabled))}
-              toggleRevolut={(enabled) => updateSetting('revolut_enabled', String(enabled))}
+              toggleBizum={(enabled) => updateSetting('bizum_enabled', String(enabled))}
               togglePaypal={(enabled) => updateSetting('paypal_enabled', String(enabled))}
+              toggleSquare={(enabled) => updateSetting('square_payments_enabled', String(enabled))}
               toggleHidePrices={(enabled) => updateSetting('hide_prices', String(enabled))}
               toggleHideAvailability={(enabled) => updateSetting('hide_availability', String(enabled))}
               loadPaymentsSetting={loadPaymentsSetting}
@@ -930,7 +968,10 @@ export default function AdminPage() {
               setTargetDiscountPercent={setTargetDiscountPercent}
               savingDiscount={savingDiscount}
               setCategories={setCategories}
+              syncingCatalog={syncingCatalog}
+              handleSyncSquareCatalog={handleSyncSquareCatalog}
             />
+
           )}
 
           {activeTab === 'sales' && (

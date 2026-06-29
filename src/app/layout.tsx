@@ -3,6 +3,9 @@ import { Plus_Jakarta_Sans } from "next/font/google";
 import ConnectionStatus from "./components/ConnectionStatus";
 import ThemeToggle from "./components/ThemeToggle";
 import Footer from "./components/Footer";
+import CartButton from "./components/CartButton";
+import CartDrawer from "./components/CartDrawer";
+import { CartProvider } from "@/lib/contexts/CartContext";
 import "./tailwind.css";
 
 const jakarta = Plus_Jakarta_Sans({
@@ -89,12 +92,16 @@ export default function RootLayout({
         />
       </head>
       <body className="bg-[color:var(--bg-page)] text-[color:var(--text-primary)] antialiased flex flex-col min-h-screen">
-        <ConnectionStatus />
-        <ThemeToggle />
-        <div className="flex-1">
-          {children}
-        </div>
-        <Footer />
+        <CartProvider>
+          <ConnectionStatus />
+          <ThemeToggle />
+          <CartButton />
+          <CartDrawer />
+          <div className="flex-1">
+            {children}
+          </div>
+          <Footer />
+        </CartProvider>
       </body>
     </html>
   );

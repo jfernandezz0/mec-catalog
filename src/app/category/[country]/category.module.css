@@ -171,13 +171,22 @@
   background: linear-gradient(135deg, var(--border-card), var(--bg-page));
   border-top-left-radius: 11px;
   border-top-right-radius: 11px;
-  overflow: hidden;
+  overflow: visible;
+  /* Clip only the image itself, not overlays */
 }
 
 .imageLink {
   position: absolute;
   inset: 0;
   z-index: 0;
+}
+
+.imageClip {
+  position: absolute;
+  inset: 0;
+  border-top-left-radius: 11px;
+  border-top-right-radius: 11px;
+  overflow: hidden;
 }
 
 .image {
@@ -290,35 +299,76 @@
 }
 
 .cardShareContainer {
-  position: relative;
-  flex-shrink: 0;
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 10;
 }
 
 .cardShareBtn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
-  border: 1px solid var(--border-card);
-  background: var(--bg-card);
-  color: var(--text-secondary);
+  border: none;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: background 0.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s, transform 0.15s;
   padding: 0;
+  opacity: 0.5;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
 }
 
 .cardShareBtn:hover,
 .cardShareBtnActive {
-  background: var(--text-primary);
-  border-color: var(--text-primary);
-  color: var(--bg-page);
+  background: rgba(139, 92, 246, 0.85);
+  opacity: 1;
+  transform: scale(1.08);
+  color: #fff;
 }
 
 .shareIcon {
-  width: 14px;
-  height: 14px;
+  width: 15px;
+  height: 15px;
+}
+
+.cardCartBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid rgba(167, 139, 250, 0.3);
+  background: var(--bg-card);
+  color: #a78bfa;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.cardCartBtn:hover {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  border-color: transparent;
+  color: #fff;
+  transform: scale(1.08);
+}
+
+.cardCartBtnActive {
+  background: rgba(99, 102, 241, 0.12);
+  border-color: #6366f1;
+  color: #6366f1;
+}
+
+.cardCartBtnActive:hover {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  color: #fff;
+  border-color: transparent;
 }
 
 .iconSmall {
@@ -329,18 +379,18 @@
 
 .cardDropdown {
   position: absolute;
-  top: 38px;
+  top: 40px;
   right: 0;
   width: 190px;
   background: var(--bg-card);
   border: 1px solid var(--border-card);
   border-radius: 12px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
   padding: 5px;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  z-index: 50;
+  z-index: 200;
   transform-origin: top right;
   animation: slideDown 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }

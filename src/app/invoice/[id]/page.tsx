@@ -134,7 +134,7 @@ export default function InvoicePage(props: Props) {
             />
           </div>
           <div className={styles.invoiceInfo}>
-            <h1 className={styles.invoiceTitle}>FACTURA / RECIBO</h1>
+            <h1 className={styles.invoiceTitle}>RECIBO DE VENTA</h1>
             <div className={styles.invoiceMeta}>
               <p><strong>Nº:</strong> MEC-{sale.id.substring(0, 8).toUpperCase()}</p>
               <p><strong>Fecha:</strong> {formatDate(sale.created_at)}</p>
@@ -160,7 +160,7 @@ export default function InvoicePage(props: Props) {
           <div className={styles.detailBlock}>
             <h2 className={styles.blockTitle}>Detalle del Pago y Envío</h2>
             <div className={styles.blockText}>
-              <p><strong>Método de pago:</strong> {sale.payment_type}</p>
+              <p><strong>Método de pago:</strong> {sale.payment_type === 'SQUARE' ? 'Pago con tarjeta' : sale.payment_type}</p>
               <p><strong>Lugar de venta:</strong> {sale.location || 'online'}</p>
               {sale.status === 'PRECOMPRA' && (
                 <p>
@@ -174,7 +174,7 @@ export default function InvoicePage(props: Props) {
                 <p>
                   <strong>Estado:</strong>{' '}
                   <span className={`${styles.badge} ${styles.badgeAvailable}`}>
-                    {sale.payment_type === 'RESERVA' ? 'RESERVA COMPLETADA' : 'COMPLETADA / ENTREGADA'}
+                    {sale.payment_type === 'RESERVA' ? 'RESERVA PAGADA' : 'PAGADO'}
                   </span>
                 </p>
               )}
@@ -251,52 +251,37 @@ export default function InvoicePage(props: Props) {
         </section>
 
         {/* Totals Summary */}
-        <footer className={styles.summarySection}>
-          <div className={styles.summaryRow}>
-            <span>Total artículos:</span>
-            <span>{sale.total_articles} uds.</span>
-          </div>
-          <div className={styles.totalRow}>
-            <span>TOTAL FACTURA:</span>
-            <span>{formatPrice(sale.total_price)}</span>
-          </div>
-        </footer>
+        {(() => {
+          const shippingInfo = sale.shipping_address as any;
+          const shippingCost = shippingInfo?.price ?? 0;
+          const shippingLabel = shippingInfo?.description || (shippingInfo?.method === 'recogida' ? 'Recogida en taller' : 'Envío Peninsular');
+          const subtotal = Number(sale.total_price) - Number(shippingCost);
+
+          return (
+            <footer className={styles.summarySection}>
+              <div className={styles.summaryRow}>
+                <span>Subtotal artículos:</span>
+                <span>{formatPrice(subtotal)}</span>
+              </div>
+              <div className={styles.summaryRow}>
+                <span>Gastos de envío ({shippingLabel}):</span>
+                <span>{shippingCost === 0 ? 'Gratis' : formatPrice(shippingCost)}</span>
+              </div>
+              <div className={styles.totalRow} style={{ marginTop: '8px', borderTop: '1px dashed var(--border-card-glass)' }}>
+                <span>TOTAL RECIBO:</span>
+                <span>{formatPrice(sale.total_price)}</span>
+              </div>
+            </footer>
+          );
+        })()}
       </div>
 
       {/* Action panel (Hidden on Print) */}
       <div className={`${styles.actions} noPrint`}>
-        <button onClick={handlePrint} className={`${styles.button} ${styles.primaryButton}`}>
+        <button onClick={handlePrint} className={`${styles.button} ${styles.primaryButton}`} style={{ width: '100%', justifyContent: 'center' }}>
           <PrintIcon width="18" height="18" aria-hidden="true" />
           Descargar PDF / Imprimir
         </button>
-
-        <div className={styles.shareSection}>
-          <a
-            href={whatsappShareUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.shareBtn}
-            title="Compartir por WhatsApp"
-          >
-            <WhatsAppIcon className={`${styles.iconSmall} ${styles.whatsapp}`} width="18" height="18" />
-          </a>
-          <a
-            href={telegramShareUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.shareBtn}
-            title="Compartir por Telegram"
-          >
-            <TelegramIcon className={`${styles.iconSmall} ${styles.telegram}`} width="18" height="18" />
-          </a>
-          <a
-            href={emailShareUrl}
-            className={styles.shareBtn}
-            title="Compartir por Email"
-          >
-            <EmailIcon className={`${styles.iconSmall} ${styles.email}`} width="18" height="18" />
-          </a>
-        </div>
       </div>
     </main>
   );

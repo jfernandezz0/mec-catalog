@@ -30,11 +30,23 @@ export interface Sale {
   buyer_email: string | null;
   buyer_instagram: string | null;
   location: string;
-  payment_type: 'REVOLUT' | 'PAYPAL' | 'EFECTIVO' | 'RESERVA';
+  payment_type: 'BIZUM' | 'PAYPAL' | 'EFECTIVO' | 'RESERVA' | 'SQUARE';
   total_price: number;
   total_articles: number;
   status: 'COMPLETADA' | 'PRECOMPRA' | 'CANCELADA';
   created_at: string;
+  // New payment integration fields
+  square_payment_id?: string | null;
+  square_order_id?: string | null;
+  buyer_name?: string | null;
+  shipping_address?: object | null;
+  shipping_status?: string | null;
+  tracking_link?: string | null;
+  order_number?: string | null;
+  receipt_email?: string | null;
+  receipt_whatsapp?: string | null;
+  whatsapp_sent?: boolean;
+  receipt_sent_at?: string | null;
 }
 
 export interface SaleItem {
@@ -97,3 +109,14 @@ export const initialFormState: FormState = {
 };
 
 export type AdminTab = 'catalog' | 'create' | 'edit' | 'categories' | 'import' | 'config' | 'sales' | 'sales-create' | 'analytics' | 'generate_list';
+
+// Cart types
+export interface CartItem {
+  article: Article;
+  priceAtAdd: number; // final price at the moment of adding to cart
+}
+
+export interface CartStockStatus {
+  articleId: number;
+  available: boolean; // true = in stock (quantity=1), false = sold or reserved
+}

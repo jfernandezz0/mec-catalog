@@ -28,10 +28,12 @@ export interface UseAdminDataReturn {
   // Settings
   paymentsEnabled: boolean;
   setPaymentsEnabled: React.Dispatch<React.SetStateAction<boolean>>;
-  revolutEnabled: boolean;
-  setRevolutEnabled: React.Dispatch<React.SetStateAction<boolean>>;
+  bizumEnabled: boolean;
+  setBizumEnabled: React.Dispatch<React.SetStateAction<boolean>>;
   paypalEnabled: boolean;
   setPaypalEnabled: React.Dispatch<React.SetStateAction<boolean>>;
+  squareEnabled: boolean;
+  setSquareEnabled: React.Dispatch<React.SetStateAction<boolean>>;
   hidePrices: boolean;
   setHidePrices: React.Dispatch<React.SetStateAction<boolean>>;
   hideAvailability: boolean;
@@ -66,8 +68,9 @@ export function useAdminData(onUserReady?: () => void): UseAdminDataReturn {
 
   // Settings
   const [paymentsEnabled, setPaymentsEnabled] = useState(false);
-  const [revolutEnabled, setRevolutEnabled] = useState(true);
+  const [bizumEnabled, setBizumEnabled] = useState(true);
   const [paypalEnabled, setPaypalEnabled] = useState(true);
+  const [squareEnabled, setSquareEnabled] = useState(false);
   const [hidePrices, setHidePrices] = useState(false);
   const [hideAvailability, setHideAvailability] = useState(false);
   const [generalDiscountPercent, setGeneralDiscountPercent] = useState('');
@@ -133,24 +136,27 @@ export function useAdminData(onUserReady?: () => void): UseAdminDataReturn {
           console.error('Error fetching payments settings:', error);
         }
         setPaymentsEnabled(false);
-        setRevolutEnabled(true);
+        setBizumEnabled(true);
         setPaypalEnabled(true);
+        setSquareEnabled(false);
         setHidePrices(false);
         setHideAvailability(false);
         setGeneralDiscountPercent('');
       } else if (data && data.length > 0) {
         const settingsMap = new Map(data.map((s) => [s.key, s.value]));
         setPaymentsEnabled(settingsMap.get('payments_enabled') === 'true');
-        setRevolutEnabled(settingsMap.get('revolut_enabled') !== 'false');
+        setBizumEnabled(settingsMap.get('bizum_enabled') !== 'false');
         setPaypalEnabled(settingsMap.get('paypal_enabled') !== 'false');
+        setSquareEnabled(settingsMap.get('square_payments_enabled') === 'true');
         setHidePrices(settingsMap.get('hide_prices') === 'true');
         setHideAvailability(settingsMap.get('hide_availability') === 'true');
         setGeneralDiscountPercent(settingsMap.get('general_discount_percent') || '');
         setHasSettingsTable(true);
       } else {
         setPaymentsEnabled(false);
-        setRevolutEnabled(true);
+        setBizumEnabled(true);
         setPaypalEnabled(true);
+        setSquareEnabled(false);
         setHidePrices(false);
         setHideAvailability(false);
         setGeneralDiscountPercent('');
@@ -159,8 +165,9 @@ export function useAdminData(onUserReady?: () => void): UseAdminDataReturn {
     } catch (e) {
       console.error(e);
       setPaymentsEnabled(false);
-      setRevolutEnabled(true);
+      setBizumEnabled(true);
       setPaypalEnabled(true);
+      setSquareEnabled(false);
       setHidePrices(false);
       setHideAvailability(false);
       setGeneralDiscountPercent('');
@@ -185,8 +192,9 @@ export function useAdminData(onUserReady?: () => void): UseAdminDataReturn {
         alert(`Error al guardar ajuste: ${error.message}`);
       } else {
         if (key === 'payments_enabled') setPaymentsEnabled(value === 'true');
-        if (key === 'revolut_enabled') setRevolutEnabled(value === 'true');
+        if (key === 'bizum_enabled') setBizumEnabled(value === 'true');
         if (key === 'paypal_enabled') setPaypalEnabled(value === 'true');
+        if (key === 'square_payments_enabled') setSquareEnabled(value === 'true');
         if (key === 'hide_prices') setHidePrices(value === 'true');
         if (key === 'hide_availability') setHideAvailability(value === 'true');
       }
@@ -242,10 +250,12 @@ export function useAdminData(onUserReady?: () => void): UseAdminDataReturn {
     // Settings
     paymentsEnabled,
     setPaymentsEnabled,
-    revolutEnabled,
-    setRevolutEnabled,
+    bizumEnabled,
+    setBizumEnabled,
     paypalEnabled,
     setPaypalEnabled,
+    squareEnabled,
+    setSquareEnabled,
     hidePrices,
     setHidePrices,
     hideAvailability,

@@ -31,7 +31,7 @@ export default function SalesCreateTab({
   const [saleBuyerEmail, setSaleBuyerEmail] = useState('');
   const [saleBuyerInstagram, setSaleBuyerInstagram] = useState('');
   const [saleLocation, setSaleLocation] = useState('online');
-  const [salePaymentType, setSalePaymentType] = useState<'REVOLUT' | 'PAYPAL' | 'EFECTIVO' | 'RESERVA'>('REVOLUT');
+  const [salePaymentType, setSalePaymentType] = useState<'BIZUM' | 'PAYPAL' | 'EFECTIVO' | 'RESERVA' | 'SQUARE'>('BIZUM');
   const [showSaleSummary, setShowSaleSummary] = useState(false);
   const [registeringSale, setRegisteringSale] = useState(false);
   const [salesCreateSearch, setSalesCreateSearch] = useState('');
@@ -445,10 +445,11 @@ export default function SalesCreateTab({
                       onChange={(e: any) => setSalePaymentType(e.target.value)}
                       className={styles.salesTextInput}
                     >
-                      <option value="REVOLUT">Revolut</option>
+                      <option value="BIZUM">Bizum / Transferencia</option>
                       <option value="PAYPAL">PayPal</option>
                       <option value="EFECTIVO">Efectivo</option>
                       <option value="RESERVA">Reserva</option>
+                      <option value="SQUARE">Tarjeta (Square)</option>
                     </select>
                   </div>
                 </div>

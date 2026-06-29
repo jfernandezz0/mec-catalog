@@ -8,8 +8,9 @@ import { Category, Article } from '@/lib/types';
 interface ConfigTabProps {
   // Payment settings
   paymentsEnabled: boolean;
-  revolutEnabled: boolean;
+  bizumEnabled: boolean;
   paypalEnabled: boolean;
+  squareEnabled: boolean;
   hidePrices: boolean;
   hideAvailability: boolean;
   loadingPaymentsSetting: boolean;
@@ -21,8 +22,9 @@ interface ConfigTabProps {
   articles: Article[];
   // Callbacks
   togglePayments: (enabled: boolean) => void;
-  toggleRevolut: (enabled: boolean) => void;
+  toggleBizum: (enabled: boolean) => void;
   togglePaypal: (enabled: boolean) => void;
+  toggleSquare: (enabled: boolean) => void;
   toggleHidePrices: (enabled: boolean) => void;
   toggleHideAvailability: (enabled: boolean) => void;
   loadPaymentsSetting: () => void;
@@ -35,12 +37,15 @@ interface ConfigTabProps {
   setTargetDiscountPercent: (val: string) => void;
   savingDiscount: boolean;
   setCategories: React.Dispatch<React.SetStateAction<Category[]>>;
+  syncingCatalog?: boolean;
+  handleSyncSquareCatalog?: () => void;
 }
 
 export default function ConfigTab({
   paymentsEnabled,
-  revolutEnabled,
+  bizumEnabled,
   paypalEnabled,
+  squareEnabled,
   hidePrices,
   hideAvailability,
   loadingPaymentsSetting,
@@ -50,8 +55,9 @@ export default function ConfigTab({
   categories,
   articles,
   togglePayments,
-  toggleRevolut,
+  toggleBizum,
   togglePaypal,
+  toggleSquare,
   toggleHidePrices,
   toggleHideAvailability,
   loadPaymentsSetting,
@@ -63,6 +69,8 @@ export default function ConfigTab({
   setTargetDiscountPercent,
   savingDiscount,
   setCategories,
+  syncingCatalog = false,
+  handleSyncSquareCatalog,
 }: ConfigTabProps) {
   return (
           <div className={styles.paymentsSection} style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
@@ -133,23 +141,23 @@ ON CONFLICT (key) DO NOTHING;`}
                     </button>
                   </div>
 
-                  {/* Revolut Switch */}
+                  {/* Bizum Switch */}
                   <div className={`${styles.paymentsToggleRow} ${(!paymentsEnabled || hidePrices) ? styles.disabledRow : ''}`}>
                     <div className={styles.paymentsToggleText}>
                       <span className={styles.paymentsToggleLabel}>
-                        Pago Online Revolut
+                        Bizum / Transferencia
                       </span>
                       <span className={styles.paymentsToggleSublabel}>
-                        Muestra el botón de compra que redirige al enlace de Revolut.me.
+                        Muestra el botón de pago Bizum / transferencia personal.
                       </span>
                     </div>
                     <button
                       type="button"
                       disabled={!paymentsEnabled || hidePrices}
-                      onClick={() => toggleRevolut(!revolutEnabled)}
-                      className={`${styles.switch} ${revolutEnabled && paymentsEnabled && !hidePrices ? styles.switchActive : ''}`}
-                      aria-label="Alternar Revolut"
-                      title="Alternar Revolut"
+                      onClick={() => toggleBizum(!bizumEnabled)}
+                      className={`${styles.switch} ${bizumEnabled && paymentsEnabled && !hidePrices ? styles.switchActive : ''}`}
+                      aria-label="Alternar Bizum"
+                      title="Alternar Bizum"
                     >
                       <span className={styles.switchHandle} />
                     </button>
@@ -176,8 +184,67 @@ ON CONFLICT (key) DO NOTHING;`}
                       <span className={styles.switchHandle} />
                     </button>
                   </div>
+
+                  {/* Square (Pago con tarjeta) Switch */}
+                  <div className={`${styles.paymentsToggleRow} ${(!paymentsEnabled || hidePrices) ? styles.disabledRow : ''}`}>
+                    <div className={styles.paymentsToggleText}>
+                      <span className={styles.paymentsToggleLabel}>
+                        💳 Pago con tarjeta (Square)
+                      </span>
+                      <span className={styles.paymentsToggleSublabel}>
+                        Activa el checkout con tarjeta mediante Square. Requiere credenciales de Square configuradas en .env.
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={!paymentsEnabled || hidePrices}
+                      onClick={() => toggleSquare(!squareEnabled)}
+                      className={`${styles.switch} ${squareEnabled && paymentsEnabled && !hidePrices ? styles.switchActive : ''}`}
+                      aria-label="Alternar pago con tarjeta Square"
+                      title="Alternar pago con tarjeta Square"
+                    >
+                      <span className={styles.switchHandle} />
+                    </button>
+                  </div>
                 </div>
               )}
+            </div>
+
+            {/* Sección 1.5: Sincronización Square Catalog */}
+            <div className={styles.paymentsCard}>
+              <h2 className={styles.paymentsCardTitle}>Sincronización de Catálogo</h2>
+              <p className={styles.paymentsCardDesc}>
+                Sincroniza tus artículos disponibles con tu catálogo de Square para ventas presenciales (Tap to Pay).
+              </p>
+              <div style={{ marginTop: '16px' }}>
+                <button
+                  type="button"
+                  disabled={syncingCatalog || !squareEnabled}
+                  onClick={handleSyncSquareCatalog}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '10px 18px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    fontWeight: 'bold',
+                    cursor: syncingCatalog || !squareEnabled ? 'not-allowed' : 'pointer',
+                    fontSize: '13px',
+                    background: syncingCatalog ? 'var(--text-secondary)' : '#6366f1',
+                    color: '#fff',
+                    opacity: !squareEnabled ? 0.5 : 1,
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  {syncingCatalog ? '🔄 Sincronizando catálogo...' : '🔄 Sincronizar catálogo con Square'}
+                </button>
+                {!squareEnabled && (
+                  <p style={{ margin: '8px 0 0 0', fontSize: '12px', color: '#ef4444' }}>
+                    ⚠️ Activa el pago con tarjeta Square arriba para habilitar la sincronización.
+                  </p>
+                )}
+              </div>
             </div>
 
             {/* Sección 2: Visibilidad */}

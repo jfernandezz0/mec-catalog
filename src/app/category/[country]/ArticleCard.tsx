@@ -8,6 +8,7 @@ import { formatPrice } from '@/lib/utils';
 import { useSwipe } from '@/lib/hooks/useSwipe';
 import { ShareIcon } from '@/app/components/Icons';
 import ShareDropdown from '@/app/components/ShareDropdown';
+import { useCart } from '@/lib/contexts/CartContext';
 import styles from './category.module.css';
 
 type ArticleCardProps = {
@@ -48,8 +49,17 @@ export default function ArticleCard({
   const hasMultipleImages = imageUrls.length > 1;
 
   const [isShareOpen, setIsShareOpen] = useState(false);
-  const [toastMsg, setToastMsg] = useState('');
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
   const shareRef = useRef<HTMLDivElement>(null);
+  const { addItem, hasItem, openDrawer } = useCart();
+  const inCart = hasItem(article.id);
+
+  const handleAddToCart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!inCart) addItem(article as any);
+    openDrawer();
+  };
 
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
   const articleUrl = `${origin}/article/${article.id}`;
@@ -97,6 +107,8 @@ export default function ArticleCard({
       style={index !== undefined ? { animationDelay: `${index * 60}ms` } : undefined}
     >
       <div className={styles.imageWrap}>
+        {/* Inner clip to keep image border-radius without cutting dropdown */}
+        <div className={styles.imageClip}>
         {imageUrl ? (
           <>
             <Link 
@@ -165,6 +177,38 @@ export default function ArticleCard({
             🏖️☀️🍹
           </div>
         )}
+        </div>{/* end imageClip */}
+        {/* Share button overlaid on image — top-right corner */}
+        <div className={styles.cardShareContainer} ref={shareRef}>
+          <button
+            onClick={() => setIsShareOpen(!isShareOpen)}
+            className={`${styles.cardShareBtn} ${isShareOpen ? styles.cardShareBtnActive : ''}`}
+            title="Compartir artículo"
+            aria-expanded={isShareOpen}
+          >
+            <ShareIcon className={styles.shareIcon} />
+          </button>
+
+          <ShareDropdown
+            id={article.id}
+            title={article.title}
+            url={articleUrl}
+            isOpen={isShareOpen}
+            onClose={() => setIsShareOpen(false)}
+            onCopySuccess={(msg) => setToastMsg(msg)}
+            parentRef={shareRef}
+            copyMessage="¡Enlace copiado!"
+            classes={{
+              dropdown: styles.cardDropdown,
+              dropdownItem: styles.cardDropdownItem,
+              itemWhatsapp: styles.itemWhatsapp,
+              itemTelegram: styles.itemTelegram,
+              itemEmail: styles.itemEmail,
+              itemCopy: styles.itemCopy,
+              iconSmall: styles.iconSmall,
+            }}
+          />
+        </div>
       </div>
 
       <div className={styles.content}>
@@ -182,37 +226,31 @@ export default function ArticleCard({
               <h2 className={styles.cardTitle}>{article.title}</h2>
             );
           })()}
-          <div className={styles.cardShareContainer} ref={shareRef}>
+          {/* Compact add-to-cart button */}
+          {article.quantity > 0 && (
             <button
-              onClick={() => setIsShareOpen(!isShareOpen)}
-              className={`${styles.cardShareBtn} ${isShareOpen ? styles.cardShareBtnActive : ''}`}
-              title="Compartir artículo"
-              aria-expanded={isShareOpen}
+              type="button"
+              id={`card-add-to-cart-${article.id}`}
+              onClick={handleAddToCart}
+              className={`${styles.cardCartBtn} ${inCart ? styles.cardCartBtnActive : ''}`}
+              title={inCart ? 'Ver carrito' : 'Añadir al carrito'}
+              aria-label={inCart ? 'Ver carrito' : 'Añadir al carrito'}
             >
-              <ShareIcon className={styles.shareIcon} />
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                {inCart ? (
+                  <polyline points="20 6 9 17 4 12" />
+                ) : (
+                  <>
+                    <circle cx="9" cy="21" r="1" />
+                    <circle cx="20" cy="21" r="1" />
+                    <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
+                  </>
+                )}
+              </svg>
             </button>
-
-            <ShareDropdown
-              id={article.id}
-              title={article.title}
-              url={articleUrl}
-              isOpen={isShareOpen}
-              onClose={() => setIsShareOpen(false)}
-              onCopySuccess={(msg) => setToastMsg(msg)}
-              parentRef={shareRef}
-              copyMessage="¡Enlace copiado!"
-              classes={{
-                dropdown: styles.cardDropdown,
-                dropdownItem: styles.cardDropdownItem,
-                itemWhatsapp: styles.itemWhatsapp,
-                itemTelegram: styles.itemTelegram,
-                itemEmail: styles.itemEmail,
-                itemCopy: styles.itemCopy,
-                iconSmall: styles.iconSmall,
-              }}
-            />
-          </div>
+          )}
         </div>
+
 
         {(!isPriceHidden || !hideAvailability) && (() => {
           const discountInfo = calculateDiscount(
