@@ -45,6 +45,7 @@ function buildReceiptHtml(
   shippingCost: number,
   saleId: string,
   baseUrl: string,
+  isReservation: boolean = false,
 ): string {
   const itemRows = items
     .map(
@@ -59,6 +60,20 @@ function buildReceiptHtml(
   const subtotal = items.reduce((s, i) => s + i.price, 0);
   const invoiceUrl = `${baseUrl}/invoice/${saleId}`;
 
+  const headerTitle = isReservation ? 'Resguardo de reserva' : 'Resguardo de pedido';
+  const introText = isReservation
+    ? 'Gracias por tu reserva. A continuación encontrarás el resumen de los artículos seleccionados.'
+    : 'Gracias por tu compra. A continuación encontrarás el resumen de tu pedido.';
+  const totalLabel = isReservation ? 'Total pendiente de validación' : 'Total final cobrado';
+  
+  const reservationNotice = isReservation
+    ? `<div style="margin-top:12px;background:rgba(255,255,255,0.15);border:1px dashed rgba(255,255,255,0.3);border-radius:8px;padding:8px 12px;display:inline-block;">
+        <p style="margin:0;font-size:13px;color:#ffffff;font-weight:600;line-height:1.4;">
+          Una vez confirmado el pago recibirás un nuevo correo con la confirmación.
+        </p>
+       </div>`
+    : '';
+
   return `
 <!DOCTYPE html>
 <html lang="es">
@@ -72,8 +87,9 @@ function buildReceiptHtml(
         <tr>
           <td style="background:linear-gradient(135deg,#6366f1,#8b5cf6);padding:32px 32px 28px;text-align:center;">
             <p style="margin:0;font-size:13px;font-weight:600;color:rgba(255,255,255,0.8);letter-spacing:0.08em;text-transform:uppercase;">MiniEngines Creations</p>
-            <h1 style="margin:8px 0 0;font-size:24px;font-weight:800;color:#ffffff;">Resguardo de pedido</h1>
+            <h1 style="margin:8px 0 0;font-size:24px;font-weight:800;color:#ffffff;">${headerTitle}</h1>
             <p style="margin:8px 0 0;font-size:13px;color:rgba(255,255,255,0.75);">${orderNumber}</p>
+            ${reservationNotice}
           </td>
         </tr>
 
@@ -82,7 +98,7 @@ function buildReceiptHtml(
           <td style="padding:28px 32px 0;">
             <p style="margin:0;font-size:16px;color:#333;">Hola <strong>${buyerName}</strong>,</p>
             <p style="margin:10px 0 0;font-size:14px;color:#666;line-height:1.6;">
-              Gracias por tu compra. A continuación encontrarás el resumen de tu pedido.
+              ${introText}
             </p>
           </td>
         </tr>
@@ -123,7 +139,7 @@ function buildReceiptHtml(
                 <td style="font-size:14px;color:#333;font-weight:600;text-align:right;padding:8px 0;">${paymentMethod}</td>
               </tr>
               <tr style="border-top:2px solid #f0f0f0;">
-                <td style="font-size:16px;font-weight:800;color:#222;padding:12px 0;">Total final cobrado</td>
+                <td style="font-size:16px;font-weight:800;color:#222;padding:12px 0;">${totalLabel}</td>
                 <td style="font-size:18px;font-weight:800;color:#6366f1;text-align:right;padding:12px 0;">${formatPrice(total)}</td>
               </tr>
             </table>
@@ -188,15 +204,20 @@ export async function sendReceiptEmail(params: {
   shippingCost: number;
   saleId: string;
   baseUrl: string;
+  isReservation?: boolean;
 }) {
-  const { to, buyerName, orderNumber, items, total, paymentMethod, shippingMethodLabel, shippingCost, saleId, baseUrl } = params;
+  const { to, buyerName, orderNumber, items, total, paymentMethod, shippingMethodLabel, shippingCost, saleId, baseUrl, isReservation = false } = params;
 
   const transporter = getTransporter();
-  const html = buildReceiptHtml(orderNumber, buyerName, items, total, paymentMethod, shippingMethodLabel, shippingCost, saleId, baseUrl);
+  const html = buildReceiptHtml(orderNumber, buyerName, items, total, paymentMethod, shippingMethodLabel, shippingCost, saleId, baseUrl, isReservation);
+
+  const emailSubject = isReservation
+    ? `Resguardo de reserva ${orderNumber} — MiniEngines Creations`
+    : `Resguardo de pedido ${orderNumber} — MiniEngines Creations`;
 
   if (!transporter) {
     console.log(`\n--- SIMULATED RECEIPT EMAIL FOR CLIENT (${to}) ---`);
-    console.log(`Subject: Resguardo de pedido ${orderNumber} — MiniEngines Creations`);
+    console.log(`Subject: ${emailSubject}`);
     console.log(`From: minienginescreations@gmail.com`);
     console.log(`Total: ${formatPrice(total)}`);
     console.log(`Link: ${baseUrl}/invoice/${saleId}`);
@@ -208,7 +229,7 @@ export async function sendReceiptEmail(params: {
     await transporter.sendMail({
       from: `"MiniEngines Creations" <${process.env.EMAIL_USER}>`,
       to,
-      subject: `Resguardo de pedido ${orderNumber} — MiniEngines Creations`,
+      subject: emailSubject,
       html,
     });
     console.log(`[nodemailer] Receipt email sent successfully to ${to}`);

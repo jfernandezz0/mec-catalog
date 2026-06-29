@@ -301,6 +301,7 @@ export async function createManualSale(params: {
       shippingCost,
       saleId: sale.id,
       baseUrl,
+      isReservation: true,
     });
 
     await db

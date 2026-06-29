@@ -372,12 +372,19 @@ export default function SalesTab({ articles, loadArticles }: SalesTabProps) {
     }
 
     try {
-      const { error } = await supabase
-        .from('sales')
-        .update({ status: 'COMPLETADA' })
-        .eq('id', sale.id);
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token || '';
 
-      if (error) throw error;
+      const res = await fetch('/api/admin/confirm-payment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ saleId: sale.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al confirmar el pago');
 
       setSelectedSaleDetail({ ...sale, status: 'COMPLETADA' });
       alert('¡El pago ha sido confirmado y la venta ha sido marcada como COMPLETADA!');
