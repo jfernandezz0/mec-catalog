@@ -435,18 +435,6 @@ export default async function ArticlePage({
                         </a>
                       )}
                     </div>
-
-                    <div style={{ marginTop: '18px' }}>
-                      <p className={styles.paymentNote}>
-                        🚨 Recuerda comunicarte con el equipo de ingeniería enviándoles una captura del pago sin modificar. Les facilitarás el trabajo ⚙️📦🧡
-                      </p>
-                      <p className={styles.paymentNote} style={{ marginTop: '12px' }}>
-                        🔔 La web podría contener errores, por eso se confirmará el pedido lo antes posible 🏎️💨
-                      </p>
-                      <p className={styles.paymentNote} style={{ marginTop: '12px' }}>
-                        🔰 Todos los artículos se aconseja recogerlos en taller por su fragilidad. Si necesitas envío, consúltanos antes en nuestros canales y encontraremos una solución 🦾
-                      </p>
-                    </div>
                   </>
                 )}
               </div>
