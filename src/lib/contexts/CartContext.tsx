@@ -114,6 +114,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const clearCart = useCallback(() => {
     setItems([]);
     setStockStatuses([]);
+    try {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('mec_reservation');
+      }
+    } catch {}
   }, []);
 
   const hasItem = useCallback((articleId: number) => {
@@ -150,12 +155,34 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       if (!data) return;
 
       const now = new Date();
-      const statuses: CartStockStatus[] = data.map(row => ({
-        articleId: row.id,
-        available:
-          row.quantity > 0 &&
-          (!row.reserved_until || new Date(row.reserved_until) < now),
-      }));
+      const statuses: CartStockStatus[] = data.map(row => {
+        let locallyReserved = false;
+        try {
+          if (typeof window !== 'undefined') {
+            const stored = localStorage.getItem('mec_reservation');
+            if (stored) {
+              const { expiry, items: savedIds } = JSON.parse(stored);
+              if (new Date(expiry) > now && savedIds.includes(row.id)) {
+                locallyReserved = true;
+              }
+            }
+          }
+        } catch (e) {
+          // Ignore storage errors
+        }
+
+        // Available if quantity > 1 (always), or quantity === 1 and either not reserved, expired, or reserved by this user
+        const isAvailable = row.quantity > 1 || (row.quantity === 1 && (
+          !row.reserved_until ||
+          new Date(row.reserved_until) < now ||
+          locallyReserved
+        ));
+
+        return {
+          articleId: row.id,
+          available: isAvailable,
+        };
+      });
       setStockStatuses(statuses);
     } catch {
       // Silent fail — don't block cart usage on network errors

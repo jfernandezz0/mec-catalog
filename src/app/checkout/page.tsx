@@ -218,6 +218,32 @@ export default function CheckoutPage() {
     initSquare();
   }, [squareLoaded, squareCard, shipping.postalCode, squarePaymentEnabled]);
 
+  // Restore reservation from localStorage on mount
+  useEffect(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        const stored = localStorage.getItem('mec_reservation');
+        if (stored) {
+          const { expiry, items: savedIds } = JSON.parse(stored);
+          const expiryDate = new Date(expiry);
+          if (expiryDate > new Date()) {
+            const currentIds = availableItems.map((i) => i.article.id);
+            const matches = savedIds.length === currentIds.length && savedIds.every((id: number) => currentIds.includes(id));
+            if (matches) {
+              setReservationExpiry(expiryDate);
+              setReserved(true);
+            }
+          } else {
+            localStorage.removeItem('mec_reservation');
+          }
+        }
+      }
+    } catch (e) {
+      console.error('[checkout] Error restoring reservation:', e);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Reserve stock when entering payment step
   useEffect(() => {
     if (step !== 'pago' || reserved || reserving) return;
@@ -237,6 +263,9 @@ export default function CheckoutPage() {
           const expiry = new Date(Date.now() + 3 * 60 * 1000);
           setReservationExpiry(expiry);
           setReserved(true);
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('mec_reservation', JSON.stringify({ expiry: expiry.toISOString(), items: ids }));
+          }
         } else {
           setPayError(
             'Algún artículo ya no está disponible. Vuelve al carrito y actualiza.',
@@ -264,6 +293,9 @@ export default function CheckoutPage() {
         setCountdown('00:00');
         setPayError('Tu reserva ha expirado. Vuelve al carrito e inténtalo de nuevo.');
         setReserved(false);
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('mec_reservation');
+        }
         return;
       }
       const m = Math.floor(remaining / 60000);
@@ -286,6 +318,9 @@ export default function CheckoutPage() {
           body: JSON.stringify({ articleIds: availableItems.map((i) => i.article.id) }),
           keepalive: true,
         }).catch(() => {});
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('mec_reservation');
+        }
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
