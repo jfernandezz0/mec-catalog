@@ -18,6 +18,8 @@ export default function AddToCartButton({
   const { addItem, hasItem, openDrawer } = useCart();
   const inCart = hasItem(article.id);
   const [selectedQty, setSelectedQty] = useState(1);
+  const [isCartHovered, setIsCartHovered] = useState(false);
+  const [isCardHovered, setIsCardHovered] = useState(false);
 
   const handleAddToCart = () => {
     if (!inCart) addItem(article, selectedQty);
@@ -100,15 +102,19 @@ export default function AddToCartButton({
       <button
         id={`add-to-cart-${article.id}`}
         onClick={handleAddToCart}
+        onMouseEnter={() => setIsCartHovered(true)}
+        onMouseLeave={() => setIsCartHovered(false)}
         style={{
           width: '100%',
           padding: '13px 20px',
           borderRadius: '10px',
           border: inCart ? '2px solid #6366f1' : '2px solid transparent',
           background: inCart
-            ? 'rgba(99,102,241,0.12)'
-            : 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
-          color: inCart ? '#6366f1' : '#fff',
+            ? (isCartHovered ? '#8b5cf6' : 'rgba(99,102,241,0.12)')
+            : (isCartHovered ? 'linear-gradient(135deg, #a78bfa 0%, #8b5cf6 100%)' : 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)'),
+          color: inCart
+            ? (isCartHovered ? '#fff' : '#6366f1')
+            : '#fff',
           fontWeight: 700,
           fontSize: '15px',
           cursor: 'pointer',
@@ -116,7 +122,10 @@ export default function AddToCartButton({
           alignItems: 'center',
           justifyContent: 'center',
           gap: '8px',
-          transition: 'all 0.2s ease',
+          transition: 'all 0.25s ease',
+          boxShadow: isCartHovered
+            ? '0 0 15px rgba(139, 92, 246, 0.6)'
+            : 'none',
         }}
       >
         <svg
@@ -152,11 +161,13 @@ export default function AddToCartButton({
         <a
           id={`pay-square-${article.id}`}
           href={`${squareCheckoutUrl}&quantity=${selectedQty}`}
+          onMouseEnter={() => setIsCardHovered(true)}
+          onMouseLeave={() => setIsCardHovered(false)}
           style={{
             width: '100%',
             padding: '12px 20px',
             borderRadius: '10px',
-            background: 'rgba(0,0,0,0.6)',
+            background: isCardHovered ? '#ef4444' : 'rgba(0,0,0,0.6)',
             color: '#fff',
             fontWeight: 600,
             fontSize: '14px',
@@ -165,9 +176,12 @@ export default function AddToCartButton({
             alignItems: 'center',
             justifyContent: 'center',
             gap: '8px',
-            transition: 'opacity 0.2s',
-            border: '1px solid rgba(255,255,255,0.15)',
+            transition: 'all 0.25s ease',
+            border: isCardHovered ? '1px solid #ef4444' : '1px solid rgba(255,255,255,0.15)',
             boxSizing: 'border-box',
+            boxShadow: isCardHovered
+              ? '0 0 15px rgba(239, 68, 68, 0.6)'
+              : 'none',
           }}
         >
           <svg
