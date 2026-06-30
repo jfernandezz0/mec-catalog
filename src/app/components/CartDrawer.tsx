@@ -27,6 +27,7 @@ export default function CartDrawer() {
     closeDrawer,
     removeItem,
     validateStock,
+    addItem,
   } = useCart();
 
   // Validate stock whenever the drawer opens
@@ -279,22 +280,59 @@ export default function CartDrawer() {
                       >
                         {item.article.title}
                       </Link>
-                      <span
-                        style={{
-                          fontSize: '15px',
-                          fontWeight: 700,
-                          color: 'var(--text-primary)',
-                          marginTop: '4px',
-                          display: 'block',
-                        }}
-                      >
-                        {formatPrice(item.priceAtAdd)}
-                        {item.quantity > 1 && (
-                          <span style={{ fontSize: '12px', fontWeight: 500, color: 'var(--text-secondary)', marginLeft: '8px' }}>
-                            x{item.quantity}
-                          </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '6px' }}>
+                        <span
+                          style={{
+                            fontSize: '15px',
+                            fontWeight: 700,
+                            color: 'var(--text-primary)',
+                          }}
+                        >
+                          {formatPrice(item.priceAtAdd)}
+                        </span>
+                        
+                        {item.article.quantity > 1 && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '6px', padding: '2px 6px' }}>
+                            <button
+                              onClick={() => addItem(item.article, Math.max(1, (item.quantity || 1) - 1))}
+                              disabled={(item.quantity || 1) <= 1}
+                              style={{
+                                border: 'none',
+                                background: 'none',
+                                color: '#fff',
+                                fontSize: '13px',
+                                cursor: (item.quantity || 1) <= 1 ? 'not-allowed' : 'pointer',
+                                opacity: (item.quantity || 1) <= 1 ? 0.3 : 0.8,
+                                padding: '2px 4px',
+                                display: 'flex',
+                                alignItems: 'center',
+                              }}
+                            >
+                              −
+                            </button>
+                            <span style={{ fontSize: '12px', fontWeight: 600, color: '#fff', minWidth: '12px', textAlign: 'center' }}>
+                              {item.quantity || 1}
+                            </span>
+                            <button
+                              onClick={() => addItem(item.article, Math.min(item.article.quantity, (item.quantity || 1) + 1))}
+                              disabled={(item.quantity || 1) >= item.article.quantity}
+                              style={{
+                                border: 'none',
+                                background: 'none',
+                                color: '#fff',
+                                fontSize: '13px',
+                                cursor: (item.quantity || 1) >= item.article.quantity ? 'not-allowed' : 'pointer',
+                                opacity: (item.quantity || 1) >= item.article.quantity ? 0.3 : 0.8,
+                                padding: '2px 4px',
+                                display: 'flex',
+                                alignItems: 'center',
+                              }}
+                            >
+                              +
+                            </button>
+                          </div>
                         )}
-                      </span>
+                      </div>
                       {isUnavailable && (
                         <span
                           style={{
