@@ -35,11 +35,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 2. Fetch all active articles (quantity = 1) that do not have a square_catalog_item_id
+    // 2. Fetch all active articles that do not have a square_catalog_item_id
     const db = getSupabaseAdmin();
     const { data: articles, error: fetchErr } = await db
       .from('articles')
-      .select('id, title, description, price')
+      .select('id, title, description, price, image_urls')
       .is('square_catalog_item_id', null);
 
     if (fetchErr) {
