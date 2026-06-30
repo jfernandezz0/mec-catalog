@@ -7,6 +7,7 @@ interface CartItem {
   articleId: number;
   title: string;
   priceAtCheckout: number;
+  quantity?: number;
 }
 
 interface BuyerInfo {
@@ -61,18 +62,27 @@ export async function releaseStock(articleId: number): Promise<void> {
 }
 
 /**
- * Confirm purchase: set quantity=0, clear reservation.
+ * Confirm purchase: decrement stock, clear reservation.
  * Called after successful payment.
  */
-export async function confirmStock(articleId: number): Promise<void> {
+export async function confirmStock(articleId: number, qty: number = 1): Promise<void> {
   const db = getSupabaseAdmin();
-  const { error } = await db
+  const { data: art } = await db
     .from('articles')
-    .update({ quantity: 0, reserved_until: null })
-    .eq('id', articleId);
-  if (error) {
-    console.error('[confirmStock] Error:', error);
-    throw new Error('Failed to decrement stock');
+    .select('quantity')
+    .eq('id', articleId)
+    .single();
+
+  if (art) {
+    const newQty = Math.max(0, art.quantity - qty);
+    const { error } = await db
+      .from('articles')
+      .update({ quantity: newQty, reserved_until: null })
+      .eq('id', articleId);
+    if (error) {
+      console.error('[confirmStock] Error:', error);
+      throw new Error('Failed to decrement stock');
+    }
   }
 }
 
@@ -125,6 +135,7 @@ export async function createSaleFromPayment(params: {
 
   // 2. Insert sale_items + decrement stock
   for (const item of cart) {
+    const qty = item.quantity || 1;
     const { data: artData } = await db
       .from('articles')
       .select('quantity')
@@ -137,12 +148,12 @@ export async function createSaleFromPayment(params: {
       sale_id: sale.id,
       article_id: item.articleId,
       title: item.title,
-      quantity: 1,
+      quantity: qty,
       price: item.priceAtCheckout,
       is_prepurchase: isPrepurchase,
     });
 
-    await confirmStock(item.articleId);
+    await confirmStock(item.articleId, qty);
   }
 
   // 3. Receipt email to buyer
@@ -265,22 +276,17 @@ export async function createManualSale(params: {
 
   // 2. Insert sale_items + decrement stock
   for (const item of cart) {
-    const { data: artData } = await db
-      .from('articles')
-      .select('quantity')
-      .eq('id', item.articleId)
-      .single();
-
+    const qty = item.quantity || 1;
     await db.from('sale_items').insert({
       sale_id: sale.id,
       article_id: item.articleId,
       title: item.title,
-      quantity: 1,
+      quantity: qty,
       price: item.priceAtCheckout,
       is_prepurchase: true,
     });
 
-    await confirmStock(item.articleId);
+    await confirmStock(item.articleId, qty);
   }
 
   const paymentMethodLabel = paymentMethod === 'BIZUM' ? 'Bizum / Transferencia' : 'PayPal';
@@ -459,20 +465,34 @@ export async function createSaleFromPresencialOrder(params: {
 
   // 5. Insert sale items and decrement stock
   for (const item of cart) {
+    const lineItem = order.lineItems?.find(
+      (li) => li.catalogObjectId === matchedArticles.find((ma) => ma.id === item.articleId)?.square_catalog_item_id
+    );
+    const qty = lineItem?.quantity ? Number(lineItem.quantity) : 1;
+
     await db.from('sale_items').insert({
       sale_id: sale.id,
       article_id: item.articleId,
       title: item.title,
-      quantity: 1,
+      quantity: qty,
       price: item.priceAtCheckout,
       is_prepurchase: false,
     });
 
-    // Mark quantity as 0 and clear reservation
-    await db
+    // Mark quantity as decremented and clear reservation
+    const { data: art } = await db
       .from('articles')
-      .update({ quantity: 0, reserved_until: null })
-      .eq('id', item.articleId);
+      .select('quantity')
+      .eq('id', item.articleId)
+      .single();
+
+    if (art) {
+      const newQty = Math.max(0, art.quantity - qty);
+      await db
+        .from('articles')
+        .update({ quantity: newQty, reserved_until: null })
+        .eq('id', item.articleId);
+    }
   }
 
   console.log(`[presencial-sale] Successfully processed presencial sale ${orderNumber} for order ${orderId}`);

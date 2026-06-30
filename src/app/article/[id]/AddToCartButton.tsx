@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { useCart } from '@/lib/contexts/CartContext';
 import type { Article } from '@/lib/types';
 
@@ -16,9 +17,10 @@ export default function AddToCartButton({
 }: AddToCartButtonProps) {
   const { addItem, hasItem, openDrawer } = useCart();
   const inCart = hasItem(article.id);
+  const [selectedQty, setSelectedQty] = useState(1);
 
   const handleAddToCart = () => {
-    if (!inCart) addItem(article);
+    if (!inCart) addItem(article, selectedQty);
     openDrawer();
   };
 
@@ -31,6 +33,69 @@ export default function AddToCartButton({
         marginTop: '4px',
       }}
     >
+      {/* Quantity Selector: Only show if stock > 1 and not already in cart */}
+      {article.quantity > 1 && !inCart && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '8px 12px',
+          background: 'rgba(255,255,255,0.03)',
+          border: '1px solid rgba(255,255,255,0.08)',
+          borderRadius: '8px',
+          marginBottom: '2px',
+        }}>
+          <span style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 500 }}>Cantidad</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <button
+              onClick={() => setSelectedQty(prev => Math.max(1, prev - 1))}
+              disabled={selectedQty <= 1}
+              style={{
+                width: '28px',
+                height: '28px',
+                borderRadius: '6px',
+                border: 'none',
+                background: 'rgba(255,255,255,0.06)',
+                color: '#fff',
+                fontSize: '16px',
+                cursor: selectedQty <= 1 ? 'not-allowed' : 'pointer',
+                opacity: selectedQty <= 1 ? 0.4 : 1,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'background 0.2s',
+              }}
+            >
+              −
+            </button>
+            <span style={{ fontSize: '15px', fontWeight: 600, color: '#fff', minWidth: '20px', textAlign: 'center' }}>
+              {selectedQty}
+            </span>
+            <button
+              onClick={() => setSelectedQty(prev => Math.min(article.quantity, prev + 1))}
+              disabled={selectedQty >= article.quantity}
+              style={{
+                width: '28px',
+                height: '28px',
+                borderRadius: '6px',
+                border: 'none',
+                background: 'rgba(255,255,255,0.06)',
+                color: '#fff',
+                fontSize: '16px',
+                cursor: selectedQty >= article.quantity ? 'not-allowed' : 'pointer',
+                opacity: selectedQty >= article.quantity ? 0.4 : 1,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'background 0.2s',
+              }}
+            >
+              +
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Primary: Add to cart */}
       <button
         id={`add-to-cart-${article.id}`}
@@ -86,7 +151,7 @@ export default function AddToCartButton({
       {squareEnabled && squareCheckoutUrl && (
         <a
           id={`pay-square-${article.id}`}
-          href={squareCheckoutUrl}
+          href={`${squareCheckoutUrl}&quantity=${selectedQty}`}
           style={{
             width: '100%',
             padding: '12px 20px',

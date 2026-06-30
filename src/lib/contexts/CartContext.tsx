@@ -14,7 +14,7 @@ interface CartContextValue {
   isDrawerOpen: boolean;
   openDrawer: () => void;
   closeDrawer: () => void;
-  addItem: (article: Article) => void;
+  addItem: (article: Article, quantity?: number) => void;
   removeItem: (articleId: number) => void;
   clearCart: () => void;
   hasItem: (articleId: number) => boolean;
@@ -95,14 +95,22 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     };
   }, [items, hydrated]);
 
-  const addItem = useCallback((article: Article) => {
+  const addItem = useCallback((article: Article, quantity: number = 1) => {
     setItems(prev => {
-      if (prev.some(i => i.article.id === article.id)) return prev; // already in cart
+      const existingIndex = prev.findIndex(i => i.article.id === article.id);
+      if (existingIndex > -1) {
+        const nextItems = [...prev];
+        nextItems[existingIndex] = {
+          ...nextItems[existingIndex],
+          quantity
+        };
+        return nextItems;
+      }
       if (article.quantity <= 0) return prev; // out of stock
       const priceAtAdd = typeof article.price === 'string'
         ? parseFloat(article.price as unknown as string)
         : article.price;
-      return [...prev, { article, priceAtAdd }];
+      return [...prev, { article, priceAtAdd, quantity }];
     });
   }, []);
 
@@ -189,8 +197,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }, [items]);
 
-  const itemCount = items.length;
-  const total = items.reduce((sum, i) => sum + i.priceAtAdd, 0);
+  const itemCount = items.reduce((sum, i) => sum + i.quantity, 0);
+  const total = items.reduce((sum, i) => sum + (i.priceAtAdd * i.quantity), 0);
 
   return (
     <CartContext.Provider

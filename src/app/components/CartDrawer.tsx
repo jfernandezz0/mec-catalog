@@ -21,6 +21,7 @@ export default function CartDrawer() {
   const {
     items,
     total,
+    itemCount,
     stockStatuses,
     isDrawerOpen,
     closeDrawer,
@@ -57,7 +58,7 @@ export default function CartDrawer() {
       const status = getStatus(item.article.id);
       return !status || status.available;
     })
-    .reduce((sum, i) => sum + i.priceAtAdd, 0);
+    .reduce((sum, i) => sum + (i.priceAtAdd * i.quantity), 0);
 
   return (
     <>
@@ -123,7 +124,7 @@ export default function CartDrawer() {
             }}
           >
             🛒 Tu carrito
-            {items.length > 0 && (
+            {itemCount > 0 && (
               <span
                 style={{
                   fontSize: '14px',
@@ -131,7 +132,7 @@ export default function CartDrawer() {
                   color: 'var(--text-secondary)',
                 }}
               >
-                ({items.length} {items.length === 1 ? 'artículo' : 'artículos'})
+                ({itemCount} {itemCount === 1 ? 'artículo' : 'artículos'})
               </span>
             )}
           </h2>
@@ -288,6 +289,11 @@ export default function CartDrawer() {
                         }}
                       >
                         {formatPrice(item.priceAtAdd)}
+                        {item.quantity > 1 && (
+                          <span style={{ fontSize: '12px', fontWeight: 500, color: 'var(--text-secondary)', marginLeft: '8px' }}>
+                            x{item.quantity}
+                          </span>
+                        )}
                       </span>
                       {isUnavailable && (
                         <span

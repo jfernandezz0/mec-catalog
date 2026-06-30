@@ -114,6 +114,7 @@ export type AdminTab = 'catalog' | 'create' | 'edit' | 'categories' | 'import' |
 export interface CartItem {
   article: Article;
   priceAtAdd: number; // final price at the moment of adding to cart
+  quantity: number;
 }
 
 export interface CartStockStatus {

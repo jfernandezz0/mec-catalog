@@ -81,7 +81,7 @@ export default function CheckoutPage() {
         .map((s) => s.articleId);
 
   const availableItems = items.filter((i) => !unavailableIds.includes(i.article.id));
-  const subtotal = availableItems.reduce((s, i) => s + i.priceAtAdd, 0);
+  const subtotal = availableItems.reduce((s, i) => s + (i.priceAtAdd * i.quantity), 0);
   const shippingPrice = shippingMethod === 'envio' ? 9.99 : 0;
   const availableTotal = subtotal + shippingPrice;
 
@@ -100,6 +100,10 @@ export default function CheckoutPage() {
 
     const articleId = Number(articleIdParam);
     if (isNaN(articleId)) return;
+
+    const qtyParam = params.get('quantity');
+    const qty = qtyParam ? Number(qtyParam) : 1;
+    const finalQty = isNaN(qty) ? 1 : qty;
 
     // Check if it's already in the cart
     const isAlreadyInCart = items.some((i) => i.article.id === articleId);
@@ -121,7 +125,7 @@ export default function CheckoutPage() {
         }
 
         // Add to cart
-        addItem(art);
+        addItem(art, finalQty);
       } catch (err) {
         console.error('[checkout] Error adding query article to cart:', err);
         router.replace('/');
@@ -1207,8 +1211,15 @@ export default function CheckoutPage() {
               </p>
               {availableItems.map((i) => (
                 <div key={i.article.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', padding: '4px 0' }}>
-                  <span style={{ color: 'var(--text-secondary)' }}>{i.article.title}</span>
-                  <span style={{ fontWeight: 600 }}>{formatPrice(i.priceAtAdd)}</span>
+                  <span style={{ color: 'var(--text-secondary)' }}>
+                    {i.article.title}
+                    {i.quantity > 1 && (
+                      <span style={{ fontSize: '11px', fontWeight: 500, color: 'var(--text-secondary)', marginLeft: '6px' }}>
+                        x{i.quantity}
+                      </span>
+                    )}
+                  </span>
+                  <span style={{ fontWeight: 600 }}>{formatPrice(i.priceAtAdd * i.quantity)}</span>
                 </div>
               ))}
               
