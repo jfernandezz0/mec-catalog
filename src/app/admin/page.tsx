@@ -463,8 +463,30 @@ export default function AdminPage() {
         insertData.discount_value = deleteDiscount ? null : (formState.discountType ? Number(formState.discountValue) : null);
       }
 
-      const { error } = await supabase.from('articles').insert(insertData);
+      const { data, error } = await supabase.from('articles').insert(insertData).select('id').single();
       if (error) throw new Error(error.message);
+
+      // Trigger background sync to Square
+      const createdId = data?.id;
+      if (createdId) {
+        (async () => {
+          try {
+            const session = (await supabase.auth.getSession()).data.session;
+            if (session?.access_token) {
+              await fetch('/api/admin/sync-square-catalog', {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${session.access_token}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ articleId: createdId })
+              });
+            }
+          } catch (syncErr) {
+            console.error('[Square Auto Sync] Failed:', syncErr);
+          }
+        })();
+      }
 
       alert('Artículo creado correctamente.');
       resetForm();
@@ -542,6 +564,26 @@ export default function AdminPage() {
         .eq('id', editingArticle.id);
 
       if (error) throw new Error(error.message);
+
+      // Trigger background sync to Square
+      const updatedId = editingArticle.id;
+      (async () => {
+        try {
+          const session = (await supabase.auth.getSession()).data.session;
+          if (session?.access_token) {
+            await fetch('/api/admin/sync-square-catalog', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${session.access_token}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ articleId: updatedId })
+            });
+          }
+        } catch (syncErr) {
+          console.error('[Square Auto Sync] Failed:', syncErr);
+        }
+      })();
 
       const allImagesToDelete = [...imagesToDelete, ...frameImagesToDelete];
       if (allImagesToDelete.length > 0) {

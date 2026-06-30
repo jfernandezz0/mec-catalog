@@ -35,19 +35,49 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 2. Fetch all active articles that do not have a square_catalog_item_id
+    // Try to parse optional articleId from body
+    let articleId: number | null = null;
+    try {
+      const body = await request.json();
+      if (body && typeof body.articleId === 'number') {
+        articleId = body.articleId;
+      }
+    } catch {
+      // Ignore parse errors (e.g. empty or non-JSON body)
+    }
+
+    // 2. Fetch target articles
     const db = getSupabaseAdmin();
-    const { data: articles, error: fetchErr } = await db
-      .from('articles')
-      .select('id, title, description, price, image_urls')
-      .is('square_catalog_item_id', null);
+    let articles: any[] = [];
+    let fetchErr = null;
+
+    if (articleId) {
+      const res = await db
+        .from('articles')
+        .select('id, title, description, price, image_urls')
+        .eq('id', articleId)
+        .single();
+      if (res.data) {
+        articles = [res.data];
+      }
+      fetchErr = res.error;
+    } else {
+      const res = await db
+        .from('articles')
+        .select('id, title, description, price, image_urls')
+        .is('square_catalog_item_id', null);
+      if (res.data) {
+        articles = res.data;
+      }
+      fetchErr = res.error;
+    }
 
     if (fetchErr) {
       throw new Error(`Error al obtener artículos: ${fetchErr.message}`);
     }
 
-    if (!articles || articles.length === 0) {
-      return NextResponse.json({ success: true, syncedCount: 0, message: 'Todos los artículos ya están sincronizados.' });
+    if (articles.length === 0) {
+      return NextResponse.json({ success: true, syncedCount: 0, message: 'No hay artículos para sincronizar.' });
     }
 
     const syncedList: { id: number; title: string; square_catalog_item_id: string }[] = [];

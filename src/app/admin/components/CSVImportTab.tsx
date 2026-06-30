@@ -120,7 +120,26 @@ export default function CSVImportTab({ categories, articles, loadArticles, handl
     }
     setCsvImportResults({ success, failed });
     setCsvImporting(false);
-    if (success > 0) await loadArticles();
+    if (success > 0) {
+      await loadArticles();
+      
+      // Trigger background sync to Square for newly imported articles
+      (async () => {
+        try {
+          const session = (await supabase.auth.getSession()).data.session;
+          if (session?.access_token) {
+            await fetch('/api/admin/sync-square-catalog', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${session.access_token}`
+              }
+            });
+          }
+        } catch (syncErr) {
+          console.error('[Square Auto Sync CSV] Failed:', syncErr);
+        }
+      })();
+    }
   }
 
   return (
