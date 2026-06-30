@@ -191,7 +191,7 @@ ON CONFLICT (key) DO NOTHING;`}
                   <div className={`${styles.paymentsToggleRow} ${(!paymentsEnabled || hidePrices) ? styles.disabledRow : ''}`}>
                     <div className={styles.paymentsToggleText}>
                       <span className={styles.paymentsToggleLabel}>
-                        💳 Pago con tarjeta (Square)
+                        Pago con tarjeta (Square)
                       </span>
                       <span className={styles.paymentsToggleSublabel}>
                         Activa el checkout con tarjeta mediante Square. Requiere credenciales de Square configuradas en .env.
