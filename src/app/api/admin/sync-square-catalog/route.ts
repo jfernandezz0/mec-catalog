@@ -35,6 +35,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 1.5. Check settings to verify if Square payments are enabled
+    const db = getSupabaseAdmin();
+    const { data: settings } = await db
+      .from('settings')
+      .select('key, value');
+
+    const settingsMap = new Map(settings?.map((item: any) => [item.key, item.value]) || []);
+    const squarePaymentsEnabled = settingsMap.get('square_payments_enabled') === 'true';
+    const paymentsEnabled = settingsMap.get('payments_enabled') !== 'false';
+    const hidePrices = settingsMap.get('hide_prices') === 'true';
+
+    if (!squarePaymentsEnabled || !paymentsEnabled || hidePrices) {
+      return NextResponse.json({
+        success: true,
+        syncedCount: 0,
+        message: 'Sincronización de Square omitida porque está desactivada en la configuración.'
+      });
+    }
+
     // Try to parse optional articleId and force flag from body
     let articleId: number | null = null;
     let force = false;
@@ -53,7 +72,6 @@ export async function POST(request: NextRequest) {
     }
 
     // 2. Fetch target articles
-    const db = getSupabaseAdmin();
     let articles: any[] = [];
     let fetchErr = null;
 
