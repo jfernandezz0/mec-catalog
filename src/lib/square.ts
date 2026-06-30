@@ -32,22 +32,42 @@ export async function syncArticleToSquareCatalog(article: {
   description: string | null;
   price: number | string;
   image_urls?: string[] | null;
+  square_catalog_item_id?: string | null;
 }) {
   const amountCents = BigInt(Math.round(Number(article.price) * 100));
   const idempotencyKey = `sync-art-${article.id}-${Date.now()}`;
+
+  let parentItemId = `#item-${article.id}`;
+  let variationId = `#var-${article.id}`;
+
+  if (article.square_catalog_item_id) {
+    try {
+      const getResponse = await squareClient.catalog.object.get({
+        objectId: article.square_catalog_item_id,
+      });
+      const existingVariation = getResponse.object;
+      if (existingVariation?.type === 'ITEM_VARIATION' && existingVariation.itemVariationData?.itemId) {
+        parentItemId = existingVariation.itemVariationData.itemId;
+        variationId = article.square_catalog_item_id;
+        console.log(`[Square Sync] Found existing item in Square: Parent=${parentItemId}, Variation=${variationId}`);
+      }
+    } catch (err: any) {
+      console.warn(`[Square Sync] Failed to retrieve existing variation ${article.square_catalog_item_id} from Square. Will create a new one.`, err.message || err);
+    }
+  }
 
   const response = await squareClient.catalog.object.upsert({
     idempotencyKey,
     object: {
       type: 'ITEM',
-      id: `#item-${article.id}`,
+      id: parentItemId,
       itemData: {
         name: article.title,
         description: article.description || undefined,
         variations: [
           {
             type: 'ITEM_VARIATION',
-            id: `#var-${article.id}`,
+            id: variationId,
             itemVariationData: {
               name: 'Único',
               pricingType: 'FIXED_PRICING',
@@ -63,13 +83,14 @@ export async function syncArticleToSquareCatalog(article: {
   });
 
   const catalogObject = response.catalogObject as any;
-  const variationId = catalogObject?.itemData?.variations?.[0]?.id;
-  if (!variationId) {
+  const newVariationId = catalogObject?.itemData?.variations?.[0]?.id;
+  if (!newVariationId) {
     throw new Error('Failed to retrieve item variation ID from Square response');
   }
 
-  // Auto-sync image to Square if present
-  if (article.image_urls && article.image_urls.length > 0 && catalogObject.id) {
+  // Auto-sync image to Square if present, and only if the item does not already have images
+  const hasImagesInSquare = catalogObject.itemData?.imageIds && catalogObject.itemData.imageIds.length > 0;
+  if (article.image_urls && article.image_urls.length > 0 && catalogObject.id && !hasImagesInSquare) {
     try {
       const imageUrl = article.image_urls[0];
       const host = process.env.SQUARE_ENVIRONMENT === 'sandbox'
@@ -122,6 +143,6 @@ export async function syncArticleToSquareCatalog(article: {
     }
   }
 
-  return variationId;
+  return newVariationId;
 }
 

@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
     if (articleId) {
       const res = await db
         .from('articles')
-        .select('id, title, description, price, image_urls')
+        .select('id, title, description, price, image_urls, square_catalog_item_id')
         .eq('id', articleId)
         .single();
       if (res.data) {
@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
     } else if (force) {
       const res = await db
         .from('articles')
-        .select('id, title, description, price, image_urls');
+        .select('id, title, description, price, image_urls, square_catalog_item_id');
       if (res.data) {
         articles = res.data;
       }
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
     } else {
       const res = await db
         .from('articles')
-        .select('id, title, description, price, image_urls')
+        .select('id, title, description, price, image_urls, square_catalog_item_id')
         .is('square_catalog_item_id', null);
       if (res.data) {
         articles = res.data;
