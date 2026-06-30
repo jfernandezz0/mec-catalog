@@ -40,7 +40,6 @@ export async function POST(request: NextRequest) {
     const { data: articles, error: fetchErr } = await db
       .from('articles')
       .select('id, title, description, price')
-      .eq('quantity', 1)
       .is('square_catalog_item_id', null);
 
     if (fetchErr) {
