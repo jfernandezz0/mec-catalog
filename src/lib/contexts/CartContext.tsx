@@ -36,7 +36,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       if (stored) {
         const parsed = JSON.parse(stored) as CartItem[];
         if (Array.isArray(parsed)) {
-          setItems(parsed);
+          const migrated = parsed.map(item => ({
+            ...item,
+            quantity: item.quantity || 1
+          }));
+          setItems(migrated);
         }
       }
     } catch {
@@ -197,8 +201,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }, [items]);
 
-  const itemCount = items.reduce((sum, i) => sum + i.quantity, 0);
-  const total = items.reduce((sum, i) => sum + (i.priceAtAdd * i.quantity), 0);
+  const itemCount = items.reduce((sum, i) => sum + (i.quantity || 1), 0);
+  const total = items.reduce((sum, i) => sum + (i.priceAtAdd * (i.quantity || 1)), 0);
 
   return (
     <CartContext.Provider

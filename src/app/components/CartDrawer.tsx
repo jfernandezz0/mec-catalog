@@ -58,7 +58,7 @@ export default function CartDrawer() {
       const status = getStatus(item.article.id);
       return !status || status.available;
     })
-    .reduce((sum, i) => sum + (i.priceAtAdd * i.quantity), 0);
+    .reduce((sum, i) => sum + (i.priceAtAdd * (i.quantity || 1)), 0);
 
   return (
     <>

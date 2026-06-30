@@ -81,7 +81,7 @@ export default function CheckoutPage() {
         .map((s) => s.articleId);
 
   const availableItems = items.filter((i) => !unavailableIds.includes(i.article.id));
-  const subtotal = availableItems.reduce((s, i) => s + (i.priceAtAdd * i.quantity), 0);
+  const subtotal = availableItems.reduce((s, i) => s + (i.priceAtAdd * (i.quantity || 1)), 0);
   const shippingPrice = shippingMethod === 'envio' ? 9.99 : 0;
   const availableTotal = subtotal + shippingPrice;
 
@@ -1213,13 +1213,13 @@ export default function CheckoutPage() {
                 <div key={i.article.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', padding: '4px 0' }}>
                   <span style={{ color: 'var(--text-secondary)' }}>
                     {i.article.title}
-                    {i.quantity > 1 && (
+                    {(i.quantity || 1) > 1 && (
                       <span style={{ fontSize: '11px', fontWeight: 500, color: 'var(--text-secondary)', marginLeft: '6px' }}>
-                        x{i.quantity}
+                        x{i.quantity || 1}
                       </span>
                     )}
                   </span>
-                  <span style={{ fontWeight: 600 }}>{formatPrice(i.priceAtAdd * i.quantity)}</span>
+                  <span style={{ fontWeight: 600 }}>{formatPrice(i.priceAtAdd * (i.quantity || 1))}</span>
                 </div>
               ))}
               
