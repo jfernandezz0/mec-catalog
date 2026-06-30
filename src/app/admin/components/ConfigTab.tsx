@@ -38,7 +38,8 @@ interface ConfigTabProps {
   savingDiscount: boolean;
   setCategories: React.Dispatch<React.SetStateAction<Category[]>>;
   syncingCatalog?: boolean;
-  handleSyncSquareCatalog?: () => void;
+  syncingCatalogForce?: boolean;
+  handleSyncSquareCatalog?: (force: boolean) => void;
 }
 
 export default function ConfigTab({
@@ -70,6 +71,7 @@ export default function ConfigTab({
   savingDiscount,
   setCategories,
   syncingCatalog = false,
+  syncingCatalogForce = false,
   handleSyncSquareCatalog,
 }: ConfigTabProps) {
   return (
@@ -217,28 +219,53 @@ ON CONFLICT (key) DO NOTHING;`}
                 Sincroniza tus artículos disponibles con tu catálogo de Square para ventas presenciales (Tap to Pay).
               </p>
               <div style={{ marginTop: '16px' }}>
-                <button
-                  type="button"
-                  disabled={syncingCatalog || !squareEnabled}
-                  onClick={handleSyncSquareCatalog}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    padding: '10px 18px',
-                    borderRadius: '8px',
-                    border: 'none',
-                    fontWeight: 'bold',
-                    cursor: syncingCatalog || !squareEnabled ? 'not-allowed' : 'pointer',
-                    fontSize: '13px',
-                    background: syncingCatalog ? 'var(--text-secondary)' : '#6366f1',
-                    color: '#fff',
-                    opacity: !squareEnabled ? 0.5 : 1,
-                    transition: 'all 0.2s',
-                  }}
-                >
-                  {syncingCatalog ? '🔄 Sincronizando catálogo...' : '🔄 Sincronizar catálogo con Square'}
-                </button>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+                  <button
+                    type="button"
+                    disabled={syncingCatalog || syncingCatalogForce || !squareEnabled}
+                    onClick={() => handleSyncSquareCatalog && handleSyncSquareCatalog(false)}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '10px 18px',
+                      borderRadius: '8px',
+                      border: 'none',
+                      fontWeight: 'bold',
+                      cursor: syncingCatalog || syncingCatalogForce || !squareEnabled ? 'not-allowed' : 'pointer',
+                      fontSize: '13px',
+                      background: syncingCatalog ? 'var(--text-secondary)' : '#6366f1',
+                      color: '#fff',
+                      opacity: !squareEnabled ? 0.5 : 1,
+                      transition: 'all 0.2s',
+                    }}
+                  >
+                    {syncingCatalog ? '🔄 Sincronizando...' : '🔄 Sincronizar pendientes'}
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={syncingCatalog || syncingCatalogForce || !squareEnabled}
+                    onClick={() => handleSyncSquareCatalog && handleSyncSquareCatalog(true)}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '10px 18px',
+                      borderRadius: '8px',
+                      border: 'none',
+                      fontWeight: 'bold',
+                      cursor: syncingCatalog || syncingCatalogForce || !squareEnabled ? 'not-allowed' : 'pointer',
+                      fontSize: '13px',
+                      background: syncingCatalogForce ? 'var(--text-secondary)' : 'linear-gradient(135deg, #ec4899, #8b5cf6)',
+                      color: '#fff',
+                      opacity: !squareEnabled ? 0.5 : 1,
+                      transition: 'all 0.2s',
+                    }}
+                  >
+                    {syncingCatalogForce ? '⚡ Forzando sincronización completa...' : '⚡ Forzar sincronización completa (con fotos)'}
+                  </button>
+                </div>
                 {!squareEnabled && (
                   <p style={{ margin: '8px 0 0 0', fontSize: '12px', color: '#ef4444' }}>
                     ⚠️ Activa el pago con tarjeta Square arriba para habilitar la sincronización.

@@ -180,6 +180,7 @@ export default function AdminPage() {
   const [targetDiscountPercent, setTargetDiscountPercent] = useState('');
   const [savingDiscount, setSavingDiscount] = useState(false);
   const [syncingCatalog, setSyncingCatalog] = useState(false);
+  const [syncingCatalogForce, setSyncingCatalogForce] = useState(false);
 
   // Warning modal states
   const [showDiscountWarnModal, setShowDiscountWarnModal] = useState(false);
@@ -712,8 +713,10 @@ export default function AdminPage() {
     }
   };
 
-  const handleSyncSquareCatalog = async () => {
-    setSyncingCatalog(true);
+  const handleSyncSquareCatalog = async (force: boolean = false) => {
+    if (force) setSyncingCatalogForce(true);
+    else setSyncingCatalog(true);
+    
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
@@ -725,7 +728,9 @@ export default function AdminPage() {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         },
+        body: JSON.stringify({ force })
       });
 
       const data = await res.json();
@@ -742,7 +747,8 @@ export default function AdminPage() {
     } catch (err: any) {
       alert(`Error de sincronización: ${err.message || err}`);
     } finally {
-      setSyncingCatalog(false);
+      if (force) setSyncingCatalogForce(false);
+      else setSyncingCatalog(false);
     }
   };
 
@@ -1011,6 +1017,7 @@ export default function AdminPage() {
               savingDiscount={savingDiscount}
               setCategories={setCategories}
               syncingCatalog={syncingCatalog}
+              syncingCatalogForce={syncingCatalogForce}
               handleSyncSquareCatalog={handleSyncSquareCatalog}
             />
 

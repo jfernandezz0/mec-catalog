@@ -35,12 +35,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Try to parse optional articleId from body
+    // Try to parse optional articleId and force flag from body
     let articleId: number | null = null;
+    let force = false;
     try {
       const body = await request.json();
-      if (body && typeof body.articleId === 'number') {
-        articleId = body.articleId;
+      if (body) {
+        if (typeof body.articleId === 'number') {
+          articleId = body.articleId;
+        }
+        if (body.force === true) {
+          force = true;
+        }
       }
     } catch {
       // Ignore parse errors (e.g. empty or non-JSON body)
@@ -59,6 +65,14 @@ export async function POST(request: NextRequest) {
         .single();
       if (res.data) {
         articles = [res.data];
+      }
+      fetchErr = res.error;
+    } else if (force) {
+      const res = await db
+        .from('articles')
+        .select('id, title, description, price, image_urls');
+      if (res.data) {
+        articles = res.data;
       }
       fetchErr = res.error;
     } else {
