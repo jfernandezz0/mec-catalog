@@ -1248,36 +1248,64 @@ export default function CheckoutPage() {
               </label>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {squarePaymentEnabled && (
-                  <label
+                  <div
+                    onClick={() => setSelectedMethod('tarjeta')}
                     style={{
                       display: 'flex',
-                      alignItems: 'center',
-                      gap: '12px',
+                      flexDirection: 'column',
+                      alignItems: 'stretch',
                       padding: '16px',
                       borderRadius: '12px',
                       border: `1.5px solid ${selectedMethod === 'tarjeta' ? '#6366f1' : 'var(--border-card)'}`,
                       background: selectedMethod === 'tarjeta' ? 'rgba(99,102,241,0.04)' : 'var(--bg-card-glass)',
                       cursor: 'pointer',
-                      transition: 'all 0.2s',
+                      transition: 'all 0.3s ease',
                     }}
                   >
-                    <input
-                      type="radio"
-                      name="paymentMethod"
-                      value="tarjeta"
-                      checked={selectedMethod === 'tarjeta'}
-                      onChange={() => setSelectedMethod('tarjeta')}
-                      style={{ accentColor: '#6366f1', width: '18px', height: '18px', cursor: 'pointer' }}
-                    />
-                    <div>
-                      <strong style={{ display: 'block', fontSize: '14px', color: 'var(--text-primary)' }}>💳 Pago con tarjeta bancaria</strong>
-                      <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Seguro e instantáneo a través de Square</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <input
+                        type="radio"
+                        name="paymentMethod"
+                        value="tarjeta"
+                        checked={selectedMethod === 'tarjeta'}
+                        onChange={() => setSelectedMethod('tarjeta')}
+                        style={{ accentColor: '#6366f1', width: '18px', height: '18px', cursor: 'pointer' }}
+                      />
+                      <div>
+                        <strong style={{ display: 'block', fontSize: '14px', color: 'var(--text-primary)' }}>💳 Pago con tarjeta bancaria</strong>
+                        <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Seguro e instantáneo a través de Square</span>
+                      </div>
                     </div>
-                  </label>
+                    
+                    <div
+                      onClick={(e) => e.stopPropagation()}
+                      style={{
+                        maxHeight: selectedMethod === 'tarjeta' ? '180px' : '0px',
+                        opacity: selectedMethod === 'tarjeta' ? 1 : 0,
+                        overflow: 'hidden',
+                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                        paddingTop: selectedMethod === 'tarjeta' ? '12px' : '0px',
+                        marginTop: selectedMethod === 'tarjeta' ? '8px' : '0px',
+                        borderTop: selectedMethod === 'tarjeta' ? '1px solid rgba(255,255,255,0.06)' : 'none',
+                      }}
+                    >
+                      <div
+                        id="square-card-container"
+                        style={{
+                          width: 'calc(100% + 62px)', // Push postal code field past the viewport
+                          marginLeft: '0px',
+                          padding: '8px 0',
+                          clipPath: 'inset(0 62px 0 0)', // Clip only the postal code field (last 62px)
+                          minHeight: '48px',
+                        }}
+                      />
+                    </div>
+                  </div>
                 )}
 
                 {bizumEnabled && (
-                  <label
+                  <div
+                    onClick={() => setSelectedMethod('bizum')}
                     style={{
                       display: 'flex',
                       alignItems: 'center',
@@ -1302,11 +1330,12 @@ export default function CheckoutPage() {
                       <strong style={{ display: 'block', fontSize: '14px', color: 'var(--text-primary)' }}>📲 Bizum / Transferencia</strong>
                       <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Te redirigiremos para completar el pago móvil</span>
                     </div>
-                  </label>
+                  </div>
                 )}
 
                 {paypalEnabled && (
-                  <label
+                  <div
+                    onClick={() => setSelectedMethod('paypal')}
                     style={{
                       display: 'flex',
                       alignItems: 'center',
@@ -1331,7 +1360,7 @@ export default function CheckoutPage() {
                       <strong style={{ display: 'block', fontSize: '14px', color: 'var(--text-primary)' }}>🅿️ Pago online con PayPal</strong>
                       <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Paga de forma rápida y segura desde tu cuenta</span>
                     </div>
-                  </label>
+                  </div>
                 )}
 
                 {!squarePaymentEnabled && !bizumEnabled && !paypalEnabled && (
@@ -1357,18 +1386,6 @@ export default function CheckoutPage() {
             {/* Dynamic payment content based on selection */}
             {selectedMethod === 'tarjeta' && (
               <>
-                <div style={{ overflow: 'hidden', borderRadius: '12px', border: '1px solid var(--border-card)', background: 'var(--bg-card-glass)', marginBottom: '20px' }}>
-                  <div
-                    id="square-card-container"
-                    style={{
-                      width: 'calc(100% + 62px)', // Push postal code field past the viewport
-                      marginLeft: '0px',
-                      padding: '16px 0',
-                      clipPath: 'inset(0 62px 0 0)', // Clip only the postal code field (last 62px)
-                      minHeight: '48px',
-                    }}
-                  />
-                </div>
 
                 {payError && (
                   <div
