@@ -92,7 +92,7 @@ export async function syncArticleToSquareCatalog(article: {
           image: {
             type: 'IMAGE',
             id: `#img-${article.id}`,
-            imageData: {
+            image_data: {
               name: article.title
             }
           }
