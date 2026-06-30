@@ -41,7 +41,7 @@ const MOTOR_QUOTES = [
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { items, total, clearCart, validateStock, stockStatuses } = useCart();
+  const { items, total, clearCart, validateStock, stockStatuses, addItem } = useCart();
 
   const [step, setStep] = useState<Step>('resumen');
   const [shippingMethod, setShippingMethod] = useState<'recogida' | 'envio'>('recogida');
@@ -91,9 +91,50 @@ export default function CheckoutPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Load query param article if present
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const articleIdParam = params.get('article');
+    if (!articleIdParam) return;
+
+    const articleId = Number(articleIdParam);
+    if (isNaN(articleId)) return;
+
+    // Check if it's already in the cart
+    const isAlreadyInCart = items.some((i) => i.article.id === articleId);
+    if (isAlreadyInCart) return;
+
+    // Fetch the article details and add it to the cart
+    async function fetchAndAddArticle() {
+      try {
+        const { data: art, error } = await supabase
+          .from('articles')
+          .select('*')
+          .eq('id', articleId)
+          .single();
+
+        if (error || !art) {
+          console.error('[checkout] Failed to fetch query article:', error);
+          router.replace('/');
+          return;
+        }
+
+        // Add to cart
+        addItem(art);
+      } catch (err) {
+        console.error('[checkout] Error adding query article to cart:', err);
+        router.replace('/');
+      }
+    }
+
+    fetchAndAddArticle();
+  }, [items, addItem, router]);
+
   // Redirect to catalog if cart is empty (only if not on payment step to prevent redirect races)
   useEffect(() => {
-    if (items.length === 0 && step !== 'pago') {
+    const hasArticleParam = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('article');
+    if (items.length === 0 && step !== 'pago' && !hasArticleParam) {
       router.replace('/');
     }
   }, [items, router, step]);
