@@ -441,7 +441,7 @@ export async function createSaleFromPresencialOrder(params: {
       receipt_whatsapp: buyerPhone,
       whatsapp_sent: false,
       shipping_address: null,
-      shipping_status: 'PENDIENTE',
+      shipping_status: 'ENTREGADO',
       square_payment_id: paymentId,
       square_order_id: orderId,
       order_number: orderNumber,

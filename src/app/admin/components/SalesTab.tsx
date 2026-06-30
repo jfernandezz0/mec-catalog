@@ -1170,6 +1170,7 @@ export default function SalesTab({ articles, loadArticles }: SalesTabProps) {
                       >
                         <option value="PENDIENTE">📦 Pendiente</option>
                         <option value="ENVIADO">🚚 Enviado</option>
+                        <option value="ENTREGADO">🤝 Entregado / Recogido</option>
                       </select>
                     </div>
                   </>
@@ -1299,58 +1300,74 @@ export default function SalesTab({ articles, loadArticles }: SalesTabProps) {
               </div>
 
               {/* Shipping status section */}
-              {selectedSaleDetail.location !== 'presencial' && (
-                <div style={{ borderTop: '1px solid var(--border-card-glass)', marginTop: '16px', paddingTop: '14px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-                    <span style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-secondary)' }}>Estado de Envío:</span>
-                    <div style={{ display: 'flex', gap: '6px' }}>
-                      <button
-                        type="button"
-                        disabled={selectedSaleDetail.shipping_status === 'ENVIADO'}
-                        onClick={() => {
-                          if (!selectedSaleDetail.shipping_status || selectedSaleDetail.shipping_status === 'PENDIENTE') return;
-                          // Only reachable in edit mode (button is disabled when ENVIADO)
-                        }}
-                        title={selectedSaleDetail.shipping_status === 'ENVIADO' ? '🔒 Ya enviado — solo editable desde "Editar Pedido"' : undefined}
-                        style={{
-                          padding: '5px 10px',
-                          borderRadius: '6px',
-                          border: 'none',
-                          fontSize: '11px',
-                          fontWeight: 'bold',
-                          cursor: selectedSaleDetail.shipping_status === 'ENVIADO' ? 'not-allowed' : 'default',
-                          background: (!selectedSaleDetail.shipping_status || selectedSaleDetail.shipping_status === 'PENDIENTE') ? '#d97706' : 'rgba(107,114,128,0.15)',
-                          color: (!selectedSaleDetail.shipping_status || selectedSaleDetail.shipping_status === 'PENDIENTE') ? '#fff' : '#9ca3af',
-                          opacity: selectedSaleDetail.shipping_status === 'ENVIADO' ? 0.5 : 1,
-                          transition: 'all 0.2s',
-                        }}
-                      >
-                        📦 Pendiente
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (selectedSaleDetail.shipping_status !== 'ENVIADO') {
-                            setShippingInputVisible(true);
-                            setTrackingLinkInput(selectedSaleDetail.tracking_link || '');
-                          }
-                        }}
-                        style={{
-                          padding: '5px 10px',
-                          borderRadius: '6px',
-                          border: 'none',
-                          fontSize: '11px',
-                          fontWeight: 'bold',
-                          cursor: selectedSaleDetail.shipping_status === 'ENVIADO' ? 'default' : 'pointer',
-                          background: selectedSaleDetail.shipping_status === 'ENVIADO' ? '#10b981' : 'rgba(16,185,129,0.15)',
-                          color: selectedSaleDetail.shipping_status === 'ENVIADO' ? '#fff' : '#10b981',
-                          transition: 'all 0.2s',
-                        }}
-                      >
-                        🚚 Enviado
-                      </button>
-                    </div>
+              <div style={{ borderTop: '1px solid var(--border-card-glass)', marginTop: '16px', paddingTop: '14px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                  <span style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-secondary)' }}>Estado de Envío:</span>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (selectedSaleDetail.shipping_status === 'PENDIENTE' || !selectedSaleDetail.shipping_status) return;
+                        handleUpdateShipping(selectedSaleDetail, 'PENDIENTE');
+                      }}
+                      style={{
+                        padding: '5px 10px',
+                        borderRadius: '6px',
+                        border: 'none',
+                        fontSize: '11px',
+                        fontWeight: 'bold',
+                        cursor: 'pointer',
+                        background: (!selectedSaleDetail.shipping_status || selectedSaleDetail.shipping_status === 'PENDIENTE') ? '#d97706' : 'rgba(217,119,6,0.15)',
+                        color: (!selectedSaleDetail.shipping_status || selectedSaleDetail.shipping_status === 'PENDIENTE') ? '#fff' : '#d97706',
+                        transition: 'all 0.2s',
+                      }}
+                    >
+                      📦 Pendiente
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (selectedSaleDetail.shipping_status !== 'ENVIADO') {
+                          setShippingInputVisible(true);
+                          setTrackingLinkInput(selectedSaleDetail.tracking_link || '');
+                        }
+                      }}
+                      style={{
+                        padding: '5px 10px',
+                        borderRadius: '6px',
+                        border: 'none',
+                        fontSize: '11px',
+                        fontWeight: 'bold',
+                        cursor: selectedSaleDetail.shipping_status === 'ENVIADO' ? 'default' : 'pointer',
+                        background: selectedSaleDetail.shipping_status === 'ENVIADO' ? '#10b981' : 'rgba(16,185,129,0.15)',
+                        color: selectedSaleDetail.shipping_status === 'ENVIADO' ? '#fff' : '#10b981',
+                        transition: 'all 0.2s',
+                      }}
+                    >
+                      🚚 Enviado
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (selectedSaleDetail.shipping_status === 'ENTREGADO') return;
+                        handleUpdateShipping(selectedSaleDetail, 'ENTREGADO');
+                      }}
+                      style={{
+                        padding: '5px 10px',
+                        borderRadius: '6px',
+                        border: 'none',
+                        fontSize: '11px',
+                        fontWeight: 'bold',
+                        cursor: 'pointer',
+                        background: selectedSaleDetail.shipping_status === 'ENTREGADO' ? '#3b82f6' : 'rgba(59,130,246,0.15)',
+                        color: selectedSaleDetail.shipping_status === 'ENTREGADO' ? '#fff' : '#3b82f6',
+                        transition: 'all 0.2s',
+                      }}
+                    >
+                      🤝 Entregado
+                    </button>
                   </div>
+                </div>
 
                   {/* Tracking link input — appears when clicking Enviado */}
                   {shippingInputVisible && (
@@ -1436,7 +1453,6 @@ export default function SalesTab({ articles, loadArticles }: SalesTabProps) {
                     </div>
                   )}
                 </div>
-              )}
 
               {(() => {
                 const shippingInfo = selectedSaleDetail.shipping_address as any;
