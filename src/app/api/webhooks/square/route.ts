@@ -40,8 +40,8 @@ export async function POST(request: NextRequest) {
 
     const db = getSupabaseAdmin();
 
-    // payment.updated with COMPLETED status → process the order
-    if (eventType === 'payment.updated' && status === 'COMPLETED') {
+    // payment.updated or payment.created with COMPLETED status → process the order
+    if ((eventType === 'payment.updated' || eventType === 'payment.created') && status === 'COMPLETED') {
       // Build dynamic baseUrl from request headers to support any domain/localhost dynamically
       const host = request.headers.get('host') || 'localhost:3000';
       const protocol = host.startsWith('localhost') ? 'http' : 'https';
@@ -52,21 +52,31 @@ export async function POST(request: NextRequest) {
         .from('sales')
         .select('id')
         .eq('square_payment_id', paymentId)
-        .single();
+        .maybeSingle();
+
+      const referenceId = paymentObject.reference_id;
+      const isUuid = typeof referenceId === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(referenceId);
 
       if (existingSale) {
         console.log('[square-webhook] Sale already created synchronously for payment:', paymentId);
         // Clean up pending record if exists
-        await db.from('pending_checkouts').delete().eq('square_payment_id', paymentId);
+        if (isUuid) {
+          await db.from('pending_checkouts').delete().or(`square_payment_id.eq.${paymentId},id.eq.${referenceId}`);
+        } else {
+          await db.from('pending_checkouts').delete().eq('square_payment_id', paymentId);
+        }
         return NextResponse.json({ received: true });
       }
 
       // 2. Fallback: Retrieve pending checkout session from Supabase
-      const { data: pending } = await db
-        .from('pending_checkouts')
-        .select('*')
-        .eq('square_payment_id', paymentId)
-        .single();
+      let pendingQuery = db.from('pending_checkouts').select('*');
+      if (isUuid) {
+        pendingQuery = pendingQuery.or(`square_payment_id.eq.${paymentId},id.eq.${referenceId}`);
+      } else {
+        pendingQuery = pendingQuery.eq('square_payment_id', paymentId);
+      }
+
+      const { data: pending } = await pendingQuery.maybeSingle();
 
       if (!pending) {
         // Fallback for Tap to Pay presencial orders (made directly on POS app / iPhone)
@@ -105,7 +115,7 @@ export async function POST(request: NextRequest) {
       await db
         .from('pending_checkouts')
         .delete()
-        .eq('square_payment_id', paymentId);
+        .eq('id', pending.id);
     }
 
     // payment.updated with FAILED/CANCELED → release reservation
@@ -113,21 +123,29 @@ export async function POST(request: NextRequest) {
       eventType === 'payment.updated' &&
       (status === 'FAILED' || status === 'CANCELED')
     ) {
-      const { data: pending } = await db
-        .from('pending_checkouts')
-        .select('cart_items')
-        .eq('square_payment_id', paymentId)
-        .single();
+      const referenceId = paymentObject.reference_id;
+      const isUuid = typeof referenceId === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(referenceId);
+
+      let pendingQuery = db.from('pending_checkouts').select('*');
+      if (isUuid) {
+        pendingQuery = pendingQuery.or(`square_payment_id.eq.${paymentId},id.eq.${referenceId}`);
+      } else {
+        pendingQuery = pendingQuery.eq('square_payment_id', paymentId);
+      }
+
+      const { data: pending } = await pendingQuery.maybeSingle();
 
       if (pending?.cart_items) {
         const ids = (pending.cart_items as { articleId: number }[]).map((i) => i.articleId);
         await Promise.all(ids.map((id) => releaseStock(id)));
       }
 
-      await db
-        .from('pending_checkouts')
-        .delete()
-        .eq('square_payment_id', paymentId);
+      if (pending) {
+        await db
+          .from('pending_checkouts')
+          .delete()
+          .eq('id', pending.id);
+      }
     }
 
     return NextResponse.json({ received: true });

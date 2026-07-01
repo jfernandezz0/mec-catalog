@@ -1,4 +1,4 @@
-import { supabase, getSupabaseAdmin } from '@/lib/supabase';
+import { getSupabaseAdmin } from '@/lib/supabase';
 import { sendReceiptEmail, sendAdminOrderEmail } from '@/lib/email';
 import { buildReceiptWhatsAppLink } from '@/lib/whatsapp';
 import { squareClient } from '@/lib/square';
@@ -382,6 +382,10 @@ export async function createSaleFromPresencialOrder(params: {
     return false;
   }
 
+  // Determine payment type from order tenders (e.g. CASH vs CARD)
+  const isCash = order.tenders?.some((t) => t.type === 'CASH') ?? false;
+  const paymentType: 'SQUARE' | 'EFECTIVO' = isCash ? 'EFECTIVO' : 'SQUARE';
+
   const variationIds = order.lineItems
     ?.map((item) => item.catalogObjectId)
     .filter((id): id is string => !!id) ?? [];
@@ -438,7 +442,7 @@ export async function createSaleFromPresencialOrder(params: {
   const { data: sale, error: saleError } = await db
     .from('sales')
     .insert({
-      payment_type: 'SQUARE',
+      payment_type: paymentType,
       status: 'COMPLETADA',
       total_price: totalPrice,
       total_articles: cart.length,
