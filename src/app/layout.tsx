@@ -6,6 +6,7 @@ import Footer from "./components/Footer";
 import CartButton from "./components/CartButton";
 import CartDrawer from "./components/CartDrawer";
 import { CartProvider } from "@/lib/contexts/CartContext";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./tailwind.css";
 
 const jakarta = Plus_Jakarta_Sans({
@@ -101,6 +102,7 @@ export default function RootLayout({
             {children}
           </div>
           <Footer />
+          <SpeedInsights />
         </CartProvider>
       </body>
     </html>
