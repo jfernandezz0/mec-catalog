@@ -1,11 +1,25 @@
 'use client';
 
-import { useState, useRef, useEffect, ChangeEvent, FormEvent } from 'react';
+import { useState, useRef, ChangeEvent, FormEvent } from 'react';
 import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
 import { formatPrice } from '@/lib/utils';
-import { initialFormState, FormState, Article, Category, Sale, AdminTab } from '@/lib/types';
+import { initialFormState, FormState, Article, Sale, AdminTab } from '@/lib/types';
 import styles from './admin.module.css';
+import { 
+  Package, 
+  Receipt, 
+  BarChart3, 
+  Settings, 
+  LogOut, 
+  ChevronLeft, 
+  ChevronRight, 
+  X, 
+  Plus, 
+  Upload, 
+  Layers, 
+  FileText 
+} from 'lucide-react';
 
 // Hooks
 import { useAdminData } from './hooks/useAdminData';
@@ -164,6 +178,8 @@ export default function AdminPage() {
   const [formState, setFormState] = useState<FormState>(initialFormState);
   const [files, setFiles] = useState<File[]>([]);
   const [frameFiles, setFrameFiles] = useState<File[]>([]);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isConfigOpen, setIsConfigOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const [editingArticle, setEditingArticle] = useState<Article | null>(null);
@@ -764,164 +780,245 @@ export default function AdminPage() {
     return <AdminLogin onLoginSuccess={() => window.location.reload()} />;
   }
 
+  const modalNewPrice = Number(formState.price) || 0;
+  const modalDiscountVal = Number(formState.discountValue) || 0;
+  let modalFinalPriceWithDiscount = modalNewPrice;
+  if (formState.discountType === 'percentage') {
+    modalFinalPriceWithDiscount = Math.max(0, modalNewPrice * (1 - modalDiscountVal / 100));
+  } else if (formState.discountType === 'amount') {
+    modalFinalPriceWithDiscount = Math.max(0, modalNewPrice - modalDiscountVal);
+  }
+
   return (
     <>
-      <main className={`${styles.page} no-print`}>
-        <section className={styles.shell}>
-          <header className={styles.header}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <Image src="/logo_mini.png" alt="MiniEngines Creations" width={40} height={40} style={{ objectFit: 'contain' }} />
-              <div>
-                <p className={styles.eyebrow}>Catalog admin</p>
-                <h1 className={styles.title}>
-                  {activeTab === 'catalog'
-                    ? 'Gestionar Catálogo'
-                    : activeTab === 'create'
-                    ? 'Añadir artículo'
-                    : activeTab === 'categories'
-                    ? 'Categorías y Países'
-                    : activeTab === 'import'
-                    ? 'Importar artículos'
-                    : activeTab === 'config'
-                    ? 'Configuración'
-                    : activeTab === 'sales'
-                    ? 'Historial de Ventas'
-                    : activeTab === 'sales-create'
-                    ? 'Registrar Nueva Venta'
-                    : activeTab === 'analytics'
-                    ? 'Estadísticas del Catálogo'
-                    : activeTab === 'generate_list'
-                    ? 'Generar Listado PDF'
-                    : 'Editar artículo'}
-                </h1>
-                <p className={styles.subtitle}>
-                  {activeTab === 'catalog'
-                    ? 'Ver, editar o eliminar los artículos y categorías del catálogo digital.'
-                    : activeTab === 'create'
-                    ? 'Crea un artículo, sube sus fotos y asígnalo a una categoría de país.'
-                    : activeTab === 'categories'
-                    ? 'Gestiona las categorías desde aquí. Puedes mostrar/ocultar y eliminar categorías.'
-                    : activeTab === 'import'
-                    ? 'Importa múltiples artículos de golpe subiendo un archivo CSV.'
-                    : activeTab === 'config'
-                    ? 'Configura opciones globales del catálogo, como ocultar precios o disponibilidad.'
-                    : activeTab === 'sales'
-                    ? 'Consulta las ventas realizadas, gestiona precompras y visualiza o descarga facturas.'
-                    : activeTab === 'sales-create'
-                    ? 'Registra una venta manual indicando los artículos, cantidades, precios y detalles de pago.'
-                    : activeTab === 'analytics'
-                    ? 'Analiza el rendimiento del catálogo, visitas, clics de contacto e ingresos por ventas.'
-                    : activeTab === 'generate_list'
-                    ? 'Configura y genera un listado de inventario en PDF de los artículos.'
-                    : 'Modifica los campos del artículo, gestiona sus imágenes o bórralo permanentemente.'}
-                </p>
-              </div>
-            </div>
-
-            <div className={styles.headerRight}>
-              <button
-                type="button"
-                onClick={handleLogout}
-                className={styles.logoutButton}
-              >
-                Cerrar sesión
-              </button>
-              <div className={styles.status}>
-                <span className={styles.statusValue}>
-                  {loadingArticles ? '...' : articles.length}
-                </span>
-                <span className={styles.statusLabel}>artículos en catálogo</span>
-              </div>
-            </div>
-          </header>
-
-          {/* Action buttons (above tabs) */}
-          <div className={styles.actionBar}>
-            <div className={styles.actionBarLeft}>
-              <button
-                type="button"
-                className={`${styles.actionButton} ${styles.actionButtonBlue} ${activeTab === 'sales-create' ? styles.actionButtonActive : ''}`}
-                onClick={() => handleTabChange('sales-create')}
-              >
-                Registrar nueva venta
-              </button>
-            </div>
-            <div className={styles.actionBarRight}>
-              <button
-                type="button"
-                className={`${styles.actionButton} ${styles.actionButtonGreen} ${activeTab === 'create' ? styles.actionButtonActive : ''}`}
-                onClick={() => handleTabChange('create')}
-              >
-                + Nuevo Artículo
-              </button>
-              <button
-                type="button"
-                className={`${styles.actionButton} ${styles.actionButtonYellow} ${activeTab === 'import' ? styles.actionButtonActive : ''}`}
-                onClick={() => handleTabChange('import')}
-              >
-                ↑ Importar CSV
-              </button>
-            </div>
+      <div className={`${styles.adminContainer} no-print`}>
+        {/* Sidebar */}
+        <aside className={`${styles.sidebar} ${isSidebarCollapsed ? styles.sidebarCollapsed : ''}`}>
+          <div className={styles.sidebarHeader} style={{ justifyContent: 'center', width: '100%', marginBottom: '24px' }}>
+            <Image 
+              src="/logo_mini.png" 
+              alt="MiniEngines Creations" 
+              width={isSidebarCollapsed ? 36 : 64} 
+              height={isSidebarCollapsed ? 36 : 64} 
+              style={{ objectFit: 'contain' }} 
+              className={styles.sidebarLogo}
+            />
           </div>
 
-          {/* Tabs navigation */}
-          <nav className={styles.tabs} aria-label="Secciones de administración">
-            <div className={styles.tabsLeft}>
+          <nav className={styles.sidebarNav}>
+            <button
+              type="button"
+              className={`${styles.sidebarItem} ${styles.sidebarItemNewSale} ${activeTab === 'sales-create' ? styles.sidebarItemNewSaleActive : ''}`}
+              onClick={() => handleTabChange('sales-create')}
+              data-tooltip="Registrar Venta"
+            >
+              <Plus size={20} className={styles.sidebarItemIcon} />
+              {!isSidebarCollapsed && <span>Registrar Venta</span>}
+            </button>
+
+            <button
+              type="button"
+              className={`${styles.sidebarItem} ${['catalog', 'create', 'edit', 'categories', 'import', 'generate_list'].includes(activeTab) ? styles.sidebarItemActive : ''}`}
+              onClick={() => handleTabChange('catalog')}
+              data-tooltip="Catálogo"
+            >
+              <Package size={20} className={styles.sidebarItemIcon} />
+              {!isSidebarCollapsed && <span>Catálogo</span>}
+            </button>
+
+            <button
+              type="button"
+              className={`${styles.sidebarItem} ${activeTab === 'sales' ? styles.sidebarItemActive : ''}`}
+              onClick={() => handleTabChange('sales')}
+              data-tooltip="Ventas"
+            >
+              <Receipt size={20} className={styles.sidebarItemIcon} />
+              {!isSidebarCollapsed && <span>Ventas</span>}
+            </button>
+
+            <button
+              type="button"
+              className={`${styles.sidebarItem} ${activeTab === 'analytics' ? styles.sidebarItemActive : ''}`}
+              onClick={() => handleTabChange('analytics')}
+              data-tooltip="Estadísticas/Alcance"
+            >
+              <BarChart3 size={20} className={styles.sidebarItemIcon} />
+              {!isSidebarCollapsed && <span>Estadísticas/Alcance</span>}
+            </button>
+          </nav>
+
+          <div className={styles.sidebarFooter}>
+            <button
+              type="button"
+              className={`${styles.sidebarBtnSettings} ${isConfigOpen ? styles.sidebarBtnSettingsActive : ''}`}
+              onClick={() => setIsConfigOpen(true)}
+              data-tooltip="Configuración"
+            >
+              <Settings size={20} />
+              {!isSidebarCollapsed && <span>Configuración</span>}
+            </button>
+
+            <button
+              type="button"
+              className={styles.sidebarBtnLogout}
+              onClick={handleLogout}
+              data-tooltip="Cerrar sesión"
+            >
+              <LogOut size={20} />
+              {!isSidebarCollapsed && <span>Cerrar sesión</span>}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+              className={styles.collapseToggle}
+              aria-label={isSidebarCollapsed ? "Expandir menú lateral" : "Colapsar menú lateral"}
+            >
+              {isSidebarCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+            </button>
+          </div>
+        </aside>
+
+        {/* Main Content Area */}
+        <main className={styles.adminMainContent}>
+          <header className={styles.header}>
+            <div>
+              <p className={styles.eyebrow}>
+                {['catalog', 'create', 'edit', 'categories', 'import', 'generate_list'].includes(activeTab)
+                  ? 'Catálogo'
+                  : ['sales', 'sales-create'].includes(activeTab)
+                  ? 'Ventas'
+                  : 'Estadísticas'}
+              </p>
+              <h1 className={styles.title}>
+                {activeTab === 'catalog'
+                  ? 'Gestionar Catálogo'
+                  : activeTab === 'create'
+                  ? 'Añadir artículo'
+                  : activeTab === 'categories'
+                  ? 'Categorías y Países'
+                  : activeTab === 'import'
+                  ? 'Importar artículos'
+                  : activeTab === 'sales'
+                  ? 'Historial de Ventas'
+                  : activeTab === 'sales-create'
+                  ? 'Registrar Nueva Venta'
+                  : activeTab === 'analytics'
+                  ? 'Estadísticas/Alcance'
+                  : activeTab === 'generate_list'
+                  ? 'Generar Listado PDF'
+                  : 'Editar artículo'}
+              </h1>
+              <p className={styles.subtitle}>
+                {activeTab === 'catalog'
+                  ? 'Ver, editar o eliminar los artículos y categorías del catálogo digital.'
+                  : activeTab === 'create'
+                  ? 'Crea un artículo, sube sus fotos y asígnalo a una categoría de país.'
+                  : activeTab === 'categories'
+                  ? 'Gestiona las categorías desde aquí. Puedes mostrar/ocultar y eliminar categorías.'
+                  : activeTab === 'import'
+                  ? 'Importa múltiples artículos de golpe subiendo un archivo CSV.'
+                  : activeTab === 'sales'
+                  ? 'Consulta las ventas realizadas, gestiona precompras y visualiza o descarga facturas.'
+                  : activeTab === 'sales-create'
+                  ? 'Registra una venta manual indicando los artículos, cantidades, precios y detalles de pago.'
+                  : activeTab === 'analytics'
+                  ? 'Analiza el rendimiento del catálogo, visitas, clics de contacto e ingresos por ventas.'
+                  : activeTab === 'generate_list'
+                  ? 'Configura y genera un listado de inventario en PDF de los artículos.'
+                  : 'Modifica los campos del artículo, gestiona sus imágenes o bórralo permanentemente.'}
+              </p>
+            </div>
+
+            {['catalog', 'create', 'edit', 'categories', 'import', 'generate_list'].includes(activeTab) && (
+              <div className={styles.headerRight}>
+                <div className={styles.status}>
+                  <span className={styles.statusValue} style={{ color: 'var(--text-available)' }}>
+                    {loadingArticles ? '...' : articles.length}
+                  </span>
+                  <span className={styles.statusLabel}>artículos en catálogo</span>
+                </div>
+              </div>
+            )}
+          </header>
+
+          {/* Sub-tabs horizontal navigation depending on active section */}
+          {['catalog', 'create', 'edit', 'categories', 'import', 'generate_list'].includes(activeTab) && (
+            <nav className={styles.subTabsContainer} aria-label="Navegación del catálogo">
               <button
                 type="button"
-                className={`${styles.tab} ${activeTab === 'catalog' ? styles.tabActive : ''}`}
+                className={`${styles.subTab} ${activeTab === 'catalog' ? styles.subTabActive : ''}`}
                 onClick={() => handleTabChange('catalog')}
               >
-                Catálogo
+                <Layers size={16} />
+                Ver Catálogo
               </button>
               <button
                 type="button"
-                className={`${styles.tab} ${activeTab === 'categories' ? styles.tabActive : ''}`}
+                className={`${styles.subTab} ${activeTab === 'create' ? styles.subTabActive : ''}`}
+                onClick={() => handleTabChange('create')}
+              >
+                <Plus size={16} />
+                Nuevo Artículo
+              </button>
+              <button
+                type="button"
+                className={`${styles.subTab} ${activeTab === 'categories' ? styles.subTabActive : ''}`}
                 onClick={() => handleTabChange('categories')}
               >
-                Categorías
+                <Layers size={16} />
+                Categorías y Países
               </button>
               <button
                 type="button"
-                className={`${styles.tab} ${activeTab === 'config' ? styles.tabActive : ''}`}
-                onClick={() => handleTabChange('config')}
+                className={`${styles.subTab} ${activeTab === 'import' ? styles.subTabActive : ''}`}
+                onClick={() => handleTabChange('import')}
               >
-                Configuración
+                <Upload size={16} />
+                Importar CSV
               </button>
               <button
                 type="button"
-                className={`${styles.tab} ${activeTab === 'sales' ? styles.tabActive : ''}`}
-                onClick={() => handleTabChange('sales')}
-              >
-                Ventas
-              </button>
-              <button
-                type="button"
-                className={`${styles.tab} ${activeTab === 'analytics' ? styles.tabActive : ''}`}
-                onClick={() => handleTabChange('analytics')}
-              >
-                Estadísticas
-              </button>
-              <button
-                type="button"
-                className={`${styles.tab} ${activeTab === 'generate_list' ? styles.tabActive : ''}`}
+                className={`${styles.subTab} ${activeTab === 'generate_list' ? styles.subTabActive : ''}`}
                 onClick={() => handleTabChange('generate_list')}
               >
-                Generar lista
+                <FileText size={16} />
+                Generar PDF
               </button>
               {activeTab === 'edit' && (
                 <button
                   type="button"
-                  className={`${styles.tab} ${styles.tabActive}`}
+                  className={`${styles.subTab} ${styles.subTabActive}`}
                   disabled
                 >
                   Ficha: {editingArticle?.title.substring(0, 20) || 'Editar'}...
                 </button>
               )}
-            </div>
-          </nav>
+            </nav>
+          )}
 
-          {/* Tab Views */}
+          {['sales', 'sales-create'].includes(activeTab) && (
+            <nav className={styles.subTabsContainer} aria-label="Navegación de ventas">
+              <button
+                type="button"
+                className={`${styles.subTab} ${activeTab === 'sales' ? styles.subTabActive : ''}`}
+                onClick={() => handleTabChange('sales')}
+              >
+                <Receipt size={16} />
+                Historial de Ventas
+              </button>
+              <button
+                type="button"
+                className={`${styles.subTab} ${activeTab === 'sales-create' ? styles.subTabActive : ''}`}
+                onClick={() => handleTabChange('sales-create')}
+              >
+                <Plus size={16} />
+                Registrar Nueva Venta
+              </button>
+            </nav>
+          )}
+
+          {/* Render target tab views */}
           {activeTab === 'catalog' && (
             <CatalogTab
               articles={articles}
@@ -987,42 +1084,6 @@ export default function AdminPage() {
             />
           )}
 
-          {activeTab === 'config' && (
-            <ConfigTab
-              paymentsEnabled={paymentsEnabled}
-              bizumEnabled={bizumEnabled}
-              paypalEnabled={paypalEnabled}
-              squareEnabled={squareEnabled}
-              hidePrices={hidePrices}
-              hideAvailability={hideAvailability}
-              loadingPaymentsSetting={loadingArticles}
-              hasSettingsTable={hasSettingsTable}
-              hasDiscountColumns={hasDiscountColumns}
-              generalDiscountPercent={generalDiscountPercent}
-              categories={categories}
-              articles={articles}
-              togglePayments={(enabled) => updateSetting('payments_enabled', String(enabled))}
-              toggleBizum={(enabled) => updateSetting('bizum_enabled', String(enabled))}
-              togglePaypal={(enabled) => updateSetting('paypal_enabled', String(enabled))}
-              toggleSquare={(enabled) => updateSetting('square_payments_enabled', String(enabled))}
-              toggleHidePrices={(enabled) => updateSetting('hide_prices', String(enabled))}
-              toggleHideAvailability={(enabled) => updateSetting('hide_availability', String(enabled))}
-              loadPaymentsSetting={loadPaymentsSetting}
-              handleSaveDiscount={handleSaveDiscount}
-              handleDeleteDiscount={handleDeleteDiscount}
-              selectedDiscountTarget={selectedDiscountTarget}
-              setSelectedDiscountTarget={setSelectedDiscountTarget}
-              targetDiscountPercent={targetDiscountPercent}
-              setTargetDiscountPercent={setTargetDiscountPercent}
-              savingDiscount={savingDiscount}
-              setCategories={setCategories}
-              syncingCatalog={syncingCatalog}
-              syncingCatalogForce={syncingCatalogForce}
-              handleSyncSquareCatalog={handleSyncSquareCatalog}
-            />
-
-          )}
-
           {activeTab === 'sales' && (
             <SalesTab
               articles={articles}
@@ -1055,95 +1116,142 @@ export default function AdminPage() {
               generalDiscountPercent={generalDiscountPercent}
             />
           )}
-        </section>
-      </main>
+        </main>
 
-      {/* Warning Modal: Zero/Negative price due to discounts */}
-      {showDiscountWarnModal && pendingSubmitData && (() => {
-        const newPrice = Number(formState.price) || 0;
-        const discountVal = Number(formState.discountValue) || 0;
-        let finalPriceWithDiscount = newPrice;
-        if (formState.discountType === 'percentage') {
-          finalPriceWithDiscount = Math.max(0, newPrice * (1 - discountVal / 100));
-        } else if (formState.discountType === 'amount') {
-          finalPriceWithDiscount = Math.max(0, newPrice - discountVal);
-        }
-        return (
-          <div style={{
-            position: 'fixed',
-            inset: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.6)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 9999,
-            padding: '16px'
-          }}>
-            <div style={{
-              background: 'var(--bg-card)',
-              border: '1px solid var(--border-card)',
-              borderRadius: '16px',
-              padding: '24px',
-              maxWidth: '460px',
-              width: '100%',
-              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '16px'
-            }}>
-              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                ⚠️ Ajuste de Descuento
-              </h3>
-              <p style={{ margin: 0, fontSize: '14px', lineHeight: '1.5', color: 'var(--text-primary)' }}>
-                Este artículo tiene un descuento aplicado. Si bajas el precio, su nuevo precio final con el descuento será <strong>{formatPrice(finalPriceWithDiscount)}</strong>.
-                <br /><br />
-                Eliminando el descuento, su precio final será: <strong>{formatPrice(newPrice)}</strong>.
-              </p>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '8px' }}>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    if (pendingSubmitData.isCreate) {
-                      await executeCreate(false);
-                    } else {
-                      await executeUpdate(false);
-                    }
-                  }}
-                  className={`${styles.dangerButton} ${styles.solidRedButton}`}
-                  style={{ flex: 1, padding: '12px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: '800', textWrap: 'nowrap' }}
-                >
-                  Continuar
-                </button>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    if (pendingSubmitData.isCreate) {
-                      await executeCreate(true);
-                    } else {
-                      await executeUpdate(true);
-                    }
-                  }}
-                  className={`${styles.primaryButton} ${styles.solidGreenButton}`}
-                  style={{ flex: 1, padding: '12px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: '800', border: 'none', textWrap: 'nowrap' }}
-                >
-                  Eliminar descuento actual
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowDiscountWarnModal(false);
-                    setPendingSubmitData(null);
-                  }}
-                  className={`${styles.secondaryButton} ${styles.solidGrayButton}`}
-                  style={{ width: '100%', padding: '10px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: '800', marginTop: '4px' }}
-                >
-                  Cancelar
-                </button>
-              </div>
+        {/* Cajón de Configuración Global */}
+        <div 
+          className={`${styles.drawerOverlay} ${isConfigOpen ? styles.drawerOverlayActive : ''}`} 
+          onClick={() => setIsConfigOpen(false)}
+        >
+          <div 
+            className={`${styles.drawerContent} ${isConfigOpen ? styles.drawerContentActive : ''}`} 
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className={styles.drawerHeader}>
+              <h2 className={styles.drawerHeaderTitle}>Configuración Global</h2>
+              <button 
+                type="button" 
+                className={styles.drawerCloseBtn} 
+                onClick={() => setIsConfigOpen(false)}
+                aria-label="Cerrar configuración"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className={styles.drawerBody}>
+              <ConfigTab
+                paymentsEnabled={paymentsEnabled}
+                bizumEnabled={bizumEnabled}
+                paypalEnabled={paypalEnabled}
+                squareEnabled={squareEnabled}
+                hidePrices={hidePrices}
+                hideAvailability={hideAvailability}
+                loadingPaymentsSetting={loadingArticles}
+                hasSettingsTable={hasSettingsTable}
+                hasDiscountColumns={hasDiscountColumns}
+                generalDiscountPercent={generalDiscountPercent}
+                categories={categories}
+                articles={articles}
+                togglePayments={(enabled) => updateSetting('payments_enabled', String(enabled))}
+                toggleBizum={(enabled) => updateSetting('bizum_enabled', String(enabled))}
+                togglePaypal={(enabled) => updateSetting('paypal_enabled', String(enabled))}
+                toggleSquare={(enabled) => updateSetting('square_payments_enabled', String(enabled))}
+                toggleHidePrices={(enabled) => updateSetting('hide_prices', String(enabled))}
+                toggleHideAvailability={(enabled) => updateSetting('hide_availability', String(enabled))}
+                loadPaymentsSetting={loadPaymentsSetting}
+                handleSaveDiscount={handleSaveDiscount}
+                handleDeleteDiscount={handleDeleteDiscount}
+                selectedDiscountTarget={selectedDiscountTarget}
+                setSelectedDiscountTarget={setSelectedDiscountTarget}
+                targetDiscountPercent={targetDiscountPercent}
+                setTargetDiscountPercent={setTargetDiscountPercent}
+                savingDiscount={savingDiscount}
+                setCategories={setCategories}
+                syncingCatalog={syncingCatalog}
+                syncingCatalogForce={syncingCatalogForce}
+                handleSyncSquareCatalog={handleSyncSquareCatalog}
+              />
             </div>
           </div>
-        );
-      })()}
+        </div>
+      </div>
+
+      {/* Warning Modal: Zero/Negative price due to discounts */}
+      {showDiscountWarnModal && pendingSubmitData && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.6)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          padding: '16px'
+        }}>
+          <div style={{
+            background: 'var(--bg-card)',
+            border: '1px solid var(--border-card)',
+            borderRadius: '16px',
+            padding: '24px',
+            maxWidth: '460px',
+            width: '100%',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '16px'
+          }}>
+            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              ⚠️ Ajuste de Descuento
+            </h3>
+            <p style={{ margin: 0, fontSize: '14px', lineHeight: '1.5', color: 'var(--text-primary)' }}>
+              Este artículo tiene un descuento aplicado. Si bajas el precio, su nuevo precio final con el descuento será <strong>{formatPrice(modalFinalPriceWithDiscount)}</strong>.
+              <br /><br />
+              Eliminando el descuento, su precio final será: <strong>{formatPrice(modalNewPrice)}</strong>.
+            </p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '8px' }}>
+              <button
+                type="button"
+                onClick={async () => {
+                  if (pendingSubmitData.isCreate) {
+                    await executeCreate(false);
+                  } else {
+                    await executeUpdate(false);
+                  }
+                }}
+                className={`${styles.dangerButton} ${styles.solidRedButton}`}
+                style={{ flex: 1, padding: '12px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: '800', textWrap: 'nowrap' }}
+              >
+                Continuar
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  if (pendingSubmitData.isCreate) {
+                    await executeCreate(true);
+                  } else {
+                    await executeUpdate(true);
+                  }
+                }}
+                className={`${styles.primaryButton} ${styles.solidGreenButton}`}
+                style={{ flex: 1, padding: '12px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: '800', border: 'none', textWrap: 'nowrap' }}
+              >
+                Eliminar descuento actual
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDiscountWarnModal(false);
+                  setPendingSubmitData(null);
+                }}
+                className={`${styles.secondaryButton} ${styles.solidGrayButton}`}
+                style={{ width: '100%', padding: '10px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: '800', marginTop: '4px' }}
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
