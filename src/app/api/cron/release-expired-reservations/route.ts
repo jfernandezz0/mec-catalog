@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
-import { releaseStock } from '@/lib/orders';
+import { getSupabaseAdmin } from '@/lib/supabase';
 
 /**
  * Cron job: release expired stock reservations.
@@ -15,23 +14,22 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { data: expiredArticles, error } = await supabase
+  const db = getSupabaseAdmin();
+
+  // Perform a single batch update to release all expired stock reservations and return the updated IDs
+  const { data: releasedArticles, error } = await db
     .from('articles')
-    .select('id')
+    .update({ reserved_until: null })
     .not('reserved_until', 'is', null)
-    .lt('reserved_until', new Date().toISOString());
+    .lt('reserved_until', new Date().toISOString())
+    .select('id');
 
   if (error) {
-    console.error('[cron] Error fetching expired reservations:', error);
+    console.error('[cron] Error releasing expired reservations:', error);
     return NextResponse.json({ error: 'DB error' }, { status: 500 });
   }
 
-  if (!expiredArticles?.length) {
-    return NextResponse.json({ released: 0 });
-  }
-
-  await Promise.all(expiredArticles.map((a) => releaseStock(a.id)));
-
-  console.log(`[cron] Released ${expiredArticles.length} expired reservations`);
-  return NextResponse.json({ released: expiredArticles.length });
+  const releasedCount = releasedArticles?.length ?? 0;
+  console.log(`[cron] Released ${releasedCount} expired reservations`);
+  return NextResponse.json({ released: releasedCount });
 }

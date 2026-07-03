@@ -24,6 +24,17 @@ export interface Article {
   discount_value?: number | null;
 }
 
+export interface ShippingAddress {
+  address: string;
+  postalCode: string;
+  city: string;
+  province: string;
+  country: string;
+  method?: 'recogida' | 'envio';
+  price?: number;
+  description?: string;
+}
+
 export interface Sale {
   id: string;
   buyer_phone: string | null;
@@ -39,7 +50,7 @@ export interface Sale {
   square_payment_id?: string | null;
   square_order_id?: string | null;
   buyer_name?: string | null;
-  shipping_address?: object | null;
+  shipping_address?: ShippingAddress | null;
   shipping_status?: string | null;
   tracking_link?: string | null;
   order_number?: string | null;

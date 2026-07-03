@@ -10,11 +10,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'articleIds required' }, { status: 400 });
     }
 
-    await Promise.all(
-      articleIds.map((id) =>
-        db.from('articles').update({ reserved_until: null }).eq('id', id)
-      )
-    );
+    const { error } = await db
+      .from('articles')
+      .update({ reserved_until: null })
+      .in('id', articleIds);
+
+    if (error) {
+      throw error;
+    }
 
     return NextResponse.json({ success: true });
   } catch (err) {
