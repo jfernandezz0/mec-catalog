@@ -9,6 +9,23 @@ const supabaseAdmin = createClient(
 
 export async function POST(req: NextRequest) {
   try {
+    // 1. Verify admin session cookie
+    const token = req.cookies.get('sb-session')?.value;
+    if (!token) {
+      return NextResponse.json(
+        { error: 'No autorizado. Debes iniciar sesión como administrador.' },
+        { status: 401 }
+      );
+    }
+
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+    if (authError || !user || user.email !== 'minienginescreations@gmail.com') {
+      return NextResponse.json(
+        { error: 'Acceso denegado. No tienes permisos de administrador.' },
+        { status: 401 }
+      );
+    }
+
     const { saleId, trackingLink } = await req.json();
 
     if (!saleId) {

@@ -27,9 +27,9 @@ export async function POST(request: NextRequest) {
     });
 
     const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
-    if (authError || !user) {
+    if (authError || !user || user.email !== 'minienginescreations@gmail.com') {
       return NextResponse.json(
-        { error: 'Sesión expirada o no autorizada.' },
+        { error: 'Acceso denegado. No tienes permisos de administrador.' },
         { status: 401 }
       );
     }
