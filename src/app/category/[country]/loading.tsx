@@ -1,3 +1,4 @@
+import SkeletonLoader from '@/app/components/SkeletonLoader';
 import styles from './category.module.css';
 
 export default function CategoryLoading() {
@@ -14,15 +15,7 @@ export default function CategoryLoading() {
           <div className={styles.loadingTextLineShort} />
         </header>
 
-        <section className={styles.grid}>
-          {Array.from({ length: 6 }).map((_, index) => (
-            <article key={index} className={styles.loadingCard}>
-              <div className={styles.loadingCardImage} />
-              <div className={styles.loadingCardLine} />
-              <div className={styles.loadingCardLineShort} />
-            </article>
-          ))}
-        </section>
+        <SkeletonLoader type="grid" count={6} />
       </div>
     </main>
   );

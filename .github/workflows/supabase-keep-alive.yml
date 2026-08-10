@@ -1,0 +1,31 @@
+name: Supabase Keep-Alive
+
+on:
+  schedule:
+    # Runs every 2 days at 06:00 UTC to guarantee Supabase never reaches the 7-day inactivity limit
+    - cron: '0 6 */2 * *'
+  workflow_dispatch: # Allows manual trigger from GitHub Actions UI
+
+jobs:
+  keep-alive:
+    name: Ping Supabase Keep-Alive Endpoint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Keep-Alive API
+        run: |
+          echo "Pinging mec-catalog Supabase keep-alive endpoint..."
+          RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}\nTIME_TOTAL:%{time_total}s\n" \
+            -H "User-Agent: GitHubActions-KeepAlive" \
+            https://mec-catalog.vercel.app/api/cron/keep-alive)
+
+          echo "Response:"
+          echo "$RESPONSE"
+
+          HTTP_CODE=$(echo "$RESPONSE" | grep "HTTP_STATUS:" | cut -d':' -f2)
+
+          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 400 ]; then
+            echo "✅ Successfully pinged Supabase keep-alive endpoint (HTTP $HTTP_CODE)"
+          else
+            echo "⚠️ Endpoint returned HTTP $HTTP_CODE"
+            exit 1
+          fi

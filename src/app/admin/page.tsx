@@ -326,6 +326,7 @@ export default function AdminPage() {
     if (error) {
       alert(`Error al cerrar sesión: ${error.message}`);
     } else {
+      document.cookie = 'sb-session=;path=/;max-age=0;SameSite=Lax;Secure';
       window.location.reload();
     }
   };

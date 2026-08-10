@@ -22,6 +22,7 @@ export interface Article {
   views?: number;
   discount_type?: string | null;
   discount_value?: number | null;
+  reserved_until?: string | null;
 }
 
 export interface ShippingAddress {

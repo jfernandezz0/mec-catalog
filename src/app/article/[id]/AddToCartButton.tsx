@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useCart } from '@/lib/contexts/CartContext';
+import { supabase } from '@/lib/supabase';
 import type { Article } from '@/lib/types';
 
 interface AddToCartButtonProps {
@@ -17,12 +18,43 @@ export default function AddToCartButton({
 }: AddToCartButtonProps) {
   const { addItem, hasItem, openDrawer } = useCart();
   const inCart = hasItem(article.id);
+  const [currentQty, setCurrentQty] = useState(article.quantity);
   const [selectedQty, setSelectedQty] = useState(1);
   const [isCartHovered, setIsCartHovered] = useState(false);
   const [isCardHovered, setIsCardHovered] = useState(false);
 
+  // Subscribe to real-time updates for this article's stock
+  useEffect(() => {
+    setCurrentQty(article.quantity);
+  }, [article.quantity]);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel(`article-detail-stock-${article.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'articles',
+          filter: `id=eq.${article.id}`,
+        },
+        (payload) => {
+          const updated = payload.new as { quantity: number };
+          if (typeof updated.quantity === 'number') {
+            setCurrentQty(updated.quantity);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [article.id]);
+
   const handleAddToCart = () => {
-    if (!inCart) addItem(article, selectedQty);
+    if (!inCart && currentQty > 0) addItem(article, selectedQty);
     openDrawer();
   };
 
@@ -36,7 +68,7 @@ export default function AddToCartButton({
       }}
     >
       {/* Quantity Selector: Only show if stock > 1 and not already in cart */}
-      {article.quantity > 1 && !inCart && (
+      {currentQty > 1 && !inCart && (
         <div style={{
           display: 'flex',
           alignItems: 'center',
@@ -74,8 +106,8 @@ export default function AddToCartButton({
               {selectedQty}
             </span>
             <button
-              onClick={() => setSelectedQty(prev => Math.min(article.quantity, prev + 1))}
-              disabled={selectedQty >= article.quantity}
+              onClick={() => setSelectedQty(prev => Math.min(currentQty, prev + 1))}
+              disabled={selectedQty >= currentQty}
               style={{
                 width: '28px',
                 height: '28px',
@@ -84,8 +116,8 @@ export default function AddToCartButton({
                 background: 'rgba(255,255,255,0.06)',
                 color: '#fff',
                 fontSize: '16px',
-                cursor: selectedQty >= article.quantity ? 'not-allowed' : 'pointer',
-                opacity: selectedQty >= article.quantity ? 0.4 : 1,
+                cursor: selectedQty >= currentQty ? 'not-allowed' : 'pointer',
+                opacity: selectedQty >= currentQty ? 0.4 : 1,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -102,6 +134,7 @@ export default function AddToCartButton({
       <button
         id={`add-to-cart-${article.id}`}
         onClick={handleAddToCart}
+        disabled={currentQty <= 0 && !inCart}
         onMouseEnter={() => setIsCartHovered(true)}
         onMouseLeave={() => setIsCartHovered(false)}
         style={{
@@ -109,55 +142,65 @@ export default function AddToCartButton({
           padding: '13px 20px',
           borderRadius: '10px',
           border: inCart ? '2px solid #6366f1' : '2px solid transparent',
-          background: inCart
-            ? (isCartHovered ? '#8b5cf6' : 'rgba(99,102,241,0.12)')
-            : (isCartHovered ? 'linear-gradient(135deg, #a78bfa 0%, #8b5cf6 100%)' : 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)'),
-          color: inCart
-            ? (isCartHovered ? '#fff' : '#6366f1')
-            : '#fff',
+          background: currentQty <= 0 && !inCart
+            ? 'rgba(255, 255, 255, 0.05)'
+            : inCart
+              ? (isCartHovered ? '#8b5cf6' : 'rgba(99,102,241,0.12)')
+              : (isCartHovered ? 'linear-gradient(135deg, #a78bfa 0%, #8b5cf6 100%)' : 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)'),
+          color: currentQty <= 0 && !inCart
+            ? 'var(--text-secondary)'
+            : inCart
+              ? (isCartHovered ? '#fff' : '#6366f1')
+              : '#fff',
           fontWeight: 700,
           fontSize: '15px',
-          cursor: 'pointer',
+          cursor: currentQty <= 0 && !inCart ? 'not-allowed' : 'pointer',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           gap: '8px',
           transition: 'all 0.25s ease',
-          boxShadow: isCartHovered
+          boxShadow: isCartHovered && (currentQty > 0 || inCart)
             ? '0 0 15px rgba(139, 92, 246, 0.6)'
             : 'none',
         }}
       >
-        <svg
-          width="18"
-          height="18"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden="true"
-        >
-          {inCart ? (
-            // Checkmark when already in cart
-            <>
-              <polyline points="20 6 9 17 4 12" />
-            </>
-          ) : (
-            // Cart icon
-            <>
-              <circle cx="9" cy="21" r="1" />
-              <circle cx="20" cy="21" r="1" />
-              <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
-            </>
-          )}
-        </svg>
-        {inCart ? 'Ver carrito' : 'Añadir al carrito'}
+        {currentQty <= 0 && !inCart ? (
+          'Agotado'
+        ) : (
+          <>
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              {inCart ? (
+                // Checkmark when already in cart
+                <>
+                  <polyline points="20 6 9 17 4 12" />
+                </>
+              ) : (
+                // Cart icon
+                <>
+                  <circle cx="9" cy="21" r="1" />
+                  <circle cx="20" cy="21" r="1" />
+                  <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
+                </>
+              )}
+            </svg>
+            {inCart ? 'Ver carrito' : 'Añadir al carrito'}
+          </>
+        )}
       </button>
 
       {/* Square card payment button (if enabled) */}
-      {squareEnabled && squareCheckoutUrl && (
+      {squareEnabled && squareCheckoutUrl && currentQty > 0 && (
         <a
           id={`pay-square-${article.id}`}
           href={`${squareCheckoutUrl}&quantity=${selectedQty}`}

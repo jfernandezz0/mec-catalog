@@ -6,12 +6,18 @@ import { getSupabaseAdmin } from '@/lib/supabase';
  * Configure in vercel.json to run every minute:
  *   { "crons": [{ "path": "/api/cron/release-expired-reservations", "schedule": "* * * * *" }] }
  *
- * Protected by CRON_SECRET header.
  */
 export async function GET(request: NextRequest) {
+  const authHeader = request.headers.get('authorization');
   const secret = request.headers.get('x-cron-secret');
-  if (secret !== process.env.CRON_SECRET && process.env.NODE_ENV === 'production') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const cronSecret = process.env.CRON_SECRET;
+
+  if (cronSecret && process.env.NODE_ENV === 'production') {
+    const isAuthorized =
+      authHeader === `Bearer ${cronSecret}` || secret === cronSecret;
+    if (!isAuthorized) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
   }
 
   const db = getSupabaseAdmin();

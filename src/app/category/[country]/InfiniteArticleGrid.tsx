@@ -4,9 +4,8 @@ import { useState, useEffect, useRef } from 'react';
 import ArticleCard from './ArticleCard';
 import styles from './category.module.css';
 import { calculateDiscount } from '@/lib/discounts';
+import { supabase } from '@/lib/supabase';
 import { Article } from '@/lib/types';
-
-
 
 type InfiniteArticleGridProps = {
   articles: Article[];
@@ -18,21 +17,58 @@ type InfiniteArticleGridProps = {
 };
 
 export default function InfiniteArticleGrid({ 
-  articles, 
+  articles: initialArticles, 
   hidePrices = false, 
   hideAvailability = false,
   categoryDiscountPercent = null,
   generalDiscountPercent = '',
   countryCode = ''
 }: InfiniteArticleGridProps) {
+  const [localArticles, setLocalArticles] = useState<Article[]>(initialArticles);
   const [visibleCount, setVisibleCount] = useState(12);
   const [sortBy, setSortBy] = useState<string>('default');
   const [filterStock, setFilterStock] = useState<string>('all');
   const [layoutMode, setLayoutMode] = useState<'default' | 'alternate'>('default');
   const observerTargetRef = useRef<HTMLDivElement>(null);
 
+  // Sync state when props change
+  useEffect(() => {
+    setLocalArticles(initialArticles);
+  }, [initialArticles]);
+
+  // Subscribe to real-time database updates for stock changes
+  useEffect(() => {
+    const channel = supabase
+      .channel('grid-stock-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'articles',
+        },
+        (payload) => {
+          const updated = payload.new as Article;
+          if (updated && typeof updated.id === 'number') {
+            setLocalArticles((prev) =>
+              prev.map((art) =>
+                art.id === updated.id
+                  ? { ...art, quantity: updated.quantity, reserved_until: updated.reserved_until }
+                  : art
+              )
+            );
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
   // Filter articles based on stock availability selection
-  const filteredArticles = articles.filter((article) => {
+  const filteredArticles = localArticles.filter((article) => {
     if (filterStock === 'available') {
       return article.quantity > 0;
     }
@@ -92,10 +128,12 @@ export default function InfiniteArticleGrid({
   const visibleArticles = finalArticlesToRender.slice(0, visibleCount);
   const hasMore = visibleCount < finalArticlesToRender.length;
 
-  useEffect(() => {
-    // Reset visible count when sorting or filtering options change
+  // Adjust visible count during render if sorting or filtering options change
+  const [prevFilters, setPrevFilters] = useState({ sortBy, filterStock });
+  if (prevFilters.sortBy !== sortBy || prevFilters.filterStock !== filterStock) {
+    setPrevFilters({ sortBy, filterStock });
     setVisibleCount(12);
-  }, [sortBy, filterStock]);
+  }
 
   useEffect(() => {
     if (!hasMore) return;
