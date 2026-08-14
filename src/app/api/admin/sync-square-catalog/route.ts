@@ -1,37 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { syncArticleToSquareCatalog } from '@/lib/square';
 import { getSupabaseAdmin } from '@/lib/supabase';
+import { verifyAdminSession } from '@/lib/utils.server';
 
 export async function POST(request: NextRequest) {
   try {
-    // 1. Verify admin authentication via Bearer token
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    // 1. Verify admin authentication
+    const authResult = await verifyAdminSession(request);
+    if (!authResult.authorized) {
       return NextResponse.json(
-        { error: 'No autorizado. Debes iniciar sesión como administrador.' },
-        { status: 401 }
-      );
-    }
-
-    const token = authHeader.substring(7);
-
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-    const supabaseClient = createClient(supabaseUrl, supabaseKey, {
-      global: {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      },
-    });
-
-    const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
-    
-    if (authError || !user || user.email !== 'minienginescreations@gmail.com') {
-      return NextResponse.json(
-        { error: 'Acceso denegado. No tienes permisos de administrador.' },
-        { status: 401 }
+        { error: authResult.error || 'No autorizado' },
+        { status: authResult.statusCode || 401 }
       );
     }
 

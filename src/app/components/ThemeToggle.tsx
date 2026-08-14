@@ -9,11 +9,6 @@ export default function ThemeToggle() {
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [mounted, setMounted] = useState(false);
 
-  // Hide theme toggle on admin panel routes
-  if (pathname?.startsWith('/admin')) {
-    return null;
-  }
-
   useEffect(() => {
     // Find current active theme on client
     const isDark = document.documentElement.classList.contains('dark') ||
@@ -25,6 +20,11 @@ export default function ThemeToggle() {
       setTheme(isDark ? 'dark' : 'light');
     }, 0);
   }, []);
+
+  // Hide theme toggle on admin panel routes
+  if (pathname?.startsWith('/admin')) {
+    return null;
+  }
 
   const toggleTheme = () => {
     const nextTheme = theme === 'dark' ? 'light' : 'dark';

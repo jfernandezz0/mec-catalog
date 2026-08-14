@@ -1,10 +1,12 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useCart } from '@/lib/contexts/CartContext';
 import { formatPrice } from '@/lib/utils';
+import { calculateDiscount } from '@/lib/discounts';
 import { supabase } from '@/lib/supabase';
 
 type Step = 'resumen' | 'datos' | 'envio' | 'pago';
@@ -41,7 +43,7 @@ const MOTOR_QUOTES = [
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { items, total, clearCart, validateStock, stockStatuses, addItem } = useCart();
+  const { items, clearCart, validateStock, stockStatuses, addItem } = useCart();
 
   const [step, setStep] = useState<Step>('resumen');
   const [shippingMethod, setShippingMethod] = useState<'recogida' | 'envio'>('recogida');
@@ -53,18 +55,44 @@ export default function CheckoutPage() {
     province: '',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [paymentsEnabled, setPaymentsEnabled] = useState<boolean>(true);
   const [squarePaymentEnabled, setSquarePaymentEnabled] = useState<boolean>(false);
   const [bizumEnabled, setBizumEnabled] = useState<boolean>(true);
   const [paypalEnabled, setPaypalEnabled] = useState<boolean>(true);
   const [selectedMethod, setSelectedMethod] = useState<'tarjeta' | 'bizum' | 'paypal' | null>(null);
+
+  const [prevEnabled, setPrevEnabled] = useState({
+    square: false,
+    bizum: true,
+    paypal: true,
+  });
+
+  if (
+    prevEnabled.square !== squarePaymentEnabled ||
+    prevEnabled.bizum !== bizumEnabled ||
+    prevEnabled.paypal !== paypalEnabled
+  ) {
+    setPrevEnabled({
+      square: squarePaymentEnabled,
+      bizum: bizumEnabled,
+      paypal: paypalEnabled,
+    });
+    if (squarePaymentEnabled) {
+      setSelectedMethod('tarjeta');
+    } else if (bizumEnabled) {
+      setSelectedMethod('bizum');
+    } else if (paypalEnabled) {
+      setSelectedMethod('paypal');
+    } else {
+      setSelectedMethod(null);
+    }
+  }
   const [squareLoaded, setSquareLoaded] = useState(false);
   const [squareCard, setSquareCard] = useState<any>(null);
   const [paying, setPaying] = useState(false);
   const [reserving, setReserving] = useState(false);
   const [reserved, setReserved] = useState(false);
   const [reservationExpiry, setReservationExpiry] = useState<Date | null>(null);
-  const [countdown, setCountdown] = useState<string>('');
+  const [countdown, setCountdown] = useState<string>('03:00');
   const [payError, setPayError] = useState<string>('');
 
   // Countdown & Quotes Carousel states
@@ -124,8 +152,18 @@ export default function CheckoutPage() {
           return;
         }
 
-        // Add to cart
-        addItem(art, finalQty);
+        // Fetch category & settings to compute proper discounted price
+        const [catRes, setRes] = await Promise.all([
+          supabase.from('categories').select('discount_percent').eq('id', art.category_id).maybeSingle(),
+          supabase.from('settings').select('key, value')
+        ]);
+        const settingsMap = new Map(setRes.data?.map((s: any) => [s.key, s.value]) || []);
+        const generalDiscount = settingsMap.get('general_discount_percent') || '';
+        const catDiscount = catRes.data?.discount_percent ?? null;
+        const discountInfo = calculateDiscount(art.price, art.discount_type, art.discount_value, catDiscount, generalDiscount);
+
+        // Add to cart with discounted price
+        addItem(art, finalQty, discountInfo.finalPrice);
       } catch (err) {
         console.error('[checkout] Error adding query article to cart:', err);
         router.replace('/');
@@ -135,7 +173,6 @@ export default function CheckoutPage() {
     fetchAndAddArticle();
   }, [items, addItem, router]);
 
-  // Redirect to catalog if cart is empty (only if not on payment step to prevent redirect races)
   useEffect(() => {
     const hasArticleParam = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('article');
     if (items.length === 0 && step !== 'pago' && !hasArticleParam) {
@@ -143,7 +180,6 @@ export default function CheckoutPage() {
     }
   }, [items, router, step]);
 
-  // Load payment settings on mount
   useEffect(() => {
     async function checkSettings() {
       try {
@@ -154,7 +190,6 @@ export default function CheckoutPage() {
         if (data) {
           const settingsMap = new Map(data.map((item: any) => [item.key, item.value]));
           
-          setPaymentsEnabled(settingsMap.get('payments_enabled') !== 'false');
           setSquarePaymentEnabled(settingsMap.get('square_payments_enabled') === 'true');
           setBizumEnabled(settingsMap.get('bizum_enabled') !== 'false');
           setPaypalEnabled(settingsMap.get('paypal_enabled') !== 'false');
@@ -166,20 +201,8 @@ export default function CheckoutPage() {
     checkSettings();
   }, []);
 
-  // Set default selected payment method based on loaded configurations
-  useEffect(() => {
-    if (squarePaymentEnabled) {
-      setSelectedMethod('tarjeta');
-    } else if (bizumEnabled) {
-      setSelectedMethod('bizum');
-    } else if (paypalEnabled) {
-      setSelectedMethod('paypal');
-    } else {
-      setSelectedMethod(null);
-    }
-  }, [squarePaymentEnabled, bizumEnabled, paypalEnabled]);
 
-  // Load Square Web Payments SDK
+
   useEffect(() => {
     if (step !== 'pago' || squareLoaded || squarePaymentEnabled === false) return;
 
@@ -198,7 +221,6 @@ export default function CheckoutPage() {
     };
   }, [step, squareLoaded, squarePaymentEnabled]);
 
-  // Init Square card form
   useEffect(() => {
     if (!squareLoaded || squareCard || squarePaymentEnabled === false) return;
 
@@ -214,7 +236,6 @@ export default function CheckoutPage() {
         await card.attach('#square-card-container');
         setSquareCard(card);
       } catch (err) {
-        console.error('[Square] Init error:', err);
         setPayError('Error cargando el formulario de pago. Recarga la página.');
       }
     };
@@ -222,7 +243,6 @@ export default function CheckoutPage() {
     initSquare();
   }, [squareLoaded, squareCard, shipping.postalCode, squarePaymentEnabled]);
 
-  // Restore reservation from localStorage on mount
   useEffect(() => {
     try {
       if (typeof window !== 'undefined') {
@@ -234,21 +254,20 @@ export default function CheckoutPage() {
             const currentIds = availableItems.map((i) => i.article.id);
             const matches = savedIds.length === currentIds.length && savedIds.every((id: number) => currentIds.includes(id));
             if (matches) {
-              setReservationExpiry(expiryDate);
-              setReserved(true);
+              setTimeout(() => {
+                setReservationExpiry(expiryDate);
+                setReserved(true);
+              }, 0);
             }
           } else {
             localStorage.removeItem('mec_reservation');
           }
         }
       }
-    } catch (e) {
-      console.error('[checkout] Error restoring reservation:', e);
-    }
+    } catch (e) {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Reserve stock when entering payment step
   useEffect(() => {
     if (step !== 'pago' || reserved || reserving) return;
 
@@ -271,13 +290,11 @@ export default function CheckoutPage() {
             localStorage.setItem('mec_reservation', JSON.stringify({ expiry: expiry.toISOString(), items: ids }));
           }
         } else {
-          setPayError(
-            'Algún artículo ya no está disponible. Vuelve al carrito y actualiza.',
-          );
+          setPayError('Algún artículo ya no está disponible.');
           await validateStock();
         }
       } catch {
-        setPayError('Error al reservar el stock. Inténtalo de nuevo.');
+        setPayError('Error al reservar el stock.');
       } finally {
         setReserving(false);
       }
@@ -287,7 +304,6 @@ export default function CheckoutPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
 
-  // Countdown timer
   useEffect(() => {
     if (!reservationExpiry) return;
 
@@ -295,7 +311,7 @@ export default function CheckoutPage() {
       const remaining = reservationExpiry.getTime() - Date.now();
       if (remaining <= 0) {
         setCountdown('00:00');
-        setPayError('Tu reserva ha expirado. Vuelve al carrito e inténtalo de nuevo.');
+        setPayError('Tu reserva ha expirado.');
         setReserved(false);
         if (typeof window !== 'undefined') {
           localStorage.removeItem('mec_reservation');
@@ -312,7 +328,6 @@ export default function CheckoutPage() {
     return () => clearInterval(interval);
   }, [reservationExpiry]);
 
-  // Release reservation when leaving payment step
   useEffect(() => {
     return () => {
       if (reserved) {
@@ -330,22 +345,18 @@ export default function CheckoutPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reserved]);
 
-  // Countdown and Quotes effect for waiting payment validation
   useEffect(() => {
     if (!countdownActive) return;
 
-    // Rotate quote every 7 seconds
     const quoteInterval = setInterval(() => {
       setCurrentQuoteIndex((prev) => (prev + 1) % MOTOR_QUOTES.length);
     }, 7000);
 
-    // Countdown tick down
     const tickInterval = setInterval(() => {
       setCountdownValue((prev) => {
         if (prev <= 1) {
           clearInterval(tickInterval);
           clearInterval(quoteInterval);
-          // Trigger manual sale email dispatch on backend after timer finishes
           (async () => {
             try {
               await fetch('/api/checkout/send-manual-sale-email', {
@@ -353,9 +364,7 @@ export default function CheckoutPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ saleId: pendingSaleId }),
               });
-            } catch (err) {
-              console.error('Failed to trigger reservation email:', err);
-            } finally {
+            } catch (err) {} finally {
               clearCart();
               router.push(`/checkout/success?order=${pendingOrderNumber ?? ''}`);
             }
@@ -372,8 +381,6 @@ export default function CheckoutPage() {
     };
   }, [countdownActive, pendingSaleId, pendingOrderNumber, clearCart, router]);
 
-  // ── Validation ────────────────────────────────────────────
-
   function validateBuyer(): boolean {
     const e: Record<string, string> = {};
     if (!buyer.name.trim()) e.name = 'El nombre es obligatorio';
@@ -385,23 +392,18 @@ export default function CheckoutPage() {
   }
 
   function validateShipping(): boolean {
-    if (shippingMethod === 'recogida') {
-      return true;
-    }
+    if (shippingMethod === 'recogida') return true;
 
     const e: Record<string, string> = {};
     if (!shipping.address.trim()) e.address = 'La dirección es obligatoria';
     
     const cp = shipping.postalCode.trim();
-    if (!cp) {
-      e.postalCode = 'El código postal es obligatorio';
-    } else if (!/^\d{5}$/.test(cp)) {
-      e.postalCode = 'Introduce un código postal de 5 dígitos';
-    } else {
+    if (!cp) e.postalCode = 'El código postal es obligatorio';
+    else if (!/^\d{5}$/.test(cp)) e.postalCode = 'Introduce un CP de 5 dígitos';
+    else {
       const prefix = cp.substring(0, 2);
-      const blockedPrefixes = ['07', '35', '38', '51', '52']; // Baleares, Canarias, Ceuta, Melilla
-      if (blockedPrefixes.includes(prefix)) {
-        e.postalCode = 'Lo sentimos, no realizamos envíos fuera de España peninsular.';
+      if (['07', '35', '38', '51', '52'].includes(prefix)) {
+        e.postalCode = 'No realizamos envíos fuera de la península.';
       }
     }
 
@@ -429,340 +431,87 @@ export default function CheckoutPage() {
     }
   };
 
-  // ── Pay ────────────────────────────────────────────────────
-
-  const handlePay = useCallback(async () => {
+  const handlePay = async () => {
     if (paying) return;
     setPayError('');
     setPaying(true);
 
-    const formattedWhatsapp = buyer.whatsapp.replace(/\D/g, '') === '34' || buyer.whatsapp.trim() === ''
-      ? null
-      : buyer.whatsapp.trim();
+    const formattedWhatsapp = buyer.whatsapp.replace(/\D/g, '') === '34' || buyer.whatsapp.trim() === '' ? null : buyer.whatsapp.trim();
 
     const shippingAddress = shippingMethod === 'recogida'
-      ? {
-          method: 'recogida',
-          price: 0,
-          description: 'Recogida en taller (León, ESP)',
-        }
+      ? { method: 'recogida', price: 0, description: 'Recogida en taller (León, ESP)' }
       : {
-          method: 'envio',
-          price: 9.99,
-          address: shipping.address,
-          postalCode: shipping.postalCode,
-          city: shipping.city,
-          province: shipping.province,
-          country: 'España',
+          method: 'envio', price: 9.99, address: shipping.address, postalCode: shipping.postalCode,
+          city: shipping.city, province: shipping.province, country: 'España',
         };
 
     const cartItems = availableItems.map((i) => ({
-      articleId: i.article.id,
-      title: i.article.title,
-      priceAtCheckout: i.priceAtAdd,
+      articleId: i.article.id, title: i.article.title, priceAtCheckout: i.priceAtAdd,
     }));
 
-    if (selectedMethod === 'tarjeta') {
-      if (!squareCard) {
-        setPayError('El formulario de tarjeta no está listo.');
-        setPaying(false);
-        return;
-      }
-
-      try {
+    try {
+      if (selectedMethod === 'tarjeta') {
+        if (!squareCard) throw new Error('Formulario no listo');
         const tokenResult = await squareCard.tokenize();
-        if (tokenResult.status !== 'OK') {
-          setPayError('No se pudo procesar la tarjeta. Revisa los datos e inténtalo de nuevo.');
-          setPaying(false);
-          return;
-        }
-
-        const sourceId = tokenResult.token;
-
+        if (tokenResult.status !== 'OK') throw new Error('Error tarjeta');
         const res = await fetch('/api/checkout/create-payment', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            sourceId,
-            cartItems,
-            total: availableTotal,
-            buyerEmail: buyer.email,
-            buyerName: buyer.name,
-            buyerWhatsapp: formattedWhatsapp,
-            shippingAddress,
-          }),
+          body: JSON.stringify({ sourceId: tokenResult.token, cartItems, total: availableTotal, buyerEmail: buyer.email, buyerName: buyer.name, buyerWhatsapp: formattedWhatsapp, shippingAddress }),
         });
-
         const data = await res.json();
-
-        if (!res.ok || !data.success) {
-          setPayError(data.error ?? 'El pago ha fallado. Inténtalo de nuevo.');
-          setPaying(false);
-          return;
-        }
-
+        if (!res.ok || !data.success) throw new Error(data.error);
         clearCart();
         router.push(`/checkout/success?order=${data.orderNumber ?? ''}`);
-      } catch (err) {
-        console.error('[handlePay Card]', err);
-        setPayError('Error inesperado procesando la tarjeta. Inténtalo de nuevo.');
-        setPaying(false);
-      }
-    } else if (selectedMethod === 'bizum') {
-      try {
+      } else {
         const res = await fetch('/api/checkout/create-manual-sale', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            cartItems,
-            buyerName: buyer.name,
-            buyerEmail: buyer.email,
-            buyerWhatsapp: formattedWhatsapp,
-            shippingAddress,
-            total: availableTotal,
-            paymentMethod: 'BIZUM',
-            delayEmail: true,
-          }),
+          body: JSON.stringify({ cartItems, buyerName: buyer.name, buyerEmail: buyer.email, buyerWhatsapp: formattedWhatsapp, shippingAddress, total: availableTotal, paymentMethod: selectedMethod === 'bizum' ? 'BIZUM' : 'PAYPAL', delayEmail: true }),
         });
-
         const data = await res.json();
-
-        if (!res.ok || !data.success) {
-          setPayError(data.error ?? 'Error al registrar el pedido Bizum.');
-          setPaying(false);
-          return;
-        }
-
-        // Redirect to external Bizum payment link in a new window
+        if (!res.ok || !data.success) throw new Error(data.error);
         const amountInCents = Math.round(Number(availableTotal) * 100);
-        const noteText = `MEC | mini engines - Pedido ${data.orderNumber}`;
-        const bizumPayUrl = `https://revolut.me/jfernandezz?currency=EUR&amount=${amountInCents}&note=${encodeURIComponent(noteText)}`;
-        window.open(bizumPayUrl, '_blank');
-
+        const url = selectedMethod === 'bizum' 
+            ? `https://revolut.me/jfernandezz?currency=EUR&amount=${amountInCents}&note=${encodeURIComponent(`MEC | Pedido ${data.orderNumber}`)}`
+            : `https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=javifzlvdc@gmail.com&item_name=${encodeURIComponent(`MEC | Pedido ${data.orderNumber}`)}&amount=${Number(availableTotal).toFixed(2)}&currency_code=EUR&no_shipping=1`;
+        window.open(url, '_blank');
         setPendingSaleId(data.saleId);
         setPendingOrderNumber(data.orderNumber);
-        setCountdownValue(60);
         setCountdownActive(true);
-        setPaying(false);
-      } catch (err) {
-        console.error('[handlePay Bizum]', err);
-        setPayError('Error registrando tu pedido Bizum. Inténtalo de nuevo.');
-        setPaying(false);
       }
-    } else if (selectedMethod === 'paypal') {
-      try {
-        const res = await fetch('/api/checkout/create-manual-sale', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            cartItems,
-            buyerName: buyer.name,
-            buyerEmail: buyer.email,
-            buyerWhatsapp: formattedWhatsapp,
-            shippingAddress,
-            total: availableTotal,
-            paymentMethod: 'PAYPAL',
-            delayEmail: true,
-          }),
-        });
-
-        const data = await res.json();
-
-        if (!res.ok || !data.success) {
-          setPayError(data.error ?? 'Error al registrar el pedido PayPal.');
-          setPaying(false);
-          return;
-        }
-
-        // Redirect to external PayPal link in a new window
-        const paypalPrice = Number(availableTotal).toFixed(2);
-        const noteText = `MEC | mini engines - Pedido ${data.orderNumber}`;
-        const paypalPayUrl = `https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=javifzlvdc@gmail.com&item_name=${encodeURIComponent(noteText)}&amount=${paypalPrice}&currency_code=EUR&no_shipping=1`;
-        window.open(paypalPayUrl, '_blank');
-
-        setPendingSaleId(data.saleId);
-        setPendingOrderNumber(data.orderNumber);
-        setCountdownValue(60);
-        setCountdownActive(true);
-        setPaying(false);
-      } catch (err) {
-        console.error('[handlePay PayPal]', err);
-        setPayError('Error registrando tu pedido PayPal. Inténtalo de nuevo.');
-        setPaying(false);
-      }
+    } catch (err: any) {
+      setPayError(err.message || 'Error en el pago');
+      setPaying(false);
     }
-  }, [
-    selectedMethod,
-    squareCard,
-    paying,
-    availableItems,
-    availableTotal,
-    buyer,
-    shipping,
-    shippingMethod,
-    clearCart,
-    router,
-  ]);
-
-  // ── UI ────────────────────────────────────────────────────
+  };
 
   const currentStepIndex = STEP_LABELS.findIndex((s) => s.id === step);
 
   if (countdownActive) {
-    const minutes = Math.floor(countdownValue / 60);
-    const seconds = countdownValue % 60;
-    const formattedTime = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    const formattedTime = `${String(Math.floor(countdownValue / 60)).padStart(2, '0')}:${String(countdownValue % 60).padStart(2, '0')}`;
     const quote = MOTOR_QUOTES[currentQuoteIndex];
 
     return (
-      <main
-        style={{
-          minHeight: '100vh',
-          background: 'var(--bg-page)',
-          color: 'var(--text-primary)',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '40px 24px',
-          textAlign: 'center',
-        }}
-      >
+      <main style={{ minHeight: '100vh', background: 'var(--bg-page)', color: 'var(--text-primary)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 24px', textAlign: 'center' }}>
         <div style={{ maxWidth: '480px', width: '100%' }}>
-          {/* Spinner */}
           <div style={{ marginBottom: '32px', position: 'relative', display: 'inline-block' }}>
-            <div
-              style={{
-                width: '96px',
-                height: '96px',
-                borderRadius: '50%',
-                border: '4px solid rgba(99, 102, 241, 0.1)',
-                borderTopColor: 'var(--accent-primary, #6366f1)',
-                animation: 'spin 2s linear infinite',
-              }}
-            />
-            <style dangerouslySetInnerHTML={{__html: `
-              @keyframes spin {
-                0% { transform: rotate(0deg); }
-                100% { transform: rotate(360deg); }
-              }
-            `}} />
-            <div
-              style={{
-                position: 'absolute',
-                top: '50%',
-                left: '50%',
-                transform: 'translate(-50%, -50%)',
-                fontSize: '28px',
-              }}
-            >
-              🏎️
-            </div>
+            <div style={{ width: '96px', height: '96px', borderRadius: '50%', border: '4px solid rgba(99, 102, 241, 0.1)', borderTopColor: 'var(--accent-primary, #6366f1)', animation: 'spin 2s linear infinite' }} />
+            <style dangerouslySetInnerHTML={{__html: `@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}} />
+            <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', fontSize: '28px' }}>🏎️</div>
           </div>
-
-          <h1
-            style={{
-              fontSize: '24px',
-              fontWeight: 800,
-              marginBottom: '12px',
-              letterSpacing: '-0.02em',
-            }}
-          >
-            Procesando reserva...
-          </h1>
-
-          <p
-            style={{
-              fontSize: '14px',
-              color: 'var(--text-secondary)',
-              lineHeight: 1.6,
-              marginBottom: '24px',
-            }}
-          >
-            Por favor, completa el pago en la pestaña de Revolut o PayPal que se acaba de abrir. La web confirmará tu reserva en unos segundos. No cierres esta ventana.
-          </p>
-
-          {/* Timer Display */}
-          <div
-            style={{
-              background: 'rgba(255,255,255,0.03)',
-              border: '1px solid rgba(255,255,255,0.08)',
-              borderRadius: '16px',
-              padding: '20px 24px',
-              marginBottom: '40px',
-            }}
-          >
-            <div
-              style={{
-                fontSize: '40px',
-                fontWeight: 800,
-                color: 'var(--accent-primary, #6366f1)',
-                fontFamily: 'monospace',
-                letterSpacing: '2px',
-                marginBottom: '4px',
-              }}
-            >
-              {formattedTime}
-            </div>
-            <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-secondary)' }}>
-              Espera de validación
-            </div>
+          <h1 style={{ fontSize: '24px', fontWeight: 800, marginBottom: '12px', letterSpacing: '-0.02em' }}>Procesando reserva...</h1>
+          <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: '24px' }}>Por favor, completa el pago en la pestaña que se acaba de abrir. No cierres esta ventana.</p>
+          <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '16px', padding: '20px 24px', marginBottom: '40px' }}>
+            <div style={{ fontSize: '40px', fontWeight: 800, color: 'var(--accent-primary, #6366f1)', fontFamily: 'monospace', letterSpacing: '2px', marginBottom: '4px' }}>{formattedTime}</div>
+            <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-secondary)' }}>Espera de validación</div>
           </div>
-
-          {/* Carousel box */}
-          <div
-            style={{
-              minHeight: '120px',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'center',
-              background: 'linear-gradient(180deg, rgba(99,102,241,0.03) 0%, rgba(139,92,246,0.03) 100%)',
-              border: '1px solid rgba(99,102,241,0.08)',
-              borderRadius: '16px',
-              padding: '24px',
-              position: 'relative',
-              overflow: 'hidden',
-              boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-            }}
-          >
-            <div
-              key={currentQuoteIndex}
-              style={{
-                animation: 'fadeInOut 7s ease-in-out infinite',
-              }}
-            >
-              <p
-                style={{
-                  fontStyle: 'italic',
-                  fontSize: '14px',
-                  lineHeight: 1.6,
-                  color: 'var(--text-primary)',
-                  marginBottom: '10px',
-                  fontWeight: 500,
-                }}
-              >
-                "{quote.text}"
-              </p>
-              <p
-                style={{
-                  fontSize: '12px',
-                  color: 'var(--accent-primary, #8b5cf6)',
-                  fontWeight: 600,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.04em',
-                }}
-              >
-                — {quote.author}
-              </p>
+          <div style={{ minHeight: '120px', display: 'flex', flexDirection: 'column', justifyContent: 'center', background: 'linear-gradient(180deg, rgba(99,102,241,0.03) 0%, rgba(139,92,246,0.03) 100%)', border: '1px solid rgba(99,102,241,0.08)', borderRadius: '16px', padding: '24px', position: 'relative', overflow: 'hidden' }}>
+            <div key={currentQuoteIndex} style={{ animation: 'fadeInOut 7s ease-in-out infinite' }}>
+              <p style={{ fontStyle: 'italic', fontSize: '14px', lineHeight: 1.6, color: 'var(--text-primary)', marginBottom: '10px', fontWeight: 500 }}>&ldquo;{quote.text}&rdquo;</p>
+              <p style={{ fontSize: '12px', color: 'var(--accent-primary, #8b5cf6)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>— {quote.author}</p>
             </div>
-            <style dangerouslySetInnerHTML={{__html: `
-              @keyframes fadeInOut {
-                0% { opacity: 0; transform: translateY(4px); }
-                10% { opacity: 1; transform: translateY(0); }
-                90% { opacity: 1; transform: translateY(0); }
-                100% { opacity: 0; transform: translateY(-4px); }
-              }
-            `}} />
+            <style dangerouslySetInnerHTML={{__html: `@keyframes fadeInOut { 0% { opacity: 0; transform: translateY(4px); } 10% { opacity: 1; transform: translateY(0); } 90% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-4px); } }`}} />
           </div>
         </div>
       </main>
@@ -770,18 +519,9 @@ export default function CheckoutPage() {
   }
 
   return (
-    <main
-      style={{
-        minHeight: '100vh',
-        background: 'var(--bg-page)',
-        color: 'var(--text-primary)',
-        padding: '24px 16px 80px',
-      }}
-    >
+    <main style={{ minHeight: '100vh', background: 'var(--bg-page)', color: 'var(--text-primary)', padding: '24px 16px 80px' }}>
       <div style={{ maxWidth: '640px', margin: '0 auto' }}>
-
-        {/* Back to catalog */}
-        <a
+        <Link
           href="/"
           style={{
             display: 'inline-flex',
@@ -794,7 +534,7 @@ export default function CheckoutPage() {
           }}
         >
           ← Volver al catálogo
-        </a>
+        </Link>
 
         <h1
           style={{
@@ -1603,25 +1343,6 @@ function TotalRow({ label, value, muted = false }: { label: string; value: strin
       <span style={{ fontWeight: 600, color: muted ? 'var(--text-secondary)' : 'var(--text-primary)' }}>
         {value}
       </span>
-    </div>
-  );
-}
-
-function InfoBox({ children }: { children: React.ReactNode }) {
-  return (
-    <div
-      style={{
-        background: 'var(--bg-card-glass)',
-        border: '1px solid var(--border-card)',
-        borderRadius: '10px',
-        padding: '12px 14px',
-        fontSize: '13px',
-        color: 'var(--text-secondary)',
-        lineHeight: 1.6,
-        margin: '16px 0',
-      }}
-    >
-      {children}
     </div>
   );
 }

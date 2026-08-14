@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { calculateDiscount } from '@/lib/discounts';
 import { formatPrice } from '@/lib/utils';
 import { useSwipe } from '@/lib/hooks/useSwipe';
@@ -31,8 +31,6 @@ type ArticleCardProps = {
   countryCode?: string;
 };
 
-
-
 export default function ArticleCard({ 
   article, 
   index, 
@@ -54,25 +52,23 @@ export default function ArticleCard({
   const { addItem, hasItem, openDrawer } = useCart();
   const inCart = hasItem(article.id);
 
+  const discountInfo = calculateDiscount(
+    article.price,
+    article.discount_type,
+    article.discount_value,
+    categoryDiscountPercent,
+    generalDiscountPercent
+  );
+
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!inCart) addItem(article as any);
+    if (!inCart) addItem(article as any, 1, discountInfo.finalPrice);
     openDrawer();
   };
 
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
   const articleUrl = `${origin}/article/${article.id}`;
-
-  const copyToClipboard = async (text: string, successMessage: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setToastMsg(successMessage);
-      setTimeout(() => setToastMsg(''), 2500);
-    } catch (err) {
-      console.error('Failed to copy to clipboard: ', err);
-    }
-  };
 
   function showPreviousImage() {
     setCurrentImage((current) =>
@@ -86,16 +82,16 @@ export default function ArticleCard({
     );
   }
 
-  const { onTouchStart, onTouchMove, onTouchEnd, swipeOccurred } = useSwipe({
+  const { onTouchStart, onTouchMove, onTouchEnd, getSwipeOccurred, resetSwipeOccurred } = useSwipe({
     onSwipeLeft: showNextImage,
     onSwipeRight: showPreviousImage,
   });
 
   const handleLinkClick = (e: React.MouseEvent) => {
-    if (swipeOccurred.current) {
+    if (getSwipeOccurred()) {
       e.preventDefault();
       e.stopPropagation();
-      swipeOccurred.current = false;
+      resetSwipeOccurred();
     }
   };
 

@@ -14,7 +14,7 @@ interface CartContextValue {
   isDrawerOpen: boolean;
   openDrawer: () => void;
   closeDrawer: () => void;
-  addItem: (article: Article, quantity?: number) => void;
+  addItem: (article: Article, quantity?: number, finalPrice?: number) => void;
   removeItem: (articleId: number) => void;
   clearCart: () => void;
   hasItem: (articleId: number) => boolean;
@@ -40,13 +40,19 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
             ...item,
             quantity: item.quantity || 1
           }));
-          setItems(migrated);
+          setTimeout(() => {
+            setItems(migrated);
+            setHydrated(true);
+          }, 0);
+          return;
         }
       }
     } catch {
       // ignore parse errors
     }
-    setHydrated(true);
+    setTimeout(() => {
+      setHydrated(true);
+    }, 0);
   }, []);
 
   // Persist to localStorage on change
@@ -99,21 +105,24 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     };
   }, [items, hydrated]);
 
-  const addItem = useCallback((article: Article, quantity: number = 1) => {
+  const addItem = useCallback((article: Article, quantity: number = 1, finalPrice?: number) => {
     setItems(prev => {
+      const rawPrice = typeof article.price === 'string'
+        ? parseFloat(article.price as unknown as string)
+        : article.price;
+      const priceAtAdd = typeof finalPrice === 'number' && finalPrice >= 0 ? finalPrice : rawPrice;
+
       const existingIndex = prev.findIndex(i => i.article.id === article.id);
       if (existingIndex > -1) {
         const nextItems = [...prev];
         nextItems[existingIndex] = {
           ...nextItems[existingIndex],
-          quantity
+          quantity,
+          priceAtAdd,
         };
         return nextItems;
       }
       if (article.quantity <= 0) return prev; // out of stock
-      const priceAtAdd = typeof article.price === 'string'
-        ? parseFloat(article.price as unknown as string)
-        : article.price;
       return [...prev, { article, priceAtAdd, quantity }];
     });
   }, []);
@@ -179,7 +188,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
               }
             }
           }
-        } catch (e) {
+        } catch {
           // Ignore storage errors
         }
 

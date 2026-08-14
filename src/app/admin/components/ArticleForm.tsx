@@ -53,7 +53,6 @@ export default function ArticleForm({
   frameFileInputRef,
   updateFiles,
   updateFrameFiles,
-  editingArticle,
   existingImageUrls,
   existingFrameImageUrls,
   handleDeleteExistingImage,

@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { getFlagEmoji, formatPrice } from '@/lib/utils';
 import { Article, Category } from '@/lib/types';
 import styles from '../admin.module.css';
@@ -35,10 +35,25 @@ export default function CatalogTab({
   const itemsPerPage = 12;
   const [stockFilter, setStockFilter] = useState<'in' | 'out' | 'all'>('in');
 
-  // Reset page when search, category, or stock filter changes
-  useEffect(() => {
+  // Adjust page during render if filters change
+  const [prevFilters, setPrevFilters] = useState({
+    categoryId: selectedCatalogCategoryId,
+    query: searchQuery,
+    filter: stockFilter,
+  });
+
+  if (
+    prevFilters.categoryId !== selectedCatalogCategoryId ||
+    prevFilters.query !== searchQuery ||
+    prevFilters.filter !== stockFilter
+  ) {
+    setPrevFilters({
+      categoryId: selectedCatalogCategoryId,
+      query: searchQuery,
+      filter: stockFilter,
+    });
     setCurrentPage(1);
-  }, [selectedCatalogCategoryId, searchQuery, stockFilter]);
+  }
 
   let displayedArticles = selectedCatalogCategoryId === null
     ? articles

@@ -96,7 +96,7 @@ export function useAdminData(onUserReady?: () => void): UseAdminDataReturn {
   // --- Data loading functions ---
 
   const loadCategories = useCallback(async function loadCategories() {
-    setLoadingCategories(true);
+    setLoadingCategories(prev => prev === true ? prev : true);
     try {
       const { categories, hasVisibilityColumn, hasDiscountColumns } = await safeFetchCategories();
       setCategories(categories);
@@ -110,7 +110,7 @@ export function useAdminData(onUserReady?: () => void): UseAdminDataReturn {
   }, []);
 
   const loadArticles = useCallback(async function loadArticles() {
-    setLoadingArticles(true);
+    setLoadingArticles(prev => prev === true ? prev : true);
     try {
       const { articles, hasDiscountColumns } = await safeFetchArticles();
       setArticles(articles);
@@ -123,7 +123,7 @@ export function useAdminData(onUserReady?: () => void): UseAdminDataReturn {
   }, []);
 
   const loadPaymentsSetting = useCallback(async function loadPaymentsSetting() {
-    setLoadingPaymentsSetting(true);
+    setLoadingPaymentsSetting(prev => prev === true ? prev : true);
     try {
       const { data, error } = await supabase
         .from('settings')
@@ -220,10 +220,16 @@ export function useAdminData(onUserReady?: () => void): UseAdminDataReturn {
   // --- Initial data loading effect ---
   useEffect(() => {
     if (!user) return;
-    loadCategories();
-    loadArticles();
-    loadPaymentsSetting();
-    if (onUserReady) onUserReady();
+    setTimeout(() => {
+      loadCategories();
+      loadArticles();
+      loadPaymentsSetting();
+    }, 0);
+    if (onUserReady) {
+      setTimeout(() => {
+        onUserReady();
+      }, 0);
+    }
   }, [user, loadCategories, loadArticles, loadPaymentsSetting, onUserReady]);
 
   return {

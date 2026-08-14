@@ -45,6 +45,9 @@ export function useSwipe({ onSwipeLeft, onSwipeRight, threshold = 50 }: SwipeCon
     onTouchStart,
     onTouchMove,
     onTouchEnd,
-    swipeOccurred,
+    getSwipeOccurred: () => swipeOccurred.current,
+    resetSwipeOccurred: () => {
+      swipeOccurred.current = false;
+    },
   };
 }

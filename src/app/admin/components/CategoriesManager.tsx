@@ -26,7 +26,7 @@ export default function CategoriesManager({
   const [categoryCode, setCategoryCode] = useState('');
   const [categoryLoading, setCategoryLoading] = useState(false);
   const [categoryLogo, setCategoryLogo] = useState<File | null>(null);
-  const [logoInputKey, setLogoInputKey] = useState(Date.now());
+  const [logoInputKey, setLogoInputKey] = useState(0);
   const [categoryUpdatingId, setCategoryUpdatingId] = useState<number | null>(null);
 
   async function handleCreateCategory(event: FormEvent<HTMLFormElement>) {
@@ -157,6 +157,7 @@ export default function CategoriesManager({
       }
 
       alert('Categoría creada correctamente.');
+      setLogoInputKey(prev => prev + 1);
       window.location.reload();
     } catch (error) {
       alert(error instanceof Error ? error.message : 'Error al crear la categoría.');

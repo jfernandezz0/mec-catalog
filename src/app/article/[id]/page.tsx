@@ -106,8 +106,8 @@ export default async function ArticlePage({
     ]);
 
     // Process article
-    let articleData = articleResult.data;
-    let artErr = articleResult.error;
+    const articleData = articleResult.data;
+    const artErr = articleResult.error;
     if (artErr) {
       if (artErr.message.includes('discount_type') || artErr.message.includes('discount_value')) {
         const { data: fallbackData, error: fallbackError } = await supabase
@@ -169,8 +169,8 @@ export default async function ArticlePage({
     ]);
 
     // Process category
-    let categoryData = categoryResult.data;
-    let catErr = categoryResult.error;
+    const categoryData = categoryResult.data;
+    const catErr = categoryResult.error;
     if (catErr) {
       if (catErr.message.includes('discount_percent')) {
         const { data: fallbackData, error: fallbackError } = await supabase
@@ -189,8 +189,8 @@ export default async function ArticlePage({
     }
 
     // Process related articles
-    let relatedData = relatedResult.data;
-    let relErr = relatedResult.error;
+    const relatedData = relatedResult.data;
+    const relErr = relatedResult.error;
     if (relErr) {
       if (relErr.message.includes('discount_type') || relErr.message.includes('discount_value')) {
         const { data: fallbackRelated, error: fallbackRelatedError } = await supabase
@@ -224,8 +224,6 @@ export default async function ArticlePage({
 
   // Parse settings
   let paymentsEnabled = false;
-  let bizumEnabled = true;
-  let paypalEnabled = true;
   let squareEnabled = false;
   let hidePrices = false;
   let hideAvailability = false;
@@ -233,8 +231,6 @@ export default async function ArticlePage({
   if (!settingsError && settingsData) {
     const settingsMap = new Map(settingsData.map((s) => [s.key, s.value]));
     paymentsEnabled = settingsMap.get('payments_enabled') === 'true';
-    bizumEnabled = settingsMap.get('bizum_enabled') !== 'false';
-    paypalEnabled = settingsMap.get('paypal_enabled') !== 'false';
     squareEnabled = settingsMap.get('square_payments_enabled') === 'true';
     hidePrices = settingsMap.get('hide_prices') === 'true';
     hideAvailability = settingsMap.get('hide_availability') === 'true';
@@ -252,15 +248,6 @@ export default async function ArticlePage({
   );
   const hasDiscount = discountInfo.appliedSource !== 'none';
   const finalPrice = discountInfo.finalPrice;
-
-  const noteText = `MEC | mini engines - ID ${article.id}`;
-  const amountInCents = Math.round(Number(finalPrice) * 100);
-  // Bizum: uses the existing revolut.me URL (admin can reconfigure)
-  const bizumPayUrl = `https://revolut.me/jfernandezz?currency=EUR&amount=${amountInCents}&note=${encodeURIComponent(noteText)}`;
-
-  // PayPal Classic Checkout URL (with dynamic item_name and amount)
-  const paypalPrice = Number(finalPrice).toFixed(2);
-  const paypalPayUrl = `https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=javifzlvdc@gmail.com&item_name=${encodeURIComponent(noteText)}&amount=${paypalPrice}&currency_code=EUR&no_shipping=1`;
 
   const categoryHref = category
     ? `/category/${category.country_code.toLowerCase()}`
@@ -368,6 +355,7 @@ export default async function ArticlePage({
                 {/* Add to cart + Square quick-pay */}
                 <AddToCartButton
                   article={article}
+                  finalPrice={finalPrice}
                   squareEnabled={squareEnabled && paymentsEnabled}
                   squareCheckoutUrl={`/checkout?article=${article.id}`}
                 />

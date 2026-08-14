@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { squareClient, squareLocationId } from '@/lib/square';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { createSaleFromPayment } from '@/lib/orders';
+import { calculateDiscount } from '@/lib/discounts';
 import { randomUUID } from 'crypto';
 
 interface CreatePaymentBody {
@@ -52,17 +53,33 @@ export async function POST(request: NextRequest) {
     const amountCents = BigInt(Math.round(total * 100));
     const idempotencyKey = randomUUID();
 
-    // Fetch article details for the cart record
+    // Fetch article details along with discounts for the cart record
     const { data: articles } = await db
       .from('articles')
-      .select('id, title, price')
+      .select('id, title, price, discount_type, discount_value, category_id, categories(discount_percent)')
       .in('id', articleIds);
 
-    const cartItems = (articles ?? []).map((a) => ({
-      articleId: a.id,
-      title: a.title,
-      priceAtCheckout: Number(a.price),
-    }));
+    const { data: settingsData } = await db
+      .from('settings')
+      .select('key, value');
+    const settingsMap = new Map(settingsData?.map((s) => [s.key, s.value]) || []);
+    const generalDiscountPercent = settingsMap.get('general_discount_percent') || '';
+
+    const cartItems = (articles ?? []).map((a: any) => {
+      const catDiscount = a.categories?.discount_percent ?? null;
+      const discount = calculateDiscount(
+        a.price,
+        a.discount_type,
+        a.discount_value,
+        catDiscount,
+        generalDiscountPercent
+      );
+      return {
+        articleId: a.id,
+        title: a.title,
+        priceAtCheckout: discount.finalPrice,
+      };
+    });
 
     const checkoutSessionId = randomUUID();
 

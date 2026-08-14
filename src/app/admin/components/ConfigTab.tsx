@@ -69,7 +69,6 @@ export default function ConfigTab({
   targetDiscountPercent,
   setTargetDiscountPercent,
   savingDiscount,
-  setCategories,
   syncingCatalog = false,
   syncingCatalogForce = false,
   handleSyncSquareCatalog,

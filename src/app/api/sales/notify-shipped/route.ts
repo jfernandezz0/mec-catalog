@@ -1,30 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseAdmin } from '@/lib/supabase';
 import { sendShippingEmail } from '@/lib/email';
-
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-);
+import { verifyAdminSession } from '@/lib/utils.server';
 
 export async function POST(req: NextRequest) {
   try {
-    // 1. Verify admin session cookie
-    const token = req.cookies.get('sb-session')?.value;
-    if (!token) {
+    // 1. Verify admin session
+    const authResult = await verifyAdminSession(req);
+    if (!authResult.authorized) {
       return NextResponse.json(
-        { error: 'No autorizado. Debes iniciar sesión como administrador.' },
-        { status: 401 }
+        { error: authResult.error || 'No autorizado' },
+        { status: authResult.statusCode || 401 }
       );
     }
 
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-    if (authError || !user || user.email !== 'minienginescreations@gmail.com') {
-      return NextResponse.json(
-        { error: 'Acceso denegado. No tienes permisos de administrador.' },
-        { status: 401 }
-      );
-    }
+    const supabaseAdmin = getSupabaseAdmin();
 
     const { saleId, trackingLink } = await req.json();
 

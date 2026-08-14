@@ -19,7 +19,6 @@ export default function AnalyticsTab({
 }: AnalyticsTabProps) {
   // Local states
   const [statsSnapshots, setStatsSnapshots] = useState<StatsSnapshot[]>([]);
-  const [loadingSnapshots, setLoadingSnapshots] = useState(false);
   const [showPeriodModal, setShowPeriodModal] = useState(false);
   const [periodNameInput, setPeriodNameInput] = useState('');
   const [savingPeriod, setSavingPeriod] = useState(false);
@@ -30,7 +29,6 @@ export default function AnalyticsTab({
   }, []);
 
   async function loadSnapshots() {
-    setLoadingSnapshots(true);
     try {
       const { data, error } = await supabase
         .from('stats_snapshots')
@@ -39,10 +37,8 @@ export default function AnalyticsTab({
       if (!error) {
         setStatsSnapshots(data ?? []);
       }
-    } catch (e) {
+    } catch {
       // Table may not exist yet — fail silently
-    } finally {
-      setLoadingSnapshots(false);
     }
   }
 

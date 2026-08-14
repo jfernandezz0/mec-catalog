@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import Lightbox from '@/app/components/Lightbox';
 import { useSwipe } from '@/lib/hooks/useSwipe';
@@ -57,16 +57,16 @@ export default function ArticleGallery({ id, imageUrls, frameImageUrls = [], tit
     );
   }
 
-  const { onTouchStart, onTouchMove, onTouchEnd, swipeOccurred } = useSwipe({
+  const { onTouchStart, onTouchMove, onTouchEnd, getSwipeOccurred, resetSwipeOccurred } = useSwipe({
     onSwipeLeft: showNextImage,
     onSwipeRight: showPreviousImage,
   });
 
   const handleHeroClick = (e: React.MouseEvent) => {
-    if (swipeOccurred.current) {
+    if (getSwipeOccurred()) {
       e.preventDefault();
       e.stopPropagation();
-      swipeOccurred.current = false;
+      resetSwipeOccurred();
       return;
     }
     if (imageUrl) {

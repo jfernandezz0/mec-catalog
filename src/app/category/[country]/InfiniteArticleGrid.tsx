@@ -25,16 +25,18 @@ export default function InfiniteArticleGrid({
   countryCode = ''
 }: InfiniteArticleGridProps) {
   const [localArticles, setLocalArticles] = useState<Article[]>(initialArticles);
+  const [prevArticles, setPrevArticles] = useState<Article[]>(initialArticles);
   const [visibleCount, setVisibleCount] = useState(12);
   const [sortBy, setSortBy] = useState<string>('default');
   const [filterStock, setFilterStock] = useState<string>('all');
   const [layoutMode, setLayoutMode] = useState<'default' | 'alternate'>('default');
   const observerTargetRef = useRef<HTMLDivElement>(null);
 
-  // Sync state when props change
-  useEffect(() => {
+  // Sync state when initialArticles prop changes
+  if (prevArticles !== initialArticles) {
+    setPrevArticles(initialArticles);
     setLocalArticles(initialArticles);
-  }, [initialArticles]);
+  }
 
   // Subscribe to real-time database updates for stock changes
   useEffect(() => {

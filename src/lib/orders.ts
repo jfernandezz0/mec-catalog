@@ -67,6 +67,18 @@ export async function releaseStock(articleId: number): Promise<void> {
  */
 export async function confirmStock(articleId: number, qty: number = 1): Promise<void> {
   const db = getSupabaseAdmin();
+
+  // Try atomic RPC first
+  const { error: rpcError } = await db.rpc('decrement_article_stock', {
+    p_article_id: articleId,
+    p_quantity: qty,
+  });
+
+  if (!rpcError) {
+    return;
+  }
+
+  // Fallback: direct update
   const { data: art } = await db
     .from('articles')
     .select('quantity')

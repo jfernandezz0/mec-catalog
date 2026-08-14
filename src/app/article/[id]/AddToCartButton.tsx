@@ -7,26 +7,30 @@ import type { Article } from '@/lib/types';
 
 interface AddToCartButtonProps {
   article: Article;
+  finalPrice?: number;
   squareEnabled?: boolean;
   squareCheckoutUrl?: string;
 }
 
 export default function AddToCartButton({
   article,
+  finalPrice,
   squareEnabled,
   squareCheckoutUrl,
 }: AddToCartButtonProps) {
   const { addItem, hasItem, openDrawer } = useCart();
   const inCart = hasItem(article.id);
   const [currentQty, setCurrentQty] = useState(article.quantity);
+  const [prevArticleQty, setPrevArticleQty] = useState(article.quantity);
   const [selectedQty, setSelectedQty] = useState(1);
   const [isCartHovered, setIsCartHovered] = useState(false);
   const [isCardHovered, setIsCardHovered] = useState(false);
 
-  // Subscribe to real-time updates for this article's stock
-  useEffect(() => {
+  // Sync state when article.quantity prop changes
+  if (prevArticleQty !== article.quantity) {
+    setPrevArticleQty(article.quantity);
     setCurrentQty(article.quantity);
-  }, [article.quantity]);
+  }
 
   useEffect(() => {
     const channel = supabase
@@ -54,7 +58,7 @@ export default function AddToCartButton({
   }, [article.id]);
 
   const handleAddToCart = () => {
-    if (!inCart && currentQty > 0) addItem(article, selectedQty);
+    if (!inCart && currentQty > 0) addItem(article, selectedQty, finalPrice);
     openDrawer();
   };
 

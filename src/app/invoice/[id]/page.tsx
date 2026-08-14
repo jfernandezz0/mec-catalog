@@ -1,5 +1,6 @@
 import { getSupabaseAdmin } from '@/lib/supabase';
 import Link from 'next/link';
+import Image from 'next/image';
 import { formatPrice } from '@/lib/utils';
 import styles from './invoice.module.css';
 import PrintButton from './PrintButton';
@@ -88,9 +89,12 @@ export default async function InvoicePage(props: Props) {
         {/* Invoice Header */}
         <header className={styles.header}>
           <div className={styles.brand}>
-            <img 
+            <Image 
               src="/logo.png" 
               alt="MiniEngines Creations" 
+              width={240}
+              height={68}
+              priority
               className={styles.brandLogo} 
             />
           </div>
@@ -169,9 +173,11 @@ export default async function InvoicePage(props: Props) {
                   <td className={styles.td}>
                     <div className={styles.articleDescContainer}>
                       {item.articles?.image_urls?.[0] ? (
-                        <img 
+                        <Image 
                           src={item.articles.image_urls[0]} 
                           alt={item.title} 
+                          width={44}
+                          height={44}
                           className={styles.articleThumb} 
                         />
                       ) : (

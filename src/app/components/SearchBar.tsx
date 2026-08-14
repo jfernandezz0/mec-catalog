@@ -62,12 +62,16 @@ export default function SearchBar({
   // 3. Debounced search query fetching
   useEffect(() => {
     if (!query.trim()) {
-      setResults([]);
-      setLoading(false);
+      setTimeout(() => {
+        setResults([]);
+        setLoading(false);
+      }, 0);
       return;
     }
 
-    setLoading(true);
+    setTimeout(() => {
+      setLoading(true);
+    }, 0);
     const delayDebounceFn = setTimeout(async () => {
       try {
         const trimmed = query.trim();

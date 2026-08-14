@@ -10,17 +10,8 @@ import { usePathname } from 'next/navigation';
 export default function CartDrawer() {
   const pathname = usePathname();
 
-  if (
-    pathname.startsWith('/admin') ||
-    pathname.startsWith('/checkout') ||
-    pathname.startsWith('/invoice')
-  ) {
-    return null;
-  }
-
   const {
     items,
-    total,
     itemCount,
     stockStatuses,
     isDrawerOpen,
@@ -48,6 +39,14 @@ export default function CartDrawer() {
       document.body.style.overflow = '';
     };
   }, [isDrawerOpen]);
+
+  if (
+    pathname.startsWith('/admin') ||
+    pathname.startsWith('/checkout') ||
+    pathname.startsWith('/invoice')
+  ) {
+    return null;
+  }
 
   const getStatus = (articleId: number) =>
     stockStatuses.find(s => s.articleId === articleId);

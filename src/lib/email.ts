@@ -1,5 +1,4 @@
 import nodemailer from 'nodemailer';
-import type { Sale } from '@/lib/types';
 
 interface ReceiptItem {
   title: string;

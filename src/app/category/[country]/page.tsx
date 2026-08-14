@@ -92,8 +92,8 @@ export default async function CategoryPage({
     ]);
 
     // Process category
-    let categoryData = categoryResult.data;
-    let catErr = categoryResult.error;
+    const categoryData = categoryResult.data;
+    const catErr = categoryResult.error;
     if (catErr) {
       if (catErr.message.includes('discount_percent')) {
         const { data: fallbackData, error: fallbackError } = await supabase

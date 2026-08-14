@@ -70,3 +70,83 @@ export async function getMECLogo(countryCode: string): Promise<string> {
   // Fallback to the mini logo as requested
   return '/logo_mini.png';
 }
+
+import type { NextRequest } from 'next/server';
+import { createClient, type User } from '@supabase/supabase-js';
+
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'minienginescreations@gmail.com';
+
+export interface VerifyAdminResult {
+  authorized: boolean;
+  user?: User;
+  error?: string;
+  statusCode?: number;
+}
+
+/**
+ * Unified verification for administrative server routes.
+ * Inspects both Authorization: Bearer <token> and sb-session cookie,
+ * verifies the token with Supabase Auth, and enforces admin email matching.
+ */
+export async function verifyAdminSession(request: NextRequest): Promise<VerifyAdminResult> {
+  let token: string | null = null;
+  const authHeader = request.headers.get('Authorization') || request.headers.get('authorization');
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.substring(7).trim();
+  }
+
+  if (!token) {
+    token = request.cookies.get('sb-session')?.value?.trim() || null;
+  }
+
+  if (!token) {
+    return {
+      authorized: false,
+      error: 'No autorizado. Debes iniciar sesión como administrador.',
+      statusCode: 401,
+    };
+  }
+
+  try {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+    const client = createClient(supabaseUrl, supabaseKey, {
+      global: {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      },
+    });
+
+    const { data: { user }, error: authError } = await client.auth.getUser(token);
+
+    if (authError || !user) {
+      return {
+        authorized: false,
+        error: 'Sesión no válida o expirada. Por favor, inicia sesión de nuevo.',
+        statusCode: 401,
+      };
+    }
+
+    if (user.email !== ADMIN_EMAIL) {
+      return {
+        authorized: false,
+        error: 'Acceso denegado. No tienes permisos de administrador.',
+        statusCode: 403,
+      };
+    }
+
+    return {
+      authorized: true,
+      user,
+    };
+  } catch (err: any) {
+    console.error('[verifyAdminSession] Error validating session:', err);
+    return {
+      authorized: false,
+      error: 'Error al verificar la sesión de administrador.',
+      statusCode: 500,
+    };
+  }
+}
+

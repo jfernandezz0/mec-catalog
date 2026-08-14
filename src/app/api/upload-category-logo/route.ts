@@ -1,37 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseAdmin } from '@/lib/supabase';
 import { isValidISOCode } from '@/lib/utils';
+import { verifyAdminSession } from '@/lib/utils.server';
 
 export async function POST(request: NextRequest) {
   try {
-    // 1. Verificar autenticación del usuario mediante token Bearer
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    // 1. Verificar autenticación del administrador
+    const authResult = await verifyAdminSession(request);
+    if (!authResult.authorized) {
       return NextResponse.json(
-        { error: 'No autorizado. Debes iniciar sesión como administrador.' },
-        { status: 401 }
-      );
-    }
-
-    const token = authHeader.substring(7);
-
-    // Inicializar cliente de Supabase específico para esta petición usando el JWT del usuario
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-    const supabaseClient = createClient(supabaseUrl, supabaseKey, {
-      global: {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      },
-    });
-
-    const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
-    
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Sesión no válida o expirada. Por favor, inicia sesión de nuevo.' },
-        { status: 401 }
+        { error: authResult.error || 'No autorizado' },
+        { status: authResult.statusCode || 401 }
       );
     }
 
@@ -88,8 +67,9 @@ export async function POST(request: NextRequest) {
     const buffer = Buffer.from(await file.arrayBuffer());
     const fileName = `MEC_${code}.png`;
 
-    // 5. Subir a Supabase Storage en la carpeta 'logos' usando el cliente autenticado
-    const { error: uploadError } = await supabaseClient.storage
+    // 5. Subir a Supabase Storage en la carpeta 'logos' usando el cliente admin
+    const dbAdmin = getSupabaseAdmin();
+    const { error: uploadError } = await dbAdmin.storage
       .from('product-images')
       .upload(`logos/${fileName}`, buffer, {
         contentType: 'image/png',

@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useSwipe } from '@/lib/hooks/useSwipe';
 
 type LightboxProps = {
@@ -14,13 +14,13 @@ type LightboxProps = {
 export default function Lightbox({ imageUrls, initialIndex, onClose, title }: LightboxProps) {
   const [activeIndex, setActiveIndex] = useState(initialIndex);
 
-  const showPrevious = () => {
+  const showPrevious = useCallback(() => {
     setActiveIndex((prev) => (prev === 0 ? imageUrls.length - 1 : prev - 1));
-  };
+  }, [imageUrls.length]);
 
-  const showNext = () => {
+  const showNext = useCallback(() => {
     setActiveIndex((prev) => (prev === imageUrls.length - 1 ? 0 : prev + 1));
-  };
+  }, [imageUrls.length]);
 
   const { onTouchStart, onTouchMove, onTouchEnd } = useSwipe({
     onSwipeLeft: showNext,
@@ -44,7 +44,7 @@ export default function Lightbox({ imageUrls, initialIndex, onClose, title }: Li
       document.body.style.overflow = '';
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [imageUrls.length]);
+  }, [onClose, showNext, showPrevious]);
 
 
 
