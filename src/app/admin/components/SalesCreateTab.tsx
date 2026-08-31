@@ -24,8 +24,8 @@ export default function SalesCreateTab({
 }: SalesCreateTabProps) {
   // Local states
   const [selectedArticleIds, setSelectedArticleIds] = useState<number[]>([]);
-  const [saleItemQuantities, setSaleItemQuantities] = useState<Map<number, number>>(new Map());
-  const [saleItemPrices, setSaleItemPrices] = useState<Map<number, number>>(new Map());
+  const [saleItemQuantities, setSaleItemQuantities] = useState<Map<number, string>>(new Map());
+  const [saleItemPrices, setSaleItemPrices] = useState<Map<number, string>>(new Map());
   const [saleBuyerPhoneCode, setSaleBuyerPhoneCode] = useState('+34');
   const [saleBuyerPhone, setSaleBuyerPhone] = useState('');
   const [saleBuyerEmail, setSaleBuyerEmail] = useState('');
@@ -48,6 +48,23 @@ export default function SalesCreateTab({
       generalDiscountPercent
     );
     return discInfo.finalPrice;
+  }
+
+  function getItemPrice(id: number, article: Article): number {
+    if (saleItemPrices.has(id)) {
+      const raw = saleItemPrices.get(id);
+      if (raw === '' || raw === undefined) return 0;
+      const parsed = parseFloat(raw);
+      return isNaN(parsed) ? 0 : Math.max(0, parsed);
+    }
+    return getFinalPriceForArticle(article);
+  }
+
+  function getItemQuantity(id: number): number {
+    const raw = saleItemQuantities.get(id);
+    if (raw === '' || raw === undefined) return 1;
+    const parsed = parseInt(raw, 10);
+    return isNaN(parsed) ? 1 : Math.max(1, parsed);
   }
 
   async function handleRegisterSale() {
@@ -81,10 +98,8 @@ export default function SalesCreateTab({
         const article = articles.find((a) => a.id === id);
         if (!article) continue;
 
-        const qty = saleItemQuantities.get(id) || 1;
-        const customPrice = saleItemPrices.has(id)
-          ? (saleItemPrices.get(id) ?? 0)
-          : getFinalPriceForArticle(article);
+        const qty = getItemQuantity(id);
+        const customPrice = getItemPrice(id, article);
 
         const isPrepurchase = salePaymentType === 'RESERVA' || qty > article.quantity;
         if (isPrepurchase) {
@@ -186,10 +201,8 @@ export default function SalesCreateTab({
   selectedArticleIds.forEach(id => {
     const art = articles.find(a => a.id === id);
     if (!art) return;
-    const qty = saleItemQuantities.get(id) || 1;
-    const price = saleItemPrices.has(id)
-      ? (saleItemPrices.get(id) ?? 0)
-      : getFinalPriceForArticle(art);
+    const qty = getItemQuantity(id);
+    const price = getItemPrice(id, art);
     summaryTotal += price * qty;
     summaryCount += qty;
   });
@@ -224,11 +237,26 @@ export default function SalesCreateTab({
                     onClick={() => {
                       if (isChecked) {
                         setSelectedArticleIds(prev => prev.filter(id => id !== art.id));
+                        setSaleItemQuantities(prev => {
+                          const n = new Map(prev);
+                          n.delete(art.id);
+                          return n;
+                        });
+                        setSaleItemPrices(prev => {
+                          const n = new Map(prev);
+                          n.delete(art.id);
+                          return n;
+                        });
                       } else {
                         setSelectedArticleIds(prev => [...prev, art.id]);
                         setSaleItemQuantities(prev => {
                           const n = new Map(prev);
-                          n.set(art.id, 1);
+                          n.set(art.id, '1');
+                          return n;
+                        });
+                        setSaleItemPrices(prev => {
+                          const n = new Map(prev);
+                          n.set(art.id, String(finalPrice));
                           return n;
                         });
                       }
@@ -283,11 +311,14 @@ export default function SalesCreateTab({
                   const art = articles.find(a => a.id === id);
                   if (!art) return null;
 
-                  const qty = saleItemQuantities.get(id) || 1;
                   const officialPrice = getFinalPriceForArticle(art);
-                  const customPrice = saleItemPrices.has(id) ? (saleItemPrices.get(id) ?? 0) : officialPrice;
-                  const isCustomPrice = saleItemPrices.has(id) && saleItemPrices.get(id) !== officialPrice;
-                  const isPrepurchase = qty > art.quantity;
+                  const priceStr = saleItemPrices.has(id) ? (saleItemPrices.get(id) ?? '') : String(officialPrice);
+                  const customPriceNum = getItemPrice(id, art);
+                  const isCustomPrice = saleItemPrices.has(id) && customPriceNum !== officialPrice;
+
+                  const qtyStr = saleItemQuantities.has(id) ? (saleItemQuantities.get(id) ?? '') : '1';
+                  const qtyNum = getItemQuantity(id);
+                  const isPrepurchase = qtyNum > art.quantity;
 
                   return (
                     <div key={id} className={styles.configItemRow}>
@@ -309,9 +340,9 @@ export default function SalesCreateTab({
                           <input
                             type="number"
                             min="1"
-                            value={qty}
+                            value={qtyStr}
                             onChange={(e) => {
-                              const val = Math.max(1, parseInt(e.target.value, 10) || 1);
+                              const val = e.target.value;
                               setSaleItemQuantities(prev => {
                                 const n = new Map(prev);
                                 n.set(id, val);
@@ -328,10 +359,10 @@ export default function SalesCreateTab({
                             type="number"
                             step="0.01"
                             min="0"
-                            value={customPrice}
+                            value={priceStr}
                             placeholder={String(officialPrice)}
                             onChange={(e) => {
-                              const val = Math.max(0, parseFloat(e.target.value) || 0);
+                              const val = e.target.value;
                               setSaleItemPrices(prev => {
                                 const n = new Map(prev);
                                 n.set(id, val);
@@ -344,7 +375,19 @@ export default function SalesCreateTab({
 
                         <button
                           type="button"
-                          onClick={() => setSelectedArticleIds(prev => prev.filter(aid => aid !== id))}
+                          onClick={() => {
+                            setSelectedArticleIds(prev => prev.filter(aid => aid !== id));
+                            setSaleItemQuantities(prev => {
+                              const n = new Map(prev);
+                              n.delete(id);
+                              return n;
+                            });
+                            setSaleItemPrices(prev => {
+                              const n = new Map(prev);
+                              n.delete(id);
+                              return n;
+                            });
+                          }}
                           className={styles.removeItemBtn}
                           title="Quitar artículo"
                         >
@@ -353,7 +396,7 @@ export default function SalesCreateTab({
                       </div>
                       {isCustomPrice && (
                         <div className={styles.priceWarningBanner}>
-                          Aviso: El precio fijado ({formatPrice(customPrice)}) es {customPrice > officialPrice ? 'superior' : 'inferior'} al registrado ({formatPrice(officialPrice)})
+                          Aviso: El precio fijado ({formatPrice(customPriceNum)}) es {customPriceNum > officialPrice ? 'superior' : 'inferior'} al registrado ({formatPrice(officialPrice)})
                         </div>
                       )}
                     </div>
@@ -488,10 +531,8 @@ export default function SalesCreateTab({
         selectedArticleIds.forEach(id => {
           const art = articles.find(a => a.id === id);
           if (!art) return;
-          const qty = saleItemQuantities.get(id) || 1;
-          const price = saleItemPrices.has(id)
-            ? (saleItemPrices.get(id) ?? 0)
-            : getFinalPriceForArticle(art);
+          const qty = getItemQuantity(id);
+          const price = getItemPrice(id, art);
           
           const isPrepurchase = salePaymentType === 'RESERVA' || qty > art.quantity;
           if (isPrepurchase) hasPrepurchase = true;
