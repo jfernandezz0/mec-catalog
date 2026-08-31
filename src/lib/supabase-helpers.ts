@@ -98,12 +98,12 @@ export interface SafeArticlesResult {
 export async function safeFetchArticles(): Promise<SafeArticlesResult> {
   const { data, error } = await supabase
     .from('articles')
-    .select('id, category_id, title, description, price, quantity, image_urls, frame_image_urls, sort_order, contact_clicks, share_clicks, views, discount_type, discount_value')
+    .select('id, category_id, title, description, price, quantity, image_urls, frame_image_urls, sort_order, contact_clicks, share_clicks, views, discount_type, discount_value, is_visible')
     .order('sort_order', { ascending: true })
     .order('id', { ascending: true });
 
   if (error) {
-    if (error.message.includes('discount_type') || error.message.includes('discount_value')) {
+    if (error.message.includes('is_visible') || error.message.includes('discount_type') || error.message.includes('discount_value')) {
       const { data: fallbackData, error: fallbackError } = await supabase
         .from('articles')
         .select('id, category_id, title, description, price, quantity, image_urls, frame_image_urls, sort_order, contact_clicks, share_clicks, views')
@@ -114,7 +114,7 @@ export async function safeFetchArticles(): Promise<SafeArticlesResult> {
         throw new Error(`Could not load articles: ${fallbackError.message}`);
       }
       return {
-        articles: (fallbackData ?? []).map(a => ({ ...a, discount_type: null, discount_value: null })),
+        articles: (fallbackData ?? []).map(a => ({ ...a, discount_type: null, discount_value: null, is_visible: true })),
         hasDiscountColumns: false,
       };
     }
@@ -122,7 +122,7 @@ export async function safeFetchArticles(): Promise<SafeArticlesResult> {
   }
 
   return {
-    articles: data ?? [],
+    articles: (data ?? []).map(a => ({ ...a, is_visible: a.is_visible !== false })),
     hasDiscountColumns: true,
   };
 }

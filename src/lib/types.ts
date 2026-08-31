@@ -23,6 +23,7 @@ export interface Article {
   discount_type?: string | null;
   discount_value?: number | null;
   reserved_until?: string | null;
+  is_visible?: boolean;
 }
 
 export interface ShippingAddress {
@@ -107,6 +108,7 @@ export type FormState = {
   quantity: string;
   discountType: string;
   discountValue: string;
+  isVisible: boolean;
 };
 
 export const initialFormState: FormState = {
@@ -118,6 +120,7 @@ export const initialFormState: FormState = {
   quantity: '1',
   discountType: '',
   discountValue: '',
+  isVisible: true,
 };
 
 export type AdminTab = 'catalog' | 'create' | 'edit' | 'categories' | 'import' | 'config' | 'sales' | 'sales-create' | 'analytics' | 'generate_list';

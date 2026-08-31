@@ -39,20 +39,38 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     // 3. Fetch articles belonging to visible categories
     if (visibleCategoryIds.length > 0) {
-      const { data: articles } = await supabase
+      const { data: articles, error: artError } = await supabase
         .from('articles')
-        .select('id')
+        .select('id, is_visible')
         .in('category_id', visibleCategoryIds);
 
-      if (articles) {
-        articles.forEach((art) => {
-          routes.push({
-            url: `${baseUrl}/article/${art.id}`,
-            lastModified: new Date(),
-            changeFrequency: 'weekly' as 'always' | 'hourly' | 'daily' | 'weekly' | 'monthly' | 'yearly' | 'never',
-            priority: 0.7,
+      if (!artError && articles) {
+        (articles as Array<{ id: number; is_visible?: boolean }>)
+          .filter((art) => art.is_visible !== false)
+          .forEach((art) => {
+            routes.push({
+              url: `${baseUrl}/article/${art.id}`,
+              lastModified: new Date(),
+              changeFrequency: 'weekly' as 'always' | 'hourly' | 'daily' | 'weekly' | 'monthly' | 'yearly' | 'never',
+              priority: 0.7,
+            });
           });
-        });
+      } else if (artError && artError.message.includes('is_visible')) {
+        const { data: fallbackArticles } = await supabase
+          .from('articles')
+          .select('id')
+          .in('category_id', visibleCategoryIds);
+
+        if (fallbackArticles) {
+          fallbackArticles.forEach((art) => {
+            routes.push({
+              url: `${baseUrl}/article/${art.id}`,
+              lastModified: new Date(),
+              changeFrequency: 'weekly' as 'always' | 'hourly' | 'daily' | 'weekly' | 'monthly' | 'yearly' | 'never',
+              priority: 0.7,
+            });
+          });
+        }
       }
     }
   } catch (error) {

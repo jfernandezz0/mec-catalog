@@ -1439,6 +1439,23 @@
   border: 1px solid #e5e5e5;
 }
 
+.cardHiddenBadge {
+  font-size: 9px;
+  font-weight: 800;
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 6px;
+  vertical-align: middle;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
 /* ==============================
    Payments Setting Tab Styling
    ============================== */

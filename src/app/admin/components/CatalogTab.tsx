@@ -34,23 +34,27 @@ export default function CatalogTab({
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 12;
   const [stockFilter, setStockFilter] = useState<'in' | 'out' | 'all'>('in');
+  const [priceSort, setPriceSort] = useState<'default' | 'desc' | 'asc'>('default');
 
   // Adjust page during render if filters change
   const [prevFilters, setPrevFilters] = useState({
     categoryId: selectedCatalogCategoryId,
     query: searchQuery,
     filter: stockFilter,
+    sort: priceSort,
   });
 
   if (
     prevFilters.categoryId !== selectedCatalogCategoryId ||
     prevFilters.query !== searchQuery ||
-    prevFilters.filter !== stockFilter
+    prevFilters.filter !== stockFilter ||
+    prevFilters.sort !== priceSort
   ) {
     setPrevFilters({
       categoryId: selectedCatalogCategoryId,
       query: searchQuery,
       filter: stockFilter,
+      sort: priceSort,
     });
     setCurrentPage(1);
   }
@@ -77,6 +81,23 @@ export default function CatalogTab({
       return idMatch || titleMatch || descMatch;
     });
   }
+
+  // Sort by price if requested
+  if (priceSort === 'desc') {
+    displayedArticles = [...displayedArticles].sort((a, b) => {
+      const priceA = typeof a.price === 'number' ? a.price : parseFloat(String(a.price)) || 0;
+      const priceB = typeof b.price === 'number' ? b.price : parseFloat(String(b.price)) || 0;
+      return priceB - priceA;
+    });
+  } else if (priceSort === 'asc') {
+    displayedArticles = [...displayedArticles].sort((a, b) => {
+      const priceA = typeof a.price === 'number' ? a.price : parseFloat(String(a.price)) || 0;
+      const priceB = typeof b.price === 'number' ? b.price : parseFloat(String(b.price)) || 0;
+      return priceA - priceB;
+    });
+  }
+
+  const isCustomSortActive = priceSort !== 'default' || searchQuery.trim().length > 0;
 
   // Pagination calculations
   const totalItems = displayedArticles.length;
@@ -117,10 +138,10 @@ export default function CatalogTab({
         </div>
       )}
 
-      {/* Search Bar */}
+      {/* Search Bar & Filters */}
       {!loadingArticles && (
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '20px' }}>
-          <div className={styles.searchInputWrapper} style={{ flex: 1, marginBottom: 0 }}>
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap' }}>
+          <div className={styles.searchInputWrapper} style={{ flex: '1 1 240px', minWidth: '220px', marginBottom: 0 }}>
             <svg
               xmlns="http://www.w3.org/2000/svg"
               width="16"
@@ -155,16 +176,31 @@ export default function CatalogTab({
             )}
           </div>
 
-          <select
-            value={stockFilter}
-            onChange={(e) => setStockFilter(e.target.value as 'in' | 'out' | 'all')}
-            className={styles.salesSelectFilter}
-            style={{ height: '44px', minWidth: '130px' }}
-          >
-            <option value="in">En stock</option>
-            <option value="out">Sin stock</option>
-            <option value="all">Todos</option>
-          </select>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <select
+              value={stockFilter}
+              onChange={(e) => setStockFilter(e.target.value as 'in' | 'out' | 'all')}
+              className={styles.salesSelectFilter}
+              style={{ height: '44px', minWidth: '130px' }}
+              aria-label="Filtrar por stock"
+            >
+              <option value="in">En stock</option>
+              <option value="out">Sin stock</option>
+              <option value="all">Todos</option>
+            </select>
+
+            <select
+              value={priceSort}
+              onChange={(e) => setPriceSort(e.target.value as 'default' | 'desc' | 'asc')}
+              className={styles.salesSelectFilter}
+              style={{ height: '44px', minWidth: '180px' }}
+              aria-label="Ordenar por precio"
+            >
+              <option value="default">Orden: Predeterminado</option>
+              <option value="desc">Precio: Mayor a menor</option>
+              <option value="asc">Precio: Menor a mayor</option>
+            </select>
+          </div>
         </div>
       )}
 
@@ -205,6 +241,11 @@ export default function CatalogTab({
                       <div className={styles.cardInfoCol}>
                         <span className={styles.cardCategory}>
                           {catName} <span className={styles.cardIdBadge}>ID: {article.id}</span>
+                          {article.is_visible === false && (
+                            <span className={styles.cardHiddenBadge} title="Artículo oculto a los usuarios de la web">
+                              🔒 Oculto
+                            </span>
+                          )}
                         </span>
                         {(() => {
                           const parts = article.title.split(' – ');
@@ -248,7 +289,9 @@ export default function CatalogTab({
                         className={styles.cardOrderButton}
                         onClick={() => moveArticle(article.id, 'up', displayedArticles)}
                         aria-label="Subir"
-                        title="Subir en esta categoría"
+                        title={isCustomSortActive ? 'El reordenamiento manual solo está disponible con el orden predeterminado' : 'Subir en esta categoría'}
+                        disabled={isCustomSortActive}
+                        style={isCustomSortActive ? { opacity: 0.35, cursor: 'not-allowed' } : undefined}
                       >
                         ↑
                       </button>
@@ -257,7 +300,9 @@ export default function CatalogTab({
                         className={styles.cardOrderButton}
                         onClick={() => moveArticle(article.id, 'down', displayedArticles)}
                         aria-label="Bajar"
-                        title="Bajar en esta categoría"
+                        title={isCustomSortActive ? 'El reordenamiento manual solo está disponible con el orden predeterminado' : 'Bajar en esta categoría'}
+                        disabled={isCustomSortActive}
+                        style={isCustomSortActive ? { opacity: 0.35, cursor: 'not-allowed' } : undefined}
                       >
                         ↓
                       </button>

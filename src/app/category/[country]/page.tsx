@@ -134,20 +134,20 @@ export default async function CategoryPage({
   if (category) {
     const { data, error } = await supabase
       .from('articles')
-      .select('id, title, description, price, quantity, image_urls, discount_type, discount_value')
+      .select('id, title, description, price, quantity, image_urls, discount_type, discount_value, is_visible')
       .eq('category_id', category.id)
       .order('sort_order', { ascending: true })
       .order('id', { ascending: true });
 
     if (error) {
-      if (error.message.includes('discount_type') || error.message.includes('discount_value')) {
+      if (error.message.includes('is_visible') || error.message.includes('discount_type') || error.message.includes('discount_value')) {
         const { data: fallbackData, error: fallbackError } = await supabase
           .from('articles')
           .select('id, title, description, price, quantity, image_urls')
           .eq('category_id', category.id)
           .order('sort_order', { ascending: true })
           .order('id', { ascending: true });
-        articles = (fallbackData ?? []).map(a => ({ ...a, discount_type: null, discount_value: null })) as Article[];
+        articles = (fallbackData ?? []).map(a => ({ ...a, discount_type: null, discount_value: null, is_visible: true })) as Article[];
         articlesError = fallbackError;
       } else {
         articles = (data ?? []) as Article[];
@@ -174,7 +174,7 @@ export default async function CategoryPage({
     generalDiscountPercent = settingsMap.get('general_discount_percent') || '';
   }
 
-  const allArticles = articles ?? [];
+  const allArticles = (articles ?? []).filter((a) => a.is_visible !== false);
   const availableArticles = allArticles.filter((a) => a.quantity > 0);
   const soldOutArticles = allArticles.filter((a) => a.quantity <= 0);
   const articleItems = [...availableArticles, ...soldOutArticles];

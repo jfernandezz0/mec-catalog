@@ -190,6 +190,46 @@ export default function ArticleForm({
           </label>
         </div>
       </div>
+
+      <div className={styles.section}>
+        <h2 className={styles.sectionTitle}>Visibilidad</h2>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 0' }}>
+          <div>
+            <span style={{ fontWeight: '700', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              {formState.isVisible ? (
+                <>
+                  <span style={{ color: '#16a34a' }}>●</span> Visible en la web
+                </>
+              ) : (
+                <>
+                  <span style={{ color: '#dc2626' }}>●</span> Oculto en la web
+                </>
+              )}
+            </span>
+            <span style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginTop: '2px' }}>
+              {formState.isVisible
+                ? 'Los usuarios de la web pueden ver y adquirir este artículo en el catálogo público.'
+                : 'El artículo no aparecerá a los visitantes de la web ni en búsquedas, pero seguirá accesible en este panel de administración.'}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setFormState((prev) => ({
+                ...prev,
+                isVisible: !prev.isVisible,
+              }));
+            }}
+            className={`${styles.switch} ${formState.isVisible ? styles.switchActive : ''}`}
+            title="Alternar visibilidad del artículo en la web"
+            style={{ flexShrink: 0, marginLeft: '12px' }}
+            disabled={loading}
+          >
+            <span className={styles.switchHandle} />
+          </button>
+        </div>
+      </div>
+
       <div className={styles.section}>
         <h2 className={styles.sectionTitle}>Descuento</h2>
         {!hasDiscountColumns ? (

@@ -281,6 +281,7 @@ export default function AdminPage() {
       quantity: String(article.quantity),
       discountType: article.discount_type ?? '',
       discountValue: article.discount_value !== null && article.discount_value !== undefined ? String(article.discount_value) : '',
+      isVisible: article.is_visible !== false,
     });
     setExistingImageUrls(article.image_urls ?? []);
     setExistingFrameImageUrls(article.frame_image_urls ?? []);
@@ -474,6 +475,7 @@ export default function AdminPage() {
         quantity,
         image_urls: imageUrls,
         frame_image_urls: frameImageUrls,
+        is_visible: formState.isVisible,
       };
 
       if (hasDiscountColumns) {
@@ -569,6 +571,7 @@ export default function AdminPage() {
         quantity,
         image_urls: finalImageUrls,
         frame_image_urls: finalFrameImageUrls,
+        is_visible: formState.isVisible,
       };
 
       if (hasDiscountColumns) {

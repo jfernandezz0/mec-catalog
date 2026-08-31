@@ -28,11 +28,11 @@ export async function generateMetadata(
 
   const { data: article } = await supabase
     .from('articles')
-    .select('title, description, price, image_urls')
+    .select('title, description, price, image_urls, is_visible')
     .eq('id', articleId)
     .single();
 
-  if (!article) return { title: 'Artículo | MiniEngines Creations' };
+  if (!article || article.is_visible === false) return { title: 'Artículo | MiniEngines Creations' };
 
   const ogImage = article.image_urls?.[0] ?? 'https://mec-catalog.vercel.app/logo.png';
   const price = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(Number(article.price));
@@ -92,7 +92,7 @@ export default async function ArticlePage({
   try {
     const articlePromise = supabase
       .from('articles')
-      .select('id, category_id, title, description, price, quantity, image_urls, frame_image_urls, discount_type, discount_value')
+      .select('id, category_id, title, description, price, quantity, image_urls, frame_image_urls, discount_type, discount_value, is_visible')
       .eq('id', articleId)
       .maybeSingle<Article>();
 
@@ -109,13 +109,13 @@ export default async function ArticlePage({
     const articleData = articleResult.data;
     const artErr = articleResult.error;
     if (artErr) {
-      if (artErr.message.includes('discount_type') || artErr.message.includes('discount_value')) {
+      if (artErr.message.includes('is_visible') || artErr.message.includes('discount_type') || artErr.message.includes('discount_value')) {
         const { data: fallbackData, error: fallbackError } = await supabase
           .from('articles')
           .select('id, category_id, title, description, price, quantity, image_urls, frame_image_urls')
           .eq('id', articleId)
           .maybeSingle<Article>();
-        article = fallbackData ? { ...fallbackData, discount_type: null, discount_value: null } : null;
+        article = fallbackData ? { ...fallbackData, discount_type: null, discount_value: null, is_visible: true } : null;
         articleError = fallbackError;
       } else {
         article = articleData;
@@ -137,7 +137,7 @@ export default async function ArticlePage({
     throw new Error('No se pudo cargar el artículo.');
   }
 
-  if (!article) {
+  if (!article || article.is_visible === false) {
     notFound();
   }
 
@@ -156,12 +156,12 @@ export default async function ArticlePage({
 
     const relatedPromise = supabase
       .from('articles')
-      .select('id, category_id, title, description, price, quantity, image_urls, discount_type, discount_value')
+      .select('id, category_id, title, description, price, quantity, image_urls, discount_type, discount_value, is_visible')
       .eq('category_id', article.category_id)
       .neq('id', article.id)
       .order('sort_order', { ascending: true })
       .order('id', { ascending: true })
-      .limit(4);
+      .limit(6);
 
     const [categoryResult, relatedResult] = await Promise.all([
       categoryPromise,
@@ -192,15 +192,15 @@ export default async function ArticlePage({
     const relatedData = relatedResult.data;
     const relErr = relatedResult.error;
     if (relErr) {
-      if (relErr.message.includes('discount_type') || relErr.message.includes('discount_value')) {
+      if (relErr.message.includes('is_visible') || relErr.message.includes('discount_type') || relErr.message.includes('discount_value')) {
         const { data: fallbackRelated, error: fallbackRelatedError } = await supabase
           .from('articles')
           .select('id, category_id, title, description, price, quantity, image_urls')
           .eq('category_id', article.category_id)
           .neq('id', article.id)
           .order('id', { ascending: true })
-          .limit(4);
-        relatedArticles = (fallbackRelated ?? []).map(a => ({ ...a, discount_type: null, discount_value: null })) as Article[];
+          .limit(6);
+        relatedArticles = (fallbackRelated ?? []).map(a => ({ ...a, discount_type: null, discount_value: null, is_visible: true })) as Article[];
         relatedArticlesError = fallbackRelatedError;
       } else {
         relatedArticles = (relatedData ?? []) as Article[];
@@ -221,6 +221,8 @@ export default async function ArticlePage({
   if (relatedArticlesError) {
     console.error('Could not load related articles:', JSON.stringify(relatedArticlesError, null, 2));
   }
+
+  relatedArticles = (relatedArticles ?? []).filter(a => a.is_visible !== false).slice(0, 4);
 
   // Parse settings
   let paymentsEnabled = false;

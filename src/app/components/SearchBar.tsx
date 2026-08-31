@@ -77,12 +77,19 @@ export default function SearchBar({
         const trimmed = query.trim();
         const { data, error } = await supabase
           .from('articles')
-          .select('id, category_id, title, description, price, quantity, image_urls, discount_type, discount_value')
+          .select('id, category_id, title, description, price, quantity, image_urls, discount_type, discount_value, is_visible')
           .or(`title.ilike.%${trimmed}%,description.ilike.%${trimmed}%`)
-          .limit(6);
+          .limit(12);
 
         if (!error && data) {
-          setResults(data);
+          setResults(data.filter((a) => a.is_visible !== false).slice(0, 6));
+        } else if (error && error.message.includes('is_visible')) {
+          const { data: fallbackData } = await supabase
+            .from('articles')
+            .select('id, category_id, title, description, price, quantity, image_urls, discount_type, discount_value')
+            .or(`title.ilike.%${trimmed}%,description.ilike.%${trimmed}%`)
+            .limit(6);
+          setResults(fallbackData ?? []);
         } else {
           setResults([]);
         }
