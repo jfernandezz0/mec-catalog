@@ -39,6 +39,8 @@ export async function syncArticleToSquareCatalog(article: {
 
   let parentItemId = `#item-${article.id}`;
   let variationId = `#var-${article.id}`;
+  let parentVersion: bigint | undefined = undefined;
+  let varVersion: bigint | undefined = undefined;
 
   if (article.square_catalog_item_id) {
     try {
@@ -49,6 +51,19 @@ export async function syncArticleToSquareCatalog(article: {
       if (existingVariation?.type === 'ITEM_VARIATION' && existingVariation.itemVariationData?.itemId) {
         parentItemId = existingVariation.itemVariationData.itemId;
         variationId = article.square_catalog_item_id;
+        varVersion = existingVariation.version;
+
+        try {
+          const parentResponse = await squareClient.catalog.object.get({
+            objectId: parentItemId,
+          });
+          if (parentResponse.object) {
+            parentVersion = parentResponse.object.version;
+          }
+        } catch (pErr: any) {
+          console.warn(`[Square Sync] Failed to retrieve parent item ${parentItemId}:`, pErr.message || pErr);
+        }
+
         console.log(`[Square Sync] Found existing item in Square: Parent=${parentItemId}, Variation=${variationId}`);
       }
     } catch (err: any) {
@@ -61,6 +76,7 @@ export async function syncArticleToSquareCatalog(article: {
     object: {
       type: 'ITEM',
       id: parentItemId,
+      version: parentVersion,
       itemData: {
         name: article.title,
         description: article.description || undefined,
@@ -68,6 +84,7 @@ export async function syncArticleToSquareCatalog(article: {
           {
             type: 'ITEM_VARIATION',
             id: variationId,
+            version: varVersion,
             itemVariationData: {
               name: 'Único',
               pricingType: 'FIXED_PRICING',
