@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, ChangeEvent, FormEvent } from 'react';
+import { useState, useRef, useMemo, ChangeEvent, FormEvent } from 'react';
 import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
 import { formatPrice } from '@/lib/utils';
@@ -173,6 +173,10 @@ export default function AdminPage() {
     reloadCategories,
     updateSetting,
   } = adminData;
+
+  const inStockAndVisibleCount = useMemo(() => {
+    return articles.filter((a) => Number(a.quantity) > 0 && a.is_visible !== false).length;
+  }, [articles]);
 
   // Local form & modal states
   const [formState, setFormState] = useState<FormState>(initialFormState);
@@ -937,10 +941,19 @@ export default function AdminPage() {
             {['catalog', 'create', 'edit', 'categories', 'import', 'generate_list'].includes(activeTab) && (
               <div className={styles.headerRight}>
                 <div className={styles.status}>
-                  <span className={styles.statusValue} style={{ color: 'var(--text-available)' }}>
-                    {loadingArticles ? '...' : articles.length}
-                  </span>
-                  <span className={styles.statusLabel}>artículos en catálogo</span>
+                  <div>
+                    <span className={styles.statusValue} style={{ color: 'var(--text-available)' }}>
+                      {loadingArticles ? '...' : articles.length}
+                    </span>
+                    <span className={styles.statusLabel}>artículos en catálogo</span>
+                  </div>
+                  <div className={styles.statusDivider} />
+                  <div>
+                    <span className={styles.statusValue} style={{ color: 'var(--text-available)' }}>
+                      {loadingArticles ? '...' : inStockAndVisibleCount}
+                    </span>
+                    <span className={styles.statusLabel}>con stock y visibles</span>
+                  </div>
                 </div>
               </div>
             )}
