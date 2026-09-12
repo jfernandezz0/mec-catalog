@@ -204,7 +204,7 @@ export default function AdminPage() {
 
   // Warning modal states
   const [showDiscountWarnModal, setShowDiscountWarnModal] = useState(false);
-  const [pendingSubmitData, setPendingSubmitData] = useState<{ isCreate: boolean; event: any } | null>(null);
+  const [pendingSubmitData, setPendingSubmitData] = useState<{ isCreate: boolean; event: React.FormEvent | null } | null>(null);
 
   // Sales list state for Analytics
   const [sales, setSales] = useState<Sale[]>([]);
@@ -471,7 +471,7 @@ export default function AdminPage() {
     try {
       const imageUrls = await uploadImages();
       const frameImageUrls = await uploadFrameImages();
-      const insertData: any = {
+      const insertData: Record<string, unknown> = {
         category_id: Number(formState.categoryId),
         title: `${formState.marca.trim()} – ${formState.modelo.trim()}`,
         description: formState.description,
@@ -567,7 +567,7 @@ export default function AdminPage() {
       const newFrameUrls = await uploadFrameImages();
       const finalFrameImageUrls = [...existingFrameImageUrls, ...newFrameUrls];
 
-      const updateData: any = {
+      const updateData: Record<string, unknown> = {
         category_id: Number(formState.categoryId),
         title: `${formState.marca.trim()} – ${formState.modelo.trim()}`,
         description: formState.description,
@@ -768,8 +768,8 @@ export default function AdminPage() {
       } else {
         alert(data.message || 'Todos los artículos ya están sincronizados.');
       }
-    } catch (err: any) {
-      alert(`Error de sincronización: ${err.message || err}`);
+    } catch (err) {
+      alert(`Error de sincronización: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       if (force) setSyncingCatalogForce(false);
       else setSyncingCatalog(false);

@@ -2,6 +2,7 @@ import { getSupabaseAdmin } from '@/lib/supabase';
 import { sendReceiptEmail, sendAdminOrderEmail } from '@/lib/email';
 import { buildReceiptWhatsAppLink } from '@/lib/whatsapp';
 import { squareClient } from '@/lib/square';
+import type { ShippingAddress } from '@/lib/types';
 
 interface CartItem {
   articleId: number;
@@ -14,16 +15,7 @@ interface BuyerInfo {
   name: string;
   email: string;
   whatsapp?: string | null;
-  shippingAddress?: {
-    address?: string;
-    postalCode?: string;
-    city?: string;
-    province?: string;
-    country?: string;
-    method?: string;
-    price?: number;
-    description?: string;
-  } | null;
+  shippingAddress?: ShippingAddress | null;
 }
 
 /** Generate a human-readable order number: MEC-YYYY-NNNN */
@@ -170,7 +162,7 @@ export async function createSaleFromPayment(params: {
 
   // 3. Receipt email to buyer
   try {
-    const shippingInfo = buyer.shippingAddress as any;
+    const shippingInfo = buyer.shippingAddress;
     const shippingMethodLabel = shippingInfo?.method === 'recogida' ? 'Recogida en taller' : 'Envío a domicilio (Península)';
     const shippingCost = shippingInfo?.price ?? 0;
 
@@ -218,7 +210,7 @@ export async function createSaleFromPayment(params: {
   const hasRealWhatsapp = cleanedWhatsapp !== '34' && cleanedWhatsapp !== '';
 
   if (buyer.whatsapp && hasRealWhatsapp) {
-    const shippingInfo = buyer.shippingAddress as any;
+    const shippingInfo = buyer.shippingAddress;
     const shippingCost = shippingInfo?.price ?? 0;
 
     whatsappLink = buildReceiptWhatsAppLink({
@@ -306,7 +298,7 @@ export async function createManualSale(params: {
   // 3. Receipt email to buyer & Admin notification (if not delayed)
   if (!delayEmail) {
     try {
-      const shippingInfo = buyer.shippingAddress as any;
+      const shippingInfo = buyer.shippingAddress;
       const shippingMethodLabel = shippingInfo?.method === 'recogida' ? 'Recogida en taller' : 'Envío a domicilio (Península)';
       const shippingCost = shippingInfo?.price ?? 0;
 
@@ -354,7 +346,7 @@ export async function createManualSale(params: {
   const hasRealWhatsapp = cleanedWhatsapp !== '34' && cleanedWhatsapp !== '';
 
   if (buyer.whatsapp && hasRealWhatsapp) {
-    const shippingInfo = buyer.shippingAddress as any;
+    const shippingInfo = buyer.shippingAddress;
     const shippingCost = shippingInfo?.price ?? 0;
 
     whatsappLink = buildReceiptWhatsAppLink({

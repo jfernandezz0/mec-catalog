@@ -1,17 +1,13 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { getSupabaseAdmin } from '@/lib/supabase';
+import type { ShippingAddress } from '@/lib/types';
 
 export const metadata: Metadata = {
   title: 'Pedido confirmado | MiniEngines Creations',
   description: 'Tu pedido ha sido confirmado correctamente.',
   robots: { index: false },
 };
-
-interface ShippingAddressJson {
-  method?: string;
-  [key: string]: any;
-}
 
 export default async function CheckoutSuccessPage({
   searchParams,
@@ -32,7 +28,7 @@ export default async function CheckoutSuccessPage({
         .eq('order_number', orderNumber)
         .maybeSingle();
 
-      const shippingInfo = sale?.shipping_address as ShippingAddressJson | null;
+      const shippingInfo = sale?.shipping_address as ShippingAddress | null;
       if (shippingInfo?.method === 'recogida') {
         isPickup = true;
       }

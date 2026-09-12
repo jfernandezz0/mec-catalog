@@ -3,6 +3,7 @@ import { squareClient, squareLocationId } from '@/lib/square';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { createSaleFromPayment } from '@/lib/orders';
 import { calculateDiscount } from '@/lib/discounts';
+import { ShippingAddress } from '@/lib/types';
 import { randomUUID } from 'crypto';
 
 interface CreatePaymentBody {
@@ -12,16 +13,7 @@ interface CreatePaymentBody {
   buyerEmail: string;
   buyerName: string;
   buyerWhatsapp?: string | null;
-  shippingAddress?: {
-    address: string;
-    postalCode: string;
-    city: string;
-    province: string;
-    country: string;
-    method?: string;
-    price?: number;
-    description?: string;
-  } | null;
+  shippingAddress?: ShippingAddress | null;
 }
 
 export async function POST(request: NextRequest) {
@@ -65,7 +57,16 @@ export async function POST(request: NextRequest) {
     const settingsMap = new Map(settingsData?.map((s) => [s.key, s.value]) || []);
     const generalDiscountPercent = settingsMap.get('general_discount_percent') || '';
 
-    const cartItems = (articles ?? []).map((a: any) => {
+    interface FetchedArticleForPayment {
+      id: number;
+      title: string;
+      price: number;
+      discount_type?: string | null;
+      discount_value?: number | null;
+      categories?: { discount_percent: number | null } | null;
+    }
+
+    const cartItems = ((articles as unknown as FetchedArticleForPayment[]) ?? []).map((a) => {
       const catDiscount = a.categories?.discount_percent ?? null;
       const discount = calculateDiscount(
         a.price,
@@ -103,7 +104,8 @@ export async function POST(request: NextRequest) {
     }
 
     // ── STEP 2: CREATE SQUARE PAYMENT ──
-    let payment: any;
+    type SquarePayment = NonNullable<Awaited<ReturnType<typeof squareClient.payments.create>>['payment']>;
+    let payment: SquarePayment | undefined;
     try {
       const paymentRes = await squareClient.payments.create({
         sourceId,
@@ -118,12 +120,13 @@ export async function POST(request: NextRequest) {
         referenceId: checkoutSessionId,
       });
       payment = paymentRes.payment;
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[create-payment] Square payment creation exception:', err);
       
       // Delete the pending checkout session on definitive client-side errors (4xx, like card declined)
       // but preserve it on server-side errors/timeouts (5xx) so webhook fallback can recover it
-      const statusCode = err?.statusCode || err?.status;
+      const errorObj = err as { statusCode?: number; status?: number };
+      const statusCode = errorObj?.statusCode || errorObj?.status;
       if (statusCode && statusCode >= 400 && statusCode < 500) {
         await db.from('pending_checkouts').delete().eq('id', checkoutSessionId);
       }
@@ -170,10 +173,11 @@ export async function POST(request: NextRequest) {
       status: payment.status,
       orderNumber,
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error('[create-payment] Error:', err);
+    const message = err instanceof Error ? err.message : 'Internal error';
     return NextResponse.json(
-      { error: err?.message ?? 'Internal error' },
+      { error: message },
       { status: 500 },
     );
   }

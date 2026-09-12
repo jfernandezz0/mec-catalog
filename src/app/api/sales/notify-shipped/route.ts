@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { sendShippingEmail } from '@/lib/email';
 import { verifyAdminSession } from '@/lib/utils.server';
+import type { ShippingAddress } from '@/lib/types';
 
 export async function POST(req: NextRequest) {
   try {
@@ -48,7 +49,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Build shipping method label from shipping_address
-    const shippingInfo = sale.shipping_address as any;
+    const shippingInfo = sale.shipping_address as ShippingAddress | null;
     const shippingCost = shippingInfo?.price ?? 0;
     const shippingMethodLabel =
       shippingInfo?.description ||
@@ -60,7 +61,7 @@ export async function POST(req: NextRequest) {
       to: toEmail,
       buyerName: sale.buyer_name || 'Cliente',
       orderNumber: sale.order_number || `MEC-${sale.id.toUpperCase().slice(0, 8)}`,
-      items: (saleItems ?? []).map((i: any) => ({ title: i.title, price: Number(i.price) })),
+      items: (saleItems ?? []).map((i: { title: string; price: number | string }) => ({ title: i.title, price: Number(i.price) })),
       total: Number(sale.total_price),
       paymentMethod: sale.payment_type,
       shippingMethodLabel,
@@ -71,8 +72,9 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({ ok: true });
-  } catch (err: any) {
+  } catch (err) {
     console.error('[notify-shipped] Error:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    const message = err instanceof Error ? err.message : 'Error al enviar la notificación';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

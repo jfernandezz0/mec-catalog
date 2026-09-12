@@ -7,6 +7,8 @@ import { calculateDiscount } from '@/lib/discounts';
 import { Article, Category, AdminTab } from '@/lib/types';
 import styles from '../admin.module.css';
 
+type SalePaymentType = 'BIZUM' | 'PAYPAL' | 'EFECTIVO' | 'RESERVA' | 'SQUARE';
+
 interface SalesCreateTabProps {
   articles: Article[];
   categories: Category[];
@@ -31,7 +33,7 @@ export default function SalesCreateTab({
   const [saleBuyerEmail, setSaleBuyerEmail] = useState('');
   const [saleBuyerInstagram, setSaleBuyerInstagram] = useState('');
   const [saleLocation, setSaleLocation] = useState('online');
-  const [salePaymentType, setSalePaymentType] = useState<'BIZUM' | 'PAYPAL' | 'EFECTIVO' | 'RESERVA' | 'SQUARE'>('BIZUM');
+  const [salePaymentType, setSalePaymentType] = useState<SalePaymentType>('BIZUM');
   const [showSaleSummary, setShowSaleSummary] = useState(false);
   const [registeringSale, setRegisteringSale] = useState(false);
   const [salesCreateSearch, setSalesCreateSearch] = useState('');
@@ -69,7 +71,7 @@ export default function SalesCreateTab({
 
   async function handleRegisterSale() {
     if (selectedArticleIds.length === 0) {
-      alert('Debes seleccionar al menos un artículo.');
+      alert('Debes seleccionar al menos un artículo para registrar la venta.');
       return;
     }
 
@@ -91,7 +93,13 @@ export default function SalesCreateTab({
       let totalArticlesCount = 0;
       let hasPrepurchase = false;
 
-      const itemsToInsert: any[] = [];
+      const itemsToInsert: Array<{
+        article_id: number;
+        title: string;
+        quantity: number;
+        price: number;
+        is_prepurchase: boolean;
+      }> = [];
       const stockUpdates: Array<{ id: number; quantity: number }> = [];
 
       for (const id of selectedArticleIds) {
@@ -179,8 +187,8 @@ export default function SalesCreateTab({
       
       await loadArticles();
       handleTabChange('sales');
-    } catch (e: any) {
-      alert(e.message || 'Error al guardar la venta.');
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Error al guardar la venta.');
     } finally {
       setRegisteringSale(false);
     }
@@ -270,6 +278,7 @@ export default function SalesCreateTab({
                     />
                     
                     {art.image_urls && art.image_urls[0] && (
+                      /* eslint-disable-next-line @next/next/no-img-element */
                       <img 
                         src={art.image_urls[0]} 
                         alt={art.title} 
@@ -485,7 +494,7 @@ export default function SalesCreateTab({
                     <label className={styles.formLabel}>Tipo de Pago</label>
                     <select
                       value={salePaymentType}
-                      onChange={(e: any) => setSalePaymentType(e.target.value)}
+                      onChange={(e) => setSalePaymentType(e.target.value as SalePaymentType)}
                       className={styles.salesTextInput}
                     >
                       <option value="BIZUM">Bizum / Transferencia</option>
@@ -526,7 +535,12 @@ export default function SalesCreateTab({
         let summaryTotal = 0;
         let summaryCount = 0;
         let hasPrepurchase = false;
-        const chosenItems: any[] = [];
+        const chosenItems: Array<{
+          art: Article;
+          qty: number;
+          price: number;
+          isPrepurchase: boolean;
+        }> = [];
 
         selectedArticleIds.forEach(id => {
           const art = articles.find(a => a.id === id);

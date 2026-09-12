@@ -9,20 +9,11 @@ import { useSwipe } from '@/lib/hooks/useSwipe';
 import { ShareIcon } from '@/app/components/Icons';
 import ShareDropdown from '@/app/components/ShareDropdown';
 import { useCart } from '@/lib/contexts/CartContext';
+import type { Article } from '@/lib/types';
 import styles from './category.module.css';
 
 type ArticleCardProps = {
-  article: {
-    id: number;
-    title: string;
-    description: string | null;
-    price: number | string;
-    quantity: number;
-    image_urls: string[] | null;
-    frame_image_urls?: string[] | null;
-    discount_type?: string | null;
-    discount_value?: number | null;
-  };
+  article: Article;
   index?: number;
   hidePrices?: boolean;
   hideAvailability?: boolean;
@@ -63,7 +54,7 @@ export default function ArticleCard({
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!inCart) addItem(article as any, 1, discountInfo.finalPrice);
+    if (!inCart) addItem(article, 1, discountInfo.finalPrice);
     openDrawer();
   };
 

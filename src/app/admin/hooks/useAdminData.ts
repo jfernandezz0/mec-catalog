@@ -102,8 +102,8 @@ export function useAdminData(onUserReady?: () => void): UseAdminDataReturn {
       setCategories(categories);
       setHasVisibilityColumn(hasVisibilityColumn);
       setHasDiscountColumns(hasDiscountColumns);
-    } catch (err: any) {
-      alert(err.message);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Error cargando categorías');
     } finally {
       setLoadingCategories(false);
     }
@@ -115,8 +115,8 @@ export function useAdminData(onUserReady?: () => void): UseAdminDataReturn {
       const { articles, hasDiscountColumns } = await safeFetchArticles();
       setArticles(articles);
       setHasDiscountColumns(hasDiscountColumns);
-    } catch (err: any) {
-      alert(err.message);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Error cargando artículos');
     } finally {
       setLoadingArticles(false);
     }
@@ -212,8 +212,8 @@ export function useAdminData(onUserReady?: () => void): UseAdminDataReturn {
       setCategories(categories);
       setHasVisibilityColumn(hasVisibilityColumn);
       setHasDiscountColumns(hasDiscountColumns);
-    } catch (err: any) {
-      throw new Error(err.message);
+    } catch (err) {
+      throw new Error(err instanceof Error ? err.message : 'Error al recargar categorías');
     }
   }, []);
 

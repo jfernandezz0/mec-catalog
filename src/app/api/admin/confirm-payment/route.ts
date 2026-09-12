@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { sendReceiptEmail } from '@/lib/email';
 import { verifyAdminSession } from '@/lib/utils.server';
+import type { ShippingAddress } from '@/lib/types';
 
 export async function POST(request: NextRequest) {
   try {
@@ -57,7 +58,7 @@ export async function POST(request: NextRequest) {
       const protocol = host.startsWith('localhost') ? 'http' : 'https';
       const baseUrl = `${protocol}://${host}`;
 
-      const shippingInfo = sale.shipping_address as any;
+      const shippingInfo = sale.shipping_address as ShippingAddress | null;
       const shippingMethodLabel = shippingInfo?.method === 'recogida' ? 'Recogida en taller' : 'Envío a domicilio (Península)';
       const shippingCost = shippingInfo?.price ?? 0;
       const paymentMethodLabel = sale.payment_type === 'BIZUM' ? 'Bizum / Transferencia' : 
@@ -89,8 +90,9 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ success: true });
-  } catch (err: any) {
+  } catch (err) {
     console.error('[confirm-payment] Error:', err);
-    return NextResponse.json({ error: err.message || 'Internal server error' }, { status: 500 });
+    const message = err instanceof Error ? err.message : 'Internal server error';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

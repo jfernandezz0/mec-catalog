@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
       .from('settings')
       .select('key, value');
 
-    const settingsMap = new Map(settings?.map((item: any) => [item.key, item.value]) || []);
+    const settingsMap = new Map(settings?.map((item: { key: string; value: string }) => [item.key, item.value]) || []);
     const squarePaymentsEnabled = settingsMap.get('square_payments_enabled') === 'true';
     const paymentsEnabled = settingsMap.get('payments_enabled') !== 'false';
     const hidePrices = settingsMap.get('hide_prices') === 'true';
@@ -51,7 +51,15 @@ export async function POST(request: NextRequest) {
     }
 
     // 2. Fetch target articles
-    let articles: any[] = [];
+    interface SyncArticle {
+      id: number;
+      title: string;
+      description: string | null;
+      price: number | string;
+      image_urls?: string[] | null;
+      square_catalog_item_id?: string | null;
+    }
+    let articles: SyncArticle[] = [];
     let fetchErr = null;
 
     if (articleId) {
@@ -114,12 +122,13 @@ export async function POST(request: NextRequest) {
           title: article.title,
           square_catalog_item_id: variationId,
         });
-      } catch (err: any) {
+      } catch (err) {
         console.error(`[sync-catalog] Failed to sync article ${article.id}:`, err);
+        const errMsg = err instanceof Error ? err.message : 'Error desconocido';
         failedList.push({
           id: article.id,
           title: article.title,
-          error: err?.message || 'Error desconocido',
+          error: errMsg,
         });
       }
     }
@@ -131,10 +140,11 @@ export async function POST(request: NextRequest) {
       failedCount: failedList.length,
       failedList,
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('[sync-catalog] Critical error:', error);
+    const errorMsg = error instanceof Error ? error.message : 'Error interno del servidor.';
     return NextResponse.json(
-      { error: error?.message || 'Error interno del servidor.' },
+      { error: errorMsg },
       { status: 500 }
     );
   }

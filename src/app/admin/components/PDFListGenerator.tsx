@@ -112,7 +112,7 @@ export default function PDFListGenerator({
             </label>
             <select
               value={listStockFilter}
-              onChange={(e) => setListStockFilter(e.target.value as any)}
+              onChange={(e) => setListStockFilter(e.target.value as 'todos' | 'stock' | 'sin_stock')}
               className={styles.salesTextInput}
               style={{ padding: '10px', fontSize: '14px' }}
             >
@@ -293,6 +293,7 @@ export default function PDFListGenerator({
                     {listShowPhotos && (
                       <td style={{ textAlign: 'center', padding: '4px' }}>
                         {primaryImageUrl ? (
+                          /* eslint-disable-next-line @next/next/no-img-element */
                           <img
                             src={primaryImageUrl}
                             alt={article.title}

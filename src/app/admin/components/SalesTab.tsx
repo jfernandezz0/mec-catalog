@@ -204,8 +204,8 @@ export default function SalesTab({ articles, loadArticles }: SalesTabProps) {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-    } catch (e: any) {
-      alert(e.message || 'Error al exportar a CSV.');
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Error al exportar a CSV.');
     } finally {
       setExportingSales(false);
     }
@@ -224,7 +224,7 @@ export default function SalesTab({ articles, loadArticles }: SalesTabProps) {
       } else {
         setSaleDetailItems(data ?? []);
       }
-    } catch (e: any) {
+    } catch (e) {
       console.error(e);
     } finally {
       setLoadingSaleItems(false);
@@ -295,8 +295,8 @@ export default function SalesTab({ articles, loadArticles }: SalesTabProps) {
 
       await loadSales();
       await loadArticles();
-    } catch (e: any) {
-      alert(`Error al completar el artículo: ${e.message || e}`);
+    } catch (e) {
+      alert(`Error al completar el artículo: ${e instanceof Error ? e.message : String(e)}`);
     }
   }
 
@@ -341,8 +341,8 @@ export default function SalesTab({ articles, loadArticles }: SalesTabProps) {
 
       await loadSales();
       await loadArticles();
-    } catch (e: any) {
-      alert(`Error al cancelar la venta: ${e.message || e}`);
+    } catch (e) {
+      alert(`Error al cancelar la venta: ${e instanceof Error ? e.message : String(e)}`);
     }
   }
 
@@ -361,8 +361,8 @@ export default function SalesTab({ articles, loadArticles }: SalesTabProps) {
 
       alert('¡Venta eliminada permanentemente!');
       await loadSales();
-    } catch (e: any) {
-      alert(`Error al eliminar la venta: ${e.message || e}`);
+    } catch (e) {
+      alert(`Error al eliminar la venta: ${e instanceof Error ? e.message : String(e)}`);
     }
   }
 
@@ -390,8 +390,8 @@ export default function SalesTab({ articles, loadArticles }: SalesTabProps) {
       alert('¡El pago ha sido confirmado y la venta ha sido marcada como COMPLETADA!');
 
       await loadSales();
-    } catch (e: any) {
-      alert(`Error al confirmar el pago: ${e.message || e}`);
+    } catch (e) {
+      alert(`Error al confirmar el pago: ${e instanceof Error ? e.message : String(e)}`);
     }
   }
 
@@ -415,7 +415,7 @@ export default function SalesTab({ articles, loadArticles }: SalesTabProps) {
 
       if (error) throw error;
 
-      const updatedSale = {
+      const updatedSale: Sale = {
         ...selectedSaleDetail,
         buyer_name: editBuyerName,
         buyer_email: editBuyerEmail,
@@ -423,7 +423,7 @@ export default function SalesTab({ articles, loadArticles }: SalesTabProps) {
         buyer_phone: editBuyerPhone,
         receipt_whatsapp: editBuyerPhone,
         buyer_instagram: editBuyerInstagram,
-        payment_type: editPaymentType as any,
+        payment_type: editPaymentType as Sale['payment_type'],
         location: editLocation,
         shipping_status: editShippingStatus,
       };
@@ -433,8 +433,8 @@ export default function SalesTab({ articles, loadArticles }: SalesTabProps) {
       alert('¡Pedido actualizado con éxito!');
 
       await loadSales();
-    } catch (e: any) {
-      alert(`Error al guardar los cambios del pedido: ${e.message || e}`);
+    } catch (e) {
+      alert(`Error al guardar los cambios del pedido: ${e instanceof Error ? e.message : String(e)}`);
     }
   }
 
@@ -649,7 +649,7 @@ export default function SalesTab({ articles, loadArticles }: SalesTabProps) {
 
         <select
           value={salesFilterPayment}
-          onChange={(e: any) => setSalesFilterPayment(e.target.value)}
+          onChange={(e) => setSalesFilterPayment(e.target.value as 'all' | 'BIZUM' | 'PAYPAL' | 'EFECTIVO' | 'RESERVA' | 'SQUARE')}
           className={styles.salesSelectFilter}
         >
           <option value="all">Todos los Pagos</option>
@@ -662,7 +662,7 @@ export default function SalesTab({ articles, loadArticles }: SalesTabProps) {
 
         <select
           value={salesFilterStatus}
-          onChange={(e: any) => setSalesFilterStatus(e.target.value)}
+          onChange={(e) => setSalesFilterStatus(e.target.value as 'all' | 'COMPLETADA' | 'PRECOMPRA' | 'CANCELADA')}
           className={styles.salesSelectFilter}
         >
           <option value="all">Todos los Estados</option>
@@ -673,7 +673,7 @@ export default function SalesTab({ articles, loadArticles }: SalesTabProps) {
 
         <select
           value={salesFilterDate}
-          onChange={(e: any) => setSalesFilterDate(e.target.value)}
+          onChange={(e) => setSalesFilterDate(e.target.value as 'all' | 'today' | 'week' | 'month')}
           className={styles.salesSelectFilter}
         >
           <option value="all">Cualquier Fecha</option>
@@ -850,7 +850,7 @@ export default function SalesTab({ articles, loadArticles }: SalesTabProps) {
                             textDecoration: 'none', whiteSpace: 'nowrap',
                             animation: 'pulse 2s infinite',
                           }}
-                          onClick={async (e) => {
+                          onClick={async () => {
                             // Mark as sent after clicking
                             await (await import('@/lib/supabase')).supabase
                               .from('sales').update({ whatsapp_sent: true }).eq('id', sale.id);
@@ -1237,6 +1237,7 @@ export default function SalesTab({ articles, loadArticles }: SalesTabProps) {
                       <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 12px', borderBottom: '1px solid var(--border-card-glass)', alignItems: 'center' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                           {imageUrl && (
+                            /* eslint-disable-next-line @next/next/no-img-element */
                             <img
                               src={imageUrl}
                               alt={item.title}
@@ -1455,7 +1456,7 @@ export default function SalesTab({ articles, loadArticles }: SalesTabProps) {
                 </div>
 
               {(() => {
-                const shippingInfo = selectedSaleDetail.shipping_address as any;
+                const shippingInfo = selectedSaleDetail.shipping_address;
                 const shippingCost = shippingInfo?.price ?? 0;
                 const shippingLabel = shippingInfo?.description || (shippingInfo?.method === 'recogida' ? 'Recogida en taller' : 'Envío Peninsular');
                 const subtotal = Number(selectedSaleDetail.total_price) - Number(shippingCost);

@@ -67,10 +67,10 @@ export default function AnalyticsTab({
         });
 
       if (insertError) {
-        if ((insertError as any).code === '42P01' || insertError.message.includes('does not exist')) {
+        if (insertError.code === '42P01' || insertError.message.includes('does not exist')) {
           alert('La tabla stats_snapshots no existe aún en Supabase. Ejecuta el SQL del plan primero.');
         } else {
-          alert(`Error al guardar el snapshot:\n\n${insertError.message}\n\nCódigo: ${(insertError as any).code || 'N/A'}`);
+          alert(`Error al guardar el snapshot:\n\n${insertError.message}\n\nCódigo: ${insertError.code || 'N/A'}`);
         }
         return;
       }
@@ -88,8 +88,8 @@ export default function AnalyticsTab({
       setPeriodNameInput('');
       await loadArticles();
       await loadSnapshots();
-    } catch (e: any) {
-      alert(`Error al guardar el período: ${e.message || e}`);
+    } catch (e) {
+      alert(`Error al guardar el período: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
       setSavingPeriod(false);
     }

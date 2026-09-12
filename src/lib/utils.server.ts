@@ -140,7 +140,7 @@ export async function verifyAdminSession(request: NextRequest): Promise<VerifyAd
       authorized: true,
       user,
     };
-  } catch (err: any) {
+  } catch (err) {
     console.error('[verifyAdminSession] Error validating session:', err);
     return {
       authorized: false,

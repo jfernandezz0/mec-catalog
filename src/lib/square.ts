@@ -60,14 +60,16 @@ export async function syncArticleToSquareCatalog(article: {
           if (parentResponse.object) {
             parentVersion = parentResponse.object.version;
           }
-        } catch (pErr: any) {
-          console.warn(`[Square Sync] Failed to retrieve parent item ${parentItemId}:`, pErr.message || pErr);
+        } catch (pErr) {
+          const msg = pErr instanceof Error ? pErr.message : String(pErr);
+          console.warn(`[Square Sync] Failed to retrieve parent item ${parentItemId}:`, msg);
         }
 
         console.log(`[Square Sync] Found existing item in Square: Parent=${parentItemId}, Variation=${variationId}`);
       }
-    } catch (err: any) {
-      console.warn(`[Square Sync] Failed to retrieve existing variation ${article.square_catalog_item_id} from Square. Will create a new one.`, err.message || err);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn(`[Square Sync] Failed to retrieve existing variation ${article.square_catalog_item_id} from Square. Will create a new one.`, msg);
     }
   }
 
@@ -99,14 +101,17 @@ export async function syncArticleToSquareCatalog(article: {
     },
   });
 
-  const catalogObject = response.catalogObject as any;
-  const newVariationId = catalogObject?.itemData?.variations?.[0]?.id;
+  const catalogObject = response.catalogObject;
+  if (!catalogObject || catalogObject.type !== 'ITEM') {
+    throw new Error('Failed to retrieve item from Square response');
+  }
+  const newVariationId = catalogObject.itemData?.variations?.[0]?.id;
   if (!newVariationId) {
     throw new Error('Failed to retrieve item variation ID from Square response');
   }
 
   // Auto-sync image to Square if present, and only if the item does not already have images
-  const hasImagesInSquare = catalogObject.itemData?.imageIds && catalogObject.itemData.imageIds.length > 0;
+  const hasImagesInSquare = Boolean(catalogObject.itemData?.imageIds && catalogObject.itemData.imageIds.length > 0);
   if (article.image_urls && article.image_urls.length > 0 && catalogObject.id && !hasImagesInSquare) {
     try {
       const imageUrl = article.image_urls[0];

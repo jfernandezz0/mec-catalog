@@ -50,8 +50,9 @@ export async function POST(request: NextRequest) {
       saleId,
       whatsappLink,
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error('[create-manual-sale] Error:', err);
-    return NextResponse.json({ error: err.message || 'Manual checkout failed' }, { status: 500 });
+    const message = err instanceof Error ? err.message : 'Manual checkout failed';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

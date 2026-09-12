@@ -24,6 +24,27 @@ interface ShippingData {
   province: string;
 }
 
+interface SquareCardTokenResult {
+  status: string;
+  token?: string;
+  errors?: unknown[];
+}
+
+interface SquareCardInstance {
+  attach: (selector: string) => Promise<void>;
+  tokenize: () => Promise<SquareCardTokenResult>;
+}
+
+interface SquarePayments {
+  card: (options?: { postalCode?: string }) => Promise<SquareCardInstance>;
+}
+
+interface WindowWithSquare extends Window {
+  Square?: {
+    payments: (appId?: string, locationId?: string) => SquarePayments;
+  };
+}
+
 const STEP_LABELS: { id: Step; label: string; icon: string }[] = [
   { id: 'resumen', label: 'Resumen', icon: '🛒' },
   { id: 'datos', label: 'Tus datos', icon: '👤' },
@@ -48,20 +69,14 @@ export default function CheckoutPage() {
   const [step, setStep] = useState<Step>('resumen');
   const [shippingMethod, setShippingMethod] = useState<'recogida' | 'envio'>('recogida');
   const [buyer, setBuyer] = useState<BuyerData>({ name: '', email: '', whatsapp: '+34 ' });
-  const [shipping, setShipping] = useState<ShippingData>({
-    address: '',
-    postalCode: '',
-    city: '',
-    province: '',
-  });
+  const [shipping, setShipping] = useState<ShippingData>({ address: '', postalCode: '', city: '', province: '' });
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [squarePaymentEnabled, setSquarePaymentEnabled] = useState<boolean>(false);
-  const [bizumEnabled, setBizumEnabled] = useState<boolean>(true);
-  const [paypalEnabled, setPaypalEnabled] = useState<boolean>(true);
-  const [selectedMethod, setSelectedMethod] = useState<'tarjeta' | 'bizum' | 'paypal' | null>(null);
-
+  const [selectedMethod, setSelectedMethod] = useState<'tarjeta' | 'bizum' | 'paypal' | null>('tarjeta');
+  const [squarePaymentEnabled, setSquarePaymentEnabled] = useState(true);
+  const [bizumEnabled, setBizumEnabled] = useState(true);
+  const [paypalEnabled, setPaypalEnabled] = useState(true);
   const [prevEnabled, setPrevEnabled] = useState({
-    square: false,
+    square: true,
     bizum: true,
     paypal: true,
   });
@@ -87,7 +102,7 @@ export default function CheckoutPage() {
     }
   }
   const [squareLoaded, setSquareLoaded] = useState(false);
-  const [squareCard, setSquareCard] = useState<any>(null);
+  const [squareCard, setSquareCard] = useState<SquareCardInstance | null>(null);
   const [paying, setPaying] = useState(false);
   const [reserving, setReserving] = useState(false);
   const [reserved, setReserved] = useState(false);
@@ -157,7 +172,7 @@ export default function CheckoutPage() {
           supabase.from('categories').select('discount_percent').eq('id', art.category_id).maybeSingle(),
           supabase.from('settings').select('key, value')
         ]);
-        const settingsMap = new Map(setRes.data?.map((s: any) => [s.key, s.value]) || []);
+        const settingsMap = new Map(setRes.data?.map((s: { key: string; value: string }) => [s.key, s.value]) || []);
         const generalDiscount = settingsMap.get('general_discount_percent') || '';
         const catDiscount = catRes.data?.discount_percent ?? null;
         const discountInfo = calculateDiscount(art.price, art.discount_type, art.discount_value, catDiscount, generalDiscount);
@@ -188,7 +203,7 @@ export default function CheckoutPage() {
           .select('key, value');
 
         if (data) {
-          const settingsMap = new Map(data.map((item: any) => [item.key, item.value]));
+          const settingsMap = new Map(data.map((item: { key: string; value: string }) => [item.key, item.value]));
           
           setSquarePaymentEnabled(settingsMap.get('square_payments_enabled') === 'true');
           setBizumEnabled(settingsMap.get('bizum_enabled') !== 'false');
@@ -226,7 +241,9 @@ export default function CheckoutPage() {
 
     const initSquare = async () => {
       try {
-        const payments = (window as any).Square.payments(
+        const squareObj = (window as unknown as WindowWithSquare).Square;
+        if (!squareObj) return;
+        const payments = squareObj.payments(
           process.env.NEXT_PUBLIC_SQUARE_APPLICATION_ID,
           process.env.NEXT_PUBLIC_SQUARE_LOCATION_ID,
         );
@@ -235,7 +252,7 @@ export default function CheckoutPage() {
         });
         await card.attach('#square-card-container');
         setSquareCard(card);
-      } catch (err) {
+      } catch {
         setPayError('Error cargando el formulario de pago. Recarga la página.');
       }
     };
@@ -264,7 +281,7 @@ export default function CheckoutPage() {
           }
         }
       }
-    } catch (e) {}
+    } catch {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -364,7 +381,7 @@ export default function CheckoutPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ saleId: pendingSaleId }),
               });
-            } catch (err) {} finally {
+            } catch {} finally {
               clearCart();
               router.push(`/checkout/success?order=${pendingOrderNumber ?? ''}`);
             }
@@ -480,8 +497,8 @@ export default function CheckoutPage() {
         setPendingOrderNumber(data.orderNumber);
         setCountdownActive(true);
       }
-    } catch (err: any) {
-      setPayError(err.message || 'Error en el pago');
+    } catch (err) {
+      setPayError(err instanceof Error ? err.message : 'Error en el pago');
       setPaying(false);
     }
   };

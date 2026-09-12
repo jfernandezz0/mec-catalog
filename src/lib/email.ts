@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import type { ShippingAddress } from '@/lib/types';
 
 interface ReceiptItem {
   title: string;
@@ -232,9 +233,10 @@ export async function sendReceiptEmail(params: {
       html,
     });
     console.log(`[nodemailer] Receipt email sent successfully to ${to}`);
-  } catch (err: any) {
+  } catch (err) {
     console.error('[nodemailer] Failed to send receipt email:', err);
-    throw new Error(`Email send failed: ${err.message}`);
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(`Email send failed: ${message}`);
   }
 }
 
@@ -246,7 +248,7 @@ export async function sendAdminOrderEmail(params: {
   buyerWhatsapp?: string | null;
   items: ReceiptItem[];
   total: number;
-  shippingAddress?: object | null;
+  shippingAddress?: ShippingAddress | null;
   paymentMethod: string;
 }) {
   const {
@@ -264,7 +266,7 @@ export async function sendAdminOrderEmail(params: {
   const itemList = items.map((i) => `• ${i.title} — ${formatPrice(i.price)}`).join('\n');
 
   // Format delivery/shipping address elegantly as text
-  const shippingInfo = shippingAddress as any;
+  const shippingInfo = shippingAddress;
   let deliverySectionHtml = '';
 
   if (shippingInfo) {
@@ -338,7 +340,7 @@ export async function sendAdminOrderEmail(params: {
       html,
     });
     console.log('[nodemailer] Admin notification email sent successfully.');
-  } catch (err: any) {
+  } catch (err) {
     console.error('[nodemailer] Failed to send admin notification email:', err);
   }
 }
@@ -519,8 +521,9 @@ export async function sendShippingEmail(params: {
       html,
     });
     console.log(`[nodemailer] Shipping email sent successfully to ${to}`);
-  } catch (err: any) {
+  } catch (err) {
     console.error('[nodemailer] Failed to send shipping email:', err);
-    throw new Error(`Shipping email send failed: ${err.message}`);
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(`Shipping email send failed: ${message}`);
   }
 }

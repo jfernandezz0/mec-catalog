@@ -48,45 +48,57 @@ const countryNamesES: Record<string, string> = {
   DK: 'Dinamarca'
 };
 
-// Helper to convert hex to RGBA
-function hexToRGBA(hex: string, alpha: number) {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+type Position = [number, number];
+type LinearRing = Position[];
+type PolygonCoordinates = LinearRing[];
+type MultiPolygonCoordinates = PolygonCoordinates[];
+
+interface GeoJsonGeometry {
+  type: 'Polygon' | 'MultiPolygon';
+  coordinates: PolygonCoordinates | MultiPolygonCoordinates;
 }
 
-// Helper to get realistic satellite colors without clouds
-function getRealisticCountryColor(iso: string, name: string): string {
-  const desertISO = [
-    'DZ', 'EG', 'LY', 'MA', 'SD', 'TN', 'EH', 'SA', 'YE', 'OM', 'AE', 'QA', 'KW', 'IQ', 'JO', 'SY', 'IR', 'AF', 'PK', 'KP', 'MN', 'UZ', 'TM', 'KG', 'TJ'
-  ];
-  const tundraISO = ['RU', 'CA', 'GL', 'IS', 'FI', 'NO', 'SE'];
-  const mediterraneanISO = ['ES', 'PT', 'IT', 'GR', 'TR', 'SY', 'IL', 'LB', 'CY'];
-  
-  if (iso === 'AQ' || name.includes('ANTARCTICA')) return '#ffffff'; // Snowy Antarctica
-  if (iso === 'AU') return '#b8704c'; // Reddish outback Australia
-  if (desertISO.includes(iso)) return '#e4c49d'; // Sandy beige desert (Sahara, Middle East, Gobi)
-  if (tundraISO.includes(iso)) return '#1f3a22'; // Dark coniferous pine green (Russia, Canada, Scandinavia)
-  if (mediterraneanISO.includes(iso)) return '#445c36'; // Dry Mediterranean olive green (Spain, Italy, Greece, Turkey)
-  return '#2d5e2d'; // Lush standard green vegetation (US, Amazon, Central Africa, Europe)
+interface GeoJsonProperties {
+  ISO_A2?: string;
+  iso_a2?: string;
+  ISO_A3?: string;
+  iso_a3?: string;
+  ADM0_A3?: string;
+  adm0_a3?: string;
+  NAME?: string;
+  NAME_LONG?: string;
+  NAME_ES?: string;
+  POSTAL?: string;
+  [key: string]: unknown;
+}
+
+interface GeoJsonFeature {
+  type: 'Feature';
+  geometry: GeoJsonGeometry;
+  properties: GeoJsonProperties;
+  category?: Category;
+}
+
+interface GeoJsonData {
+  type: 'FeatureCollection';
+  features: GeoJsonFeature[];
 }
 
 // Helper to get the center of the largest mainland polygon to prevent off-center jumps for multi-island nations (like France, US, UK)
-function getGeometryMainlandCenter(geom: any) {
+function getGeometryMainlandCenter(geom: GeoJsonGeometry | null | undefined) {
   const W = 2048;
   const H = 1024;
   
   if (!geom) return { cx: W / 2, cy: H / 2 };
   
-  let targetRing: [number, number][] | null = null;
+  let targetRing: LinearRing | null = null;
   let maxPoints = 0;
 
   if (geom.type === 'Polygon') {
-    targetRing = geom.coordinates[0];
+    targetRing = (geom.coordinates as PolygonCoordinates)[0];
   } else if (geom.type === 'MultiPolygon') {
     // Find the polygon with the most vertices in its outer ring (which represents the mainland)
-    geom.coordinates.forEach((poly: any) => {
+    (geom.coordinates as MultiPolygonCoordinates).forEach((poly: PolygonCoordinates) => {
       const outerRing = poly[0];
       if (outerRing && outerRing.length > maxPoints) {
         maxPoints = outerRing.length;
@@ -163,14 +175,15 @@ function isPointInPolygon(point: [number, number], polygon: [number, number][][]
 }
 
 // Helper to check if point is inside a GeoJSON feature geometry
-function isPointInFeature(point: [number, number], geometry: any) {
+function isPointInFeature(point: [number, number], geometry: GeoJsonGeometry | null | undefined) {
   if (!geometry) return false;
   const { type, coordinates } = geometry;
   if (type === 'Polygon') {
-    return isPointInPolygon(point, coordinates);
+    return isPointInPolygon(point, coordinates as PolygonCoordinates);
   } else if (type === 'MultiPolygon') {
-    for (let i = 0; i < coordinates.length; i++) {
-      if (isPointInPolygon(point, coordinates[i])) {
+    const multiCoords = coordinates as MultiPolygonCoordinates;
+    for (let i = 0; i < multiCoords.length; i++) {
+      if (isPointInPolygon(point, multiCoords[i])) {
         return true;
       }
     }
@@ -179,7 +192,7 @@ function isPointInFeature(point: [number, number], geometry: any) {
 }
 
 // Dynamic country matching linking category country_code to GeoJSON properties
-function matchCountry(dbCode: string, featureProps: any): boolean {
+function matchCountry(dbCode: string, featureProps: GeoJsonProperties | null | undefined): boolean {
   if (!dbCode || !featureProps) return false;
   const code = dbCode.toUpperCase().trim();
   
@@ -228,9 +241,7 @@ export default function Globe({ categories }: GlobeProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const router = useRouter();
 
-  const [geoJsonData, setGeoJsonData] = useState<any>(null);
-  const [theme, setTheme] = useState<'light' | 'dark'>('light');
-  const [hoveredCountry, setHoveredCountry] = useState<string | null>(null);
+  const [geoJsonData, setGeoJsonData] = useState<GeoJsonData | null>(null);
   const [tooltip, setTooltip] = useState<{
     x: number;
     y: number;
@@ -241,33 +252,12 @@ export default function Globe({ categories }: GlobeProps) {
     code: string;
   } | null>(null);
 
-  // Map categories to speed up lookup by uppercase code
-  const categoriesByISO2 = categories.reduce<Record<string, Category>>((acc, curr) => {
-    const rawCode = curr.country_code.toUpperCase().trim();
-    acc[rawCode] = curr;
-    return acc;
-  }, {});
-
-  // Observe theme changes on html node
-  useEffect(() => {
-    const checkTheme = () => {
-      const isDark = document.documentElement.classList.contains('dark');
-      setTheme(isDark ? 'dark' : 'light');
-    };
-
-    const observer = new MutationObserver(checkTheme);
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
-    checkTheme();
-
-    return () => observer.disconnect();
-  }, []);
-
   // Fetch GeoJSON world map once
   useEffect(() => {
     fetch('/world.geo.json')
       .then(res => res.json())
-      .then(data => {
-        data.features.forEach((feature: any) => {
+      .then((data: GeoJsonData) => {
+        data.features.forEach((feature: GeoJsonFeature) => {
           const matchedCat = categories.find(cat => matchCountry(cat.country_code, feature.properties));
           if (matchedCat) {
             feature.category = matchedCat;
@@ -551,11 +541,11 @@ export default function Globe({ categories }: GlobeProps) {
     };
 
     // Helper to draw GeoJSON coordinates onto canvas
-    const drawGeometry = (ctx: CanvasRenderingContext2D, geom: any) => {
+    const drawGeometry = (ctx: CanvasRenderingContext2D, geom: GeoJsonGeometry) => {
       const W = 2048;
       const H = 1024;
       
-      const drawRing = (ring: [number, number][]) => {
+      const drawRing = (ring: LinearRing) => {
         if (ring.length < 2) return;
         ctx.beginPath();
         for (let i = 0; i < ring.length; i++) {
@@ -571,19 +561,19 @@ export default function Globe({ categories }: GlobeProps) {
       };
 
       if (geom.type === 'Polygon') {
-        geom.coordinates.forEach((ring: any) => drawRing(ring));
+        (geom.coordinates as PolygonCoordinates).forEach((ring: LinearRing) => drawRing(ring));
       } else if (geom.type === 'MultiPolygon') {
-        geom.coordinates.forEach((poly: any) => {
-          poly.forEach((ring: any) => drawRing(ring));
+        (geom.coordinates as MultiPolygonCoordinates).forEach((poly: PolygonCoordinates) => {
+          poly.forEach((ring: LinearRing) => drawRing(ring));
         });
       }
     };
 
     // Bounding box of a geometry
-    function getGeometryBounds(geom: any) {
+    function getGeometryBounds(geom: GeoJsonGeometry | null | undefined) {
       let minLon = 180, maxLon = -180, minLat = 90, maxLat = -90;
       
-      const processRing = (ring: [number, number][]) => {
+      const processRing = (ring: LinearRing) => {
         ring.forEach(([lon, lat]) => {
           if (lon < minLon) minLon = lon;
           if (lon > maxLon) maxLon = lon;
@@ -594,10 +584,10 @@ export default function Globe({ categories }: GlobeProps) {
 
       if (!geom) return null;
       if (geom.type === 'Polygon') {
-        geom.coordinates.forEach((ring: any) => processRing(ring));
+        (geom.coordinates as PolygonCoordinates).forEach((ring: LinearRing) => processRing(ring));
       } else if (geom.type === 'MultiPolygon') {
-        geom.coordinates.forEach((poly: any) => {
-          poly.forEach((ring: any) => processRing(ring));
+        (geom.coordinates as MultiPolygonCoordinates).forEach((poly: PolygonCoordinates) => {
+          poly.forEach((ring: LinearRing) => processRing(ring));
         });
       }
       return { minLon, maxLon, minLat, maxLat };
@@ -636,7 +626,7 @@ export default function Globe({ categories }: GlobeProps) {
       drawGridLines(globeCtx);
 
       // Draw Countries
-      geoJsonData.features.forEach((feature: any) => {
+      geoJsonData.features.forEach((feature: GeoJsonFeature) => {
         const cat = feature.category;
         const name = (feature.properties.NAME || '').toUpperCase();
         const rawIso = feature.properties.ISO_A2 || feature.properties.iso_a2;
@@ -735,7 +725,7 @@ export default function Globe({ categories }: GlobeProps) {
       });
 
       // Add extra city light points inside active countries
-      geoJsonData.features.forEach((feature: any) => {
+      geoJsonData.features.forEach((feature: GeoJsonFeature) => {
         const cat = feature.category;
         if (cat) {
           const bounds = getGeometryBounds(feature.geometry);
@@ -760,7 +750,7 @@ export default function Globe({ categories }: GlobeProps) {
 
       // Draw connection lines (dashed data/maritime routes) between active countries
       const activeCoordinates: Record<string, { cx: number, cy: number }> = {};
-      geoJsonData.features.forEach((feature: any) => {
+      geoJsonData.features.forEach((feature: GeoJsonFeature) => {
         const cat = feature.category;
         if (cat) {
           const { cx, cy } = getGeometryMainlandCenter(feature.geometry);
@@ -808,7 +798,7 @@ export default function Globe({ categories }: GlobeProps) {
 
           let foundCategory: Category | null = null;
           let foundCode: string | null = null;
-          let foundFeature: any = null;
+          let foundFeature: GeoJsonFeature | null = null;
 
           for (const feature of geoJsonData.features) {
             if (feature.category && isPointInFeature([lon, lat], feature.geometry)) {
@@ -821,7 +811,6 @@ export default function Globe({ categories }: GlobeProps) {
 
           if (foundCode !== currentHoveredCode) {
             currentHoveredCode = foundCode;
-            setHoveredCountry(foundCode);
             renderGlobeTexture(foundCode);
           }
 
@@ -846,7 +835,6 @@ export default function Globe({ categories }: GlobeProps) {
       } else {
         if (currentHoveredCode !== null) {
           currentHoveredCode = null;
-          setHoveredCountry(null);
           renderGlobeTexture(null);
         }
         setTooltip(prev => prev ? { ...prev, visible: false } : null);
@@ -856,7 +844,6 @@ export default function Globe({ categories }: GlobeProps) {
     const handlePointerOut = () => {
       if (currentHoveredCode !== null) {
         currentHoveredCode = null;
-        setHoveredCountry(null);
         renderGlobeTexture(null);
       }
       setTooltip(prev => prev ? { ...prev, visible: false } : null);
