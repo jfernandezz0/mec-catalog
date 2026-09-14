@@ -1563,23 +1563,25 @@ export default function SalesTab({ articles, loadArticles }: SalesTabProps) {
                                 {formatPrice(item.price * item.quantity)}
                               </span>
 
-                              <button
-                                type="button"
-                                onClick={() => handleToggleEditItem(item)}
-                                style={{
-                                  padding: '4px 8px',
-                                  borderRadius: '5px',
-                                  border: '1px solid rgba(99, 102, 241, 0.3)',
-                                  background: 'rgba(99, 102, 241, 0.08)',
-                                  color: '#6366f1',
-                                  fontSize: '11px',
-                                  cursor: 'pointer',
-                                  transition: 'all 0.2s',
-                                }}
-                                title="Editar cantidad o precio / Suprimir"
-                              >
-                                ✏️
-                              </button>
+                              {isEditingSale && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleEditItem(item)}
+                                  style={{
+                                    padding: '4px 8px',
+                                    borderRadius: '5px',
+                                    border: '1px solid rgba(99, 102, 241, 0.3)',
+                                    background: 'rgba(99, 102, 241, 0.08)',
+                                    color: '#6366f1',
+                                    fontSize: '11px',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s',
+                                  }}
+                                  title="Editar cantidad o precio / Suprimir"
+                                >
+                                  ✏️
+                                </button>
+                              )}
 
                               {!isEditingSale && (item.is_prepurchase || (
                                 selectedSaleDetail.status === 'PRECOMPRA' &&
