@@ -18,7 +18,8 @@ import {
   Plus, 
   Upload, 
   Layers, 
-  FileText 
+  FileText,
+  TrendingUp
 } from 'lucide-react';
 
 // Hooks
@@ -38,6 +39,8 @@ const SalesTab = dynamic(() => import('./components/SalesTab'), { ssr: false });
 const SalesCreateTab = dynamic(() => import('./components/SalesCreateTab'), { ssr: false });
 const AnalyticsTab = dynamic(() => import('./components/AnalyticsTab'), { ssr: false });
 const PDFListGenerator = dynamic(() => import('./components/PDFListGenerator'), { ssr: false });
+const BalanceTab = dynamic(() => import('./components/BalanceTab'), { ssr: false });
+const ExpenseCreateTab = dynamic(() => import('./components/ExpenseCreateTab'), { ssr: false });
 
 // Image helpers
 function getSafeFilePath(file: File) {
@@ -846,6 +849,16 @@ export default function AdminPage() {
 
             <button
               type="button"
+              className={`${styles.sidebarItem} ${['balance', 'expenses-create'].includes(activeTab) ? styles.sidebarItemActive : ''}`}
+              onClick={() => handleTabChange('balance')}
+              data-tooltip="Balance"
+            >
+              <TrendingUp size={20} className={styles.sidebarItemIcon} />
+              {!isSidebarCollapsed && <span>Balance</span>}
+            </button>
+
+            <button
+              type="button"
               className={`${styles.sidebarItem} ${activeTab === 'analytics' ? styles.sidebarItemActive : ''}`}
               onClick={() => handleTabChange('analytics')}
               data-tooltip="Estadísticas/Alcance"
@@ -896,6 +909,8 @@ export default function AdminPage() {
                   ? 'Catálogo'
                   : ['sales', 'sales-create'].includes(activeTab)
                   ? 'Ventas'
+                  : ['balance', 'expenses-create'].includes(activeTab)
+                  ? 'Balance'
                   : 'Estadísticas'}
               </p>
               <h1 className={styles.title}>
@@ -911,6 +926,10 @@ export default function AdminPage() {
                   ? 'Historial de Ventas'
                   : activeTab === 'sales-create'
                   ? 'Registrar Nueva Venta'
+                  : activeTab === 'balance'
+                  ? 'Balance y Contabilidad'
+                  : activeTab === 'expenses-create'
+                  ? 'Registrar Nuevo Gasto'
                   : activeTab === 'analytics'
                   ? 'Estadísticas/Alcance'
                   : activeTab === 'generate_list'
@@ -930,6 +949,10 @@ export default function AdminPage() {
                   ? 'Consulta las ventas realizadas, gestiona precompras y visualiza o descarga facturas.'
                   : activeTab === 'sales-create'
                   ? 'Registra una venta manual indicando los artículos, cantidades, precios y detalles de pago.'
+                  : activeTab === 'balance'
+                  ? 'Control financiero de beneficios, costes, márgenes, metas y balance entre ventas y gastos.'
+                  : activeTab === 'expenses-create'
+                  ? 'Registra compras de materiales, costes de envío y gastos operativos para calcular el beneficio real.'
                   : activeTab === 'analytics'
                   ? 'Analiza el rendimiento del catálogo, visitas, clics de contacto e ingresos por ventas.'
                   : activeTab === 'generate_list'
@@ -1035,6 +1058,27 @@ export default function AdminPage() {
             </nav>
           )}
 
+          {['balance', 'expenses-create'].includes(activeTab) && (
+            <nav className={styles.subTabsContainer} aria-label="Navegación de balance">
+              <button
+                type="button"
+                className={`${styles.subTab} ${activeTab === 'balance' ? styles.subTabActive : ''}`}
+                onClick={() => handleTabChange('balance')}
+              >
+                <TrendingUp size={16} />
+                Balance General
+              </button>
+              <button
+                type="button"
+                className={`${styles.subTab} ${activeTab === 'expenses-create' ? styles.subTabActive : ''}`}
+                onClick={() => handleTabChange('expenses-create')}
+              >
+                <Plus size={16} />
+                Registrar Gasto
+              </button>
+            </nav>
+          )}
+
           {/* Render target tab views */}
           {activeTab === 'catalog' && (
             <CatalogTab
@@ -1131,6 +1175,20 @@ export default function AdminPage() {
               articles={articles}
               categories={categories}
               generalDiscountPercent={generalDiscountPercent}
+            />
+          )}
+
+          {activeTab === 'balance' && (
+            <BalanceTab
+              sales={sales}
+              onNavigateToRegisterExpense={() => handleTabChange('expenses-create')}
+            />
+          )}
+
+          {activeTab === 'expenses-create' && (
+            <ExpenseCreateTab
+              onExpenseCreated={() => handleTabChange('balance')}
+              onCancel={() => handleTabChange('balance')}
             />
           )}
         </main>

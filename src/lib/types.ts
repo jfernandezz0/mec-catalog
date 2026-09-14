@@ -123,7 +123,42 @@ export const initialFormState: FormState = {
   isVisible: true,
 };
 
-export type AdminTab = 'catalog' | 'create' | 'edit' | 'categories' | 'import' | 'config' | 'sales' | 'sales-create' | 'analytics' | 'generate_list';
+export interface Expense {
+  id: string;
+  concept: string;
+  amount: number;
+  category: ExpenseCategory;
+  date: string;
+  payment_method?: string | null;
+  supplier?: string | null;
+  notes?: string | null;
+  created_at?: string;
+}
+
+export type ExpenseCategory =
+  | 'MATERIALES'
+  | 'ENVIOS'
+  | 'PACKAGING'
+  | 'HERRAMIENTAS'
+  | 'MARKETING'
+  | 'EVENTOS'
+  | 'SERVICIOS'
+  | 'IMPUESTOS'
+  | 'OTROS';
+
+export type AdminTab =
+  | 'catalog'
+  | 'create'
+  | 'edit'
+  | 'categories'
+  | 'import'
+  | 'config'
+  | 'sales'
+  | 'sales-create'
+  | 'analytics'
+  | 'generate_list'
+  | 'balance'
+  | 'expenses-create';
 
 // Cart types
 export interface CartItem {
