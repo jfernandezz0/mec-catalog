@@ -127,6 +127,7 @@ export interface Expense {
   id: string;
   concept: string;
   amount: number;
+  units?: number;
   category: ExpenseCategory;
   date: string;
   payment_method?: string | null;

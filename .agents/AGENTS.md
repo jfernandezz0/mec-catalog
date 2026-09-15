@@ -25,3 +25,6 @@ This file defines the specialized personas and task scopes for the MEC Catalog Q
   - Proactively check for database N+1 query patterns in Next.js Server Components.
   - Enforce strict typing in all files under `src/`.
   - Review that files follow Clean Code principles (single responsibility, readability, minimal complexity).
+
+## Regla Global: Despliegue / Push Automático
+- **Regla**: Tras aplicar y verificar con éxito cualquier cambio en el repositorio, realizar siempre de forma automática `git add`, `git commit` descriptivo y `git push origin main` al repositorio remoto.

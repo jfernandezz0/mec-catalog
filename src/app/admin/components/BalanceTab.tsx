@@ -277,16 +277,22 @@ export default function BalanceTab({
       return;
     }
 
-    const headers = ['Fecha', 'Concepto', 'Categoría', 'Importe (€)', 'Método de Pago', 'Proveedor', 'Notas'];
-    const rows = displayedExpenses.map((e) => [
-      `"${e.date || ''}"`,
-      `"${(e.concept || '').replace(/"/g, '""')}"`,
-      `"${CATEGORY_LABELS[e.category]?.label || e.category}"`,
-      Number(e.amount).toFixed(2),
-      `"${e.payment_method || ''}"`,
-      `"${(e.supplier || '').replace(/"/g, '""')}"`,
-      `"${(e.notes || '').replace(/"/g, '""')}"`,
-    ]);
+    const headers = ['Fecha', 'Concepto', 'Unidades', 'Coste Unitario (€)', 'Categoría', 'Importe Total (€)', 'Método de Pago', 'Proveedor', 'Notas'];
+    const rows = displayedExpenses.map((e) => {
+      const u = e.units && e.units > 0 ? e.units : 1;
+      const unitCost = (Number(e.amount) / u).toFixed(2);
+      return [
+        `"${e.date || ''}"`,
+        `"${(e.concept || '').replace(/"/g, '""')}"`,
+        u,
+        unitCost,
+        `"${CATEGORY_LABELS[e.category]?.label || e.category}"`,
+        Number(e.amount).toFixed(2),
+        `"${e.payment_method || ''}"`,
+        `"${(e.supplier || '').replace(/"/g, '""')}"`,
+        `"${(e.notes || '').replace(/"/g, '""')}"`,
+      ];
+    });
 
     const csvContent = '\uFEFF' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -940,9 +946,28 @@ export default function BalanceTab({
                         {exp.date ? new Date(exp.date).toLocaleDateString('es-ES') : '-'}
                       </td>
                       <td style={{ padding: '10px 12px' }}>
-                        <div style={{ fontWeight: 700 }}>{exp.concept}</div>
+                        <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                          <span>{exp.concept}</span>
+                          {exp.units && exp.units > 1 && (
+                            <span style={{
+                              fontSize: '11px',
+                              fontWeight: 700,
+                              background: 'rgba(99, 102, 241, 0.15)',
+                              color: '#818cf8',
+                              padding: '2px 7px',
+                              borderRadius: '5px',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                            }}>
+                              📦 {exp.units} uds · {(Number(exp.amount) / exp.units).toFixed(2).replace('.', ',')} €/ud
+                            </span>
+                          )}
+                        </div>
                         {exp.notes && (
-                          <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>{exp.notes}</div>
+                          <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px', whiteSpace: 'pre-line' }}>
+                            {exp.notes}
+                          </div>
                         )}
                       </td>
                       <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>

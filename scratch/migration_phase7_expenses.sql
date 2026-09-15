@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS expenses (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   concept TEXT NOT NULL,
   amount NUMERIC(10,2) NOT NULL CHECK (amount >= 0),
+  units INTEGER DEFAULT 1,
   category TEXT NOT NULL DEFAULT 'OTROS',
   date DATE NOT NULL DEFAULT CURRENT_DATE,
   payment_method TEXT,
@@ -15,6 +16,9 @@ CREATE TABLE IF NOT EXISTS expenses (
   notes TEXT,
   created_at TIMESTAMPTZ DEFAULT now()
 );
+
+-- Ensure units column exists if table already existed
+ALTER TABLE expenses ADD COLUMN IF NOT EXISTS units INTEGER DEFAULT 1;
 
 -- 2. Indexes for fast analytics and date filtering
 CREATE INDEX IF NOT EXISTS idx_expenses_date ON expenses(date DESC);

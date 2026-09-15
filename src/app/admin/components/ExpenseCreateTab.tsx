@@ -22,14 +22,6 @@ const EXPENSE_CATEGORIES: { value: ExpenseCategory; label: string }[] = [
   { value: 'OTROS', label: '📌 Otros Gastos' },
 ];
 
-const PRESETS = [
-  { label: '🧵 Bobina Filamento (20 €)', concept: 'Bobina Filamento PLA', amount: '20.00', category: 'MATERIALES' as ExpenseCategory },
-  { label: '📦 Envío Correos (5.50 €)', concept: 'Envío Paquetería Correos', amount: '5.50', category: 'ENVIOS' as ExpenseCategory },
-  { label: '🏷️ Cajas Packaging (15 €)', concept: 'Cajas y material de embalaje', amount: '15.00', category: 'PACKAGING' as ExpenseCategory },
-  { label: '🛠️ Recambio Impresora (12 €)', concept: 'Boquilla / Recambio impresora 3D', amount: '12.00', category: 'HERRAMIENTAS' as ExpenseCategory },
-  { label: '🎪 Stand / Feria (50 €)', concept: 'Cuota de participación en feria', amount: '50.00', category: 'EVENTOS' as ExpenseCategory },
-];
-
 export default function ExpenseCreateTab({
   onExpenseCreated,
   onCancel,
@@ -37,6 +29,7 @@ export default function ExpenseCreateTab({
   const todayStr = new Date().toISOString().split('T')[0];
 
   const [concept, setConcept] = useState('');
+  const [units, setUnits] = useState('1');
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState<ExpenseCategory>('MATERIALES');
   const [date, setDate] = useState(todayStr);
@@ -45,17 +38,15 @@ export default function ExpenseCreateTab({
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
 
-  function applyPreset(p: typeof PRESETS[0]) {
-    setConcept(p.concept);
-    setAmount(p.amount);
-    setCategory(p.category);
-  }
+  const parsedUnits = parseInt(units, 10);
+  const numUnits = !isNaN(parsedUnits) && parsedUnits > 0 ? parsedUnits : 1;
+  const numAmount = parseFloat(amount);
+  const unitCost = !isNaN(numAmount) && numAmount > 0 && numUnits > 0 ? numAmount / numUnits : null;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
     const trimmedConcept = concept.trim();
-    const numAmount = parseFloat(amount);
 
     if (!trimmedConcept) {
       alert('Por favor indica el concepto o descripción del gasto.');
@@ -72,6 +63,7 @@ export default function ExpenseCreateTab({
     const expensePayload = {
       concept: trimmedConcept,
       amount: numAmount,
+      units: numUnits,
       category,
       date: date || todayStr,
       payment_method: paymentMethod || null,
@@ -80,9 +72,24 @@ export default function ExpenseCreateTab({
     };
 
     try {
-      const { error } = await supabase
+      let { error } = await supabase
         .from('expenses')
         .insert(expensePayload);
+
+      // Graceful fallback if the units column doesn't exist yet in Supabase
+      if (error && (error.code === '42703' || error.message?.includes('units'))) {
+        console.warn('[Expenses] Column "units" not found in Supabase schema. Retrying without units column...');
+        const annotatedNotes = notes.trim()
+          ? `${notes.trim()}\n[Lote: ${numUnits} uds · ${(numAmount / numUnits).toFixed(2)} €/ud]`
+          : `[Lote: ${numUnits} uds · ${(numAmount / numUnits).toFixed(2)} €/ud]`;
+        const fallbackPayload: Record<string, unknown> = {
+          ...expensePayload,
+          notes: annotatedNotes,
+        };
+        delete fallbackPayload.units;
+        const retryResult = await supabase.from('expenses').insert(fallbackPayload);
+        error = retryResult.error;
+      }
 
       if (error) {
         // Fallback: If table does not exist in Supabase yet, save in localStorage
@@ -123,49 +130,6 @@ export default function ExpenseCreateTab({
 
   return (
     <div style={{ maxWidth: '780px', margin: '0 auto' }}>
-      {/* Quick Presets */}
-      <div style={{
-        background: 'var(--bg-card)',
-        border: '1px solid var(--border-card)',
-        borderRadius: '12px',
-        padding: '16px 20px',
-        marginBottom: '24px',
-      }}>
-        <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-          ⚡ Atajos Rápidos de Gastos Frecuentes
-        </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-          {PRESETS.map((p, idx) => (
-            <button
-              key={idx}
-              type="button"
-              onClick={() => applyPreset(p)}
-              style={{
-                padding: '6px 12px',
-                borderRadius: '8px',
-                border: '1px solid var(--border-input)',
-                background: 'var(--bg-input)',
-                color: 'var(--text-primary)',
-                fontSize: '12px',
-                fontWeight: 600,
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = 'var(--text-primary)';
-                e.currentTarget.style.transform = 'translateY(-1px)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = 'var(--border-input)';
-                e.currentTarget.style.transform = 'translateY(0)';
-              }}
-            >
-              {p.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
       {/* Main Expense Form */}
       <form onSubmit={handleSubmit} style={{
         background: 'var(--bg-card)',
@@ -179,29 +143,55 @@ export default function ExpenseCreateTab({
         <div style={{ borderBottom: '1px solid var(--border-card)', paddingBottom: '14px' }}>
           <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 800 }}>Detalles del Gasto</h2>
           <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: 'var(--text-secondary)' }}>
-            Introduce los datos para computarlo en el balance contable y restar de los beneficios.
+            Introduce los datos para computarlo en el balance contable y calcular el coste unitario del material.
           </p>
         </div>
 
-        {/* Concepto & Importe */}
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '16px' }}>
+        {/* Concepto / Descripción */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <label className={styles.formLabel}>
+            Concepto / Descripción <span style={{ color: '#ef4444' }}>*</span>
+          </label>
+          <input
+            type="text"
+            placeholder="Ej. COCHES LEGO, Bobinas Filamento PLA..."
+            value={concept}
+            onChange={(e) => setConcept(e.target.value)}
+            className={styles.salesTextInput}
+            required
+          />
+        </div>
+
+        {/* Unidades & Importe Total */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <label className={styles.formLabel}>
-              Concepto / Descripción <span style={{ color: '#ef4444' }}>*</span>
+              Unidades / Cantidad <span style={{ color: '#ef4444' }}>*</span>
             </label>
-            <input
-              type="text"
-              placeholder="Ej. 2 Bobinas de Filamento PLA Negro"
-              value={concept}
-              onChange={(e) => setConcept(e.target.value)}
-              className={styles.salesTextInput}
-              required
-            />
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <input
+                type="number"
+                min="1"
+                step="1"
+                placeholder="1"
+                value={units}
+                onChange={(e) => setUnits(e.target.value)}
+                className={styles.salesTextInput}
+                style={{ paddingRight: '46px', fontWeight: 700 }}
+                required
+              />
+              <span style={{ position: 'absolute', right: '12px', fontWeight: 600, fontSize: '12px', color: 'var(--text-secondary)' }}>
+                uds
+              </span>
+            </div>
+            <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+              Cantidad de piezas/material para repartir el coste
+            </span>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <label className={styles.formLabel}>
-              Importe (€) <span style={{ color: '#ef4444' }}>*</span>
+              Importe Total (€) <span style={{ color: '#ef4444' }}>*</span>
             </label>
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
               <input
@@ -217,8 +207,49 @@ export default function ExpenseCreateTab({
               />
               <span style={{ position: 'absolute', right: '12px', fontWeight: 700, color: 'var(--text-secondary)' }}>€</span>
             </div>
+            <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+              Gasto total unificado de la compra
+            </span>
           </div>
         </div>
+
+        {/* Banner de Coste Medio Unitario */}
+        {numUnits > 1 && !isNaN(numAmount) && numAmount > 0 && unitCost !== null && (
+          <div style={{
+            background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(99, 102, 241, 0.08) 100%)',
+            border: '1px solid rgba(16, 185, 129, 0.3)',
+            borderRadius: '10px',
+            padding: '12px 16px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '12px',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{ fontSize: '22px' }}>⚖️</span>
+              <div>
+                <div style={{ fontSize: '14px', fontWeight: 800, color: '#10b981' }}>
+                  Coste Medio Unitario: {unitCost.toFixed(2).replace('.', ',')} € / unidad
+                </div>
+                <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                  Gasto de {numAmount.toFixed(2).replace('.', ',')} € distribuido equitativamente entre {numUnits} unidades. Mismo coste base para cualquier modelo.
+                </div>
+              </div>
+            </div>
+            <div style={{
+              background: '#10b981',
+              color: '#fff',
+              padding: '6px 12px',
+              borderRadius: '6px',
+              fontWeight: 800,
+              fontFamily: 'monospace',
+              fontSize: '13px',
+              whiteSpace: 'nowrap',
+            }}>
+              {unitCost.toFixed(2).replace('.', ',')} €/ud
+            </div>
+          </div>
+        )}
 
         {/* Categoría & Fecha */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
