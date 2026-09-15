@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useMemo, ChangeEvent, FormEvent } from 'react';
+import { useState, useEffect, useRef, useMemo, ChangeEvent, FormEvent } from 'react';
 import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
 import { formatPrice } from '@/lib/utils';
@@ -229,6 +229,12 @@ export default function AdminPage() {
     }
   };
 
+  useEffect(() => {
+    if (user) {
+      loadSales();
+    }
+  }, [user]);
+
   const handleTabChange = (tab: AdminTab) => {
     resetForm();
     setActiveTab(tab);
@@ -241,7 +247,7 @@ export default function AdminPage() {
       reloadCategories();
     } else if (tab === 'config') {
       loadPaymentsSetting();
-    } else if (tab === 'analytics') {
+    } else if (tab === 'analytics' || tab === 'balance') {
       loadArticles();
       loadSales();
     }

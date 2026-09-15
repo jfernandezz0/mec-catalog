@@ -26,9 +26,11 @@ const CATEGORY_LABELS: Record<string, { label: string; icon: string; color: stri
 };
 
 export default function BalanceTab({
-  sales,
+  sales: initialSales,
   onNavigateToRegisterExpense,
 }: BalanceTabProps) {
+  const [salesList, setSalesList] = useState<Sale[]>(initialSales || []);
+  const [loadingSales, setLoadingSales] = useState(true);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loadingExpenses, setLoadingExpenses] = useState(true);
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('this_month');
@@ -44,6 +46,7 @@ export default function BalanceTab({
   const [tableNotMigrated, setTableNotMigrated] = useState(false);
 
   useEffect(() => {
+    loadSales();
     loadExpenses();
     const savedGoal = localStorage.getItem('mec_monthly_goal');
     if (savedGoal) {
@@ -54,6 +57,33 @@ export default function BalanceTab({
       }
     }
   }, []);
+
+  useEffect(() => {
+    if (initialSales && initialSales.length > 0) {
+      setSalesList(initialSales);
+      setLoadingSales(false);
+    }
+  }, [initialSales]);
+
+  async function loadSales() {
+    setLoadingSales(true);
+    try {
+      const { data, error } = await supabase
+        .from('sales')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error loading sales in BalanceTab:', error);
+      } else if (data) {
+        setSalesList(data);
+      }
+    } catch (err) {
+      console.error('Error fetching sales in BalanceTab:', err);
+    } finally {
+      setLoadingSales(false);
+    }
+  }
 
   async function loadExpenses() {
     setLoadingExpenses(true);
@@ -138,7 +168,7 @@ export default function BalanceTab({
     if (filter === 'last_30_days') {
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(now.getDate() - 30);
-      return d >= thirtyDaysAgo && d <= now;
+      return d >= thirtyDaysAgo;
     }
 
     if (filter === 'this_quarter') {
@@ -156,12 +186,12 @@ export default function BalanceTab({
 
   // Filtered sales
   const filteredSales = useMemo(() => {
-    return sales.filter((s) => {
+    return salesList.filter((s) => {
       if (s.status === 'CANCELADA') return false;
       if (s.payment_type === 'RESERVA' && s.status === 'PRECOMPRA') return false;
       return isDateInPeriod(s.created_at, periodFilter);
     });
-  }, [sales, periodFilter]);
+  }, [salesList, periodFilter]);
 
   // Filtered expenses
   const filteredExpenses = useMemo(() => {
@@ -204,12 +234,12 @@ export default function BalanceTab({
 
   // Goal Progress (Current Month)
   const currentMonthSales = useMemo(() => {
-    return sales.filter((s) => {
+    return salesList.filter((s) => {
       if (s.status === 'CANCELADA') return false;
       if (s.payment_type === 'RESERVA' && s.status === 'PRECOMPRA') return false;
       return isDateInPeriod(s.created_at, 'this_month');
     });
-  }, [sales]);
+  }, [salesList]);
   const currentMonthRevenue = currentMonthSales.reduce((acc, s) => acc + Number(s.total_price), 0);
   const goalPercent = Math.min(100, monthlyGoal > 0 ? (currentMonthRevenue / monthlyGoal) * 100 : 0);
   const goalRemaining = Math.max(0, monthlyGoal - currentMonthRevenue);
@@ -237,7 +267,7 @@ export default function BalanceTab({
       const yearMonth = `${year}-${String(month + 1).padStart(2, '0')}`;
       const label = `${monthName.charAt(0).toUpperCase() + monthName.slice(1)} ${String(year).slice(2)}`;
 
-      const rev = sales
+      const rev = salesList
         .filter((s) => {
           if (s.status === 'CANCELADA') return false;
           if (s.payment_type === 'RESERVA' && s.status === 'PRECOMPRA') return false;
@@ -263,7 +293,7 @@ export default function BalanceTab({
     }
 
     return monthsData;
-  }, [sales, expenses]);
+  }, [salesList, expenses]);
 
   const maxTimelineVal = Math.max(
     ...monthlyTimeline.map((m) => Math.max(m.revenue, m.expenses)),
