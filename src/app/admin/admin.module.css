@@ -338,6 +338,170 @@
   color: #171717;
 }
 
+.cardPriceContainer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.cardDiscountPriceGroup {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.discountBubbleRed,
+.discountBubbleBlue {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 800;
+  border-radius: 6px;
+  padding: 3px 6px;
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  vertical-align: middle;
+}
+
+.discountBubbleRed {
+  background: #ff4d4f;
+}
+
+.discountBubbleBlue {
+  background: #1890ff;
+}
+
+.originalPriceStrikethrough {
+  font-size: 13px;
+  color: var(--text-tertiary, #a3a3a3);
+  text-decoration: line-through;
+  opacity: 0.8;
+}
+
+/* Feedback de precio final con descuento en formulario de artículo */
+.finalPricePreviewBox {
+  margin-top: 4px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(22, 163, 74, 0.07);
+  border: 1px solid rgba(22, 163, 74, 0.25);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.finalPricePreviewMain {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.finalPricePreviewLabel {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.finalPricePreviewValue {
+  font-size: 18px;
+  font-weight: 800;
+  color: #16a34a;
+}
+
+.finalPricePreviewDetails {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.finalPricePreviewSavings {
+  font-size: 12px;
+  font-weight: 600;
+  color: #15803d;
+}
+
+.finalPricePreviewSource {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+/* Tarjeta de desglose de descuento en la sección Descuento */
+.discountCalcCard {
+  margin-top: 8px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.discountCalcRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+}
+
+.discountCalcLabel {
+  color: var(--text-secondary);
+}
+
+.discountCalcOriginal {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.discountCalcDiscount {
+  font-weight: 700;
+  color: #dc2626;
+}
+
+.discountCalcDivider {
+  height: 1px;
+  background: #e5e7eb;
+  margin: 3px 0;
+}
+
+.discountCalcRowFinal {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 14px;
+}
+
+.discountCalcFinalLabel {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.discountCalcFinalValue {
+  font-size: 18px;
+  font-weight: 800;
+  color: #16a34a;
+}
+
+.discountCalcSavings {
+  font-size: 12px;
+  color: #15803d;
+  margin-top: 2px;
+}
+
+.discountNotice {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  margin-top: 4px;
+  display: block;
+}
+
 .cardStock {
   font-size: 12px;
   color: #525252;

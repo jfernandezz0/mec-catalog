@@ -1098,6 +1098,7 @@ export default function AdminPage() {
               setActiveTab={setActiveTab}
               moveArticle={moveArticle}
               startEditing={startEditing}
+              generalDiscountPercent={generalDiscountPercent}
             />
           )}
 

@@ -2,6 +2,8 @@
 
 import { ChangeEvent, FormEvent } from 'react';
 import Image from 'next/image';
+import { formatPrice } from '@/lib/utils';
+import { calculateDiscount } from '@/lib/discounts';
 import { FormState, Article, Category } from '@/lib/types';
 import styles from '../admin.module.css';
 
@@ -64,6 +66,20 @@ export default function ArticleForm({
   onCancel,
   onReset,
 }: ArticleFormProps) {
+  const currentPriceNum = Number(formState.price) || 0;
+  const catId = Number(formState.categoryId);
+  const selectedCategory = categories.find((c) => c.id === catId);
+
+  const discountInfo = calculateDiscount(
+    formState.price,
+    formState.discountType,
+    formState.discountValue,
+    selectedCategory?.discount_percent,
+    generalDiscountPercent
+  );
+
+  const hasDiscount = discountInfo.appliedSource !== 'none' && currentPriceNum > 0;
+
   return (
     <form
       onSubmit={onSubmit}
@@ -169,6 +185,37 @@ export default function ArticleForm({
               disabled={loading}
               className={styles.control}
             />
+            {hasDiscount && (
+              <div className={styles.finalPricePreviewBox}>
+                <div className={styles.finalPricePreviewMain}>
+                  <span className={styles.finalPricePreviewLabel}>Precio final:</span>
+                  <span className={styles.finalPricePreviewValue}>
+                    {formatPrice(discountInfo.finalPrice)}
+                  </span>
+                </div>
+                <div className={styles.finalPricePreviewDetails}>
+                  <span
+                    className={
+                      discountInfo.discountType === 'amount'
+                        ? styles.discountBubbleBlue
+                        : styles.discountBubbleRed
+                    }
+                  >
+                    {discountInfo.discountType === 'amount'
+                      ? `-${formatPrice(discountInfo.discountValue)}`
+                      : `-${discountInfo.discountValue}%`}
+                  </span>
+                  <span className={styles.finalPricePreviewSavings}>
+                    Ahorro: {formatPrice(discountInfo.discountAmount)}
+                  </span>
+                  {discountInfo.appliedSource !== 'article' && (
+                    <span className={styles.finalPricePreviewSource}>
+                      (aplicado por {discountInfo.appliedSource === 'category' ? `categoría: ${selectedCategory?.name || ''}` : 'descuento general web'})
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
           </label>
 
           <label className={styles.field}>
@@ -316,6 +363,34 @@ export default function ArticleForm({
                     disabled={loading}
                     className={styles.control}
                   />
+                  {currentPriceNum > 0 && formState.discountValue ? (
+                    <div className={styles.discountCalcCard}>
+                      <div className={styles.discountCalcRow}>
+                        <span className={styles.discountCalcLabel}>Precio original:</span>
+                        <span className={styles.discountCalcOriginal}>{formatPrice(currentPriceNum)}</span>
+                      </div>
+                      <div className={styles.discountCalcRow}>
+                        <span className={styles.discountCalcLabel}>Descuento a aplicar:</span>
+                        <span className={styles.discountCalcDiscount}>
+                          {formState.discountType === 'amount'
+                            ? `-${formatPrice(Number(formState.discountValue) || 0)}`
+                            : `-${formState.discountValue}%`}
+                        </span>
+                      </div>
+                      <div className={styles.discountCalcDivider} />
+                      <div className={styles.discountCalcRowFinal}>
+                        <span className={styles.discountCalcFinalLabel}>Precio final a cobrar:</span>
+                        <span className={styles.discountCalcFinalValue}>{formatPrice(discountInfo.finalPrice)}</span>
+                      </div>
+                      <div className={styles.discountCalcSavings}>
+                        Ahorro total para el cliente: <strong>{formatPrice(discountInfo.discountAmount)}</strong>
+                      </div>
+                    </div>
+                  ) : currentPriceNum <= 0 ? (
+                    <span className={styles.discountNotice}>
+                      ℹ️ Introduce el precio del artículo arriba para calcular el importe final.
+                    </span>
+                  ) : null}
                 </label>
               </div>
             )}

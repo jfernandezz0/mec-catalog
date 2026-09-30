@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import { useState } from 'react';
 import { getFlagEmoji, formatPrice } from '@/lib/utils';
+import { calculateDiscount } from '@/lib/discounts';
 import { Article, Category } from '@/lib/types';
 import styles from '../admin.module.css';
 
@@ -17,6 +18,7 @@ interface CatalogTabProps {
   setActiveTab: (tab: 'catalog' | 'create' | 'edit' | 'categories' | 'import' | 'config' | 'sales' | 'sales-create' | 'analytics' | 'generate_list') => void;
   moveArticle: (id: number, direction: 'up' | 'down', displayed: Article[]) => void;
   startEditing: (article: Article) => void;
+  generalDiscountPercent?: string;
 }
 
 export default function CatalogTab({
@@ -30,6 +32,7 @@ export default function CatalogTab({
   setActiveTab,
   moveArticle,
   startEditing,
+  generalDiscountPercent,
 }: CatalogTabProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 12;
@@ -85,14 +88,18 @@ export default function CatalogTab({
   // Sort by price if requested
   if (priceSort === 'desc') {
     displayedArticles = [...displayedArticles].sort((a, b) => {
-      const priceA = typeof a.price === 'number' ? a.price : parseFloat(String(a.price)) || 0;
-      const priceB = typeof b.price === 'number' ? b.price : parseFloat(String(b.price)) || 0;
+      const catA = categories.find((c) => c.id === a.category_id);
+      const catB = categories.find((c) => c.id === b.category_id);
+      const priceA = calculateDiscount(a.price, a.discount_type, a.discount_value, catA?.discount_percent, generalDiscountPercent).finalPrice;
+      const priceB = calculateDiscount(b.price, b.discount_type, b.discount_value, catB?.discount_percent, generalDiscountPercent).finalPrice;
       return priceB - priceA;
     });
   } else if (priceSort === 'asc') {
     displayedArticles = [...displayedArticles].sort((a, b) => {
-      const priceA = typeof a.price === 'number' ? a.price : parseFloat(String(a.price)) || 0;
-      const priceB = typeof b.price === 'number' ? b.price : parseFloat(String(b.price)) || 0;
+      const catA = categories.find((c) => c.id === a.category_id);
+      const catB = categories.find((c) => c.id === b.category_id);
+      const priceA = calculateDiscount(a.price, a.discount_type, a.discount_value, catA?.discount_percent, generalDiscountPercent).finalPrice;
+      const priceB = calculateDiscount(b.price, b.discount_type, b.discount_value, catB?.discount_percent, generalDiscountPercent).finalPrice;
       return priceA - priceB;
     });
   }
@@ -210,13 +217,21 @@ export default function CatalogTab({
         <div>
           <div className={styles.catalogGrid}>
             {paginatedArticles.map((article) => {
-              const catName =
-                categories.find((c) => c.id === article.category_id)?.name ||
-                'Sin categoría';
+              const category = categories.find((c) => c.id === article.category_id);
+              const catName = category?.name || 'Sin categoría';
               const primaryImageUrl =
                 article.image_urls && article.image_urls.length > 0
                   ? article.image_urls[0]
                   : null;
+
+              const discountInfo = calculateDiscount(
+                article.price,
+                article.discount_type,
+                article.discount_value,
+                category?.discount_percent,
+                generalDiscountPercent
+              );
+              const hasDiscount = discountInfo.appliedSource !== 'none';
 
               return (
                 <article key={article.id} className={styles.catalogCard}>
@@ -274,9 +289,42 @@ export default function CatalogTab({
                       </div>
                     </div>
                     <div className={styles.cardMeta}>
-                      <span className={styles.cardPrice}>
-                        {formatPrice(article.price)}
-                      </span>
+                      <div className={styles.cardPriceContainer}>
+                        {hasDiscount && (
+                          <span
+                            className={
+                              discountInfo.discountType === 'amount'
+                                ? styles.discountBubbleBlue
+                                : styles.discountBubbleRed
+                            }
+                            title={
+                              discountInfo.appliedSource === 'article'
+                                ? 'Descuento individual del artículo'
+                                : discountInfo.appliedSource === 'category'
+                                ? `Descuento por categoría (${category?.name})`
+                                : 'Descuento general de la web'
+                            }
+                          >
+                            {discountInfo.discountType === 'amount'
+                              ? `-${formatPrice(discountInfo.discountValue)}`
+                              : `-${discountInfo.discountValue}%`}
+                          </span>
+                        )}
+                        {hasDiscount ? (
+                          <div className={styles.cardDiscountPriceGroup}>
+                            <span className={styles.originalPriceStrikethrough}>
+                              {formatPrice(discountInfo.originalPrice)}
+                            </span>
+                            <span className={styles.cardPrice}>
+                              {formatPrice(discountInfo.finalPrice)}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className={styles.cardPrice}>
+                            {formatPrice(discountInfo.originalPrice)}
+                          </span>
+                        )}
+                      </div>
                       <div className="flex gap-2 items-center">
                         <span className={styles.cardStock}>
                           {article.quantity} ud.
