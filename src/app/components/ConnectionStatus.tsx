@@ -17,8 +17,8 @@ export default function ConnectionStatus() {
     const handleOnline = () => {
       setStatus('reconnecting');
       reloadTimeout = window.setTimeout(() => {
-        window.location.reload();
-      }, 800);
+        setStatus('online');
+      }, 1500);
     };
 
     const handleOffline = () => setStatus('offline');
@@ -58,7 +58,7 @@ export default function ConnectionStatus() {
         ) : (
           <>
             <WifiIcon className="w-4.5 h-4.5 text-[#166534]" />
-            <span>Conexión restablecida. Recargando...</span>
+            <span>Conexión restablecida.</span>
           </>
         )}
       </div>

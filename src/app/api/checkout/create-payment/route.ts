@@ -6,10 +6,18 @@ import { calculateDiscount } from '@/lib/discounts';
 import { ShippingAddress } from '@/lib/types';
 import { randomUUID } from 'crypto';
 
+interface CartItemInput {
+  articleId: number;
+  quantity?: number;
+  title?: string;
+  priceAtCheckout?: number;
+}
+
 interface CreatePaymentBody {
   sourceId: string;
-  articleIds: number[];
-  total: number;
+  cartItems?: CartItemInput[];
+  articleIds?: number[];
+  total?: number;
   buyerEmail: string;
   buyerName: string;
   buyerWhatsapp?: string | null;
@@ -19,36 +27,28 @@ interface CreatePaymentBody {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json() as CreatePaymentBody;
-    const { sourceId, articleIds, total, buyerEmail, buyerName, buyerWhatsapp, shippingAddress } = body;
+    const { sourceId, cartItems: rawCartItems, articleIds: rawArticleIds, buyerEmail, buyerName, buyerWhatsapp, shippingAddress } = body;
 
-    if (!sourceId || !articleIds?.length || !total || !buyerEmail) {
+    const requestedItems: { articleId: number; quantity: number }[] = Array.isArray(rawCartItems) && rawCartItems.length > 0
+      ? rawCartItems.map((item) => ({
+          articleId: Number(item.articleId),
+          quantity: Math.max(1, Math.floor(Number(item.quantity) || 1)),
+        }))
+      : Array.isArray(rawArticleIds) && rawArticleIds.length > 0
+        ? rawArticleIds.map((id) => ({ articleId: Number(id), quantity: 1 }))
+        : [];
+
+    if (!sourceId || requestedItems.length === 0 || !buyerEmail || !buyerName) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    // Double-check stock before charging
+    const articleIds = requestedItems.map((i) => i.articleId);
     const db = getSupabaseAdmin();
-    for (const id of articleIds) {
-      const { data: article } = await db
-        .from('articles')
-        .select('id, quantity')
-        .eq('id', id)
-        .single();
 
-      if (!article || article.quantity <= 0) {
-        return NextResponse.json(
-          { error: `El artículo ya no está disponible`, articleId: id },
-          { status: 409 },
-        );
-      }
-    }
-
-    const amountCents = BigInt(Math.round(total * 100));
-    const idempotencyKey = randomUUID();
-
-    // Fetch article details along with discounts for the cart record
+    // Fetch article details along with stock and discounts from DB
     const { data: articles } = await db
       .from('articles')
-      .select('id, title, price, discount_type, discount_value, category_id, categories(discount_percent)')
+      .select('id, title, price, quantity, discount_type, discount_value, category_id, categories(discount_percent)')
       .in('id', articleIds);
 
     const { data: settingsData } = await db
@@ -61,12 +61,26 @@ export async function POST(request: NextRequest) {
       id: number;
       title: string;
       price: number;
+      quantity: number;
       discount_type?: string | null;
       discount_value?: number | null;
       categories?: { discount_percent: number | null } | null;
     }
 
-    const cartItems = ((articles as unknown as FetchedArticleForPayment[]) ?? []).map((a) => {
+    const fetchedArticles = (articles as unknown as FetchedArticleForPayment[]) ?? [];
+    const articleMap = new Map(fetchedArticles.map((a) => [a.id, a]));
+
+    // Verify stock and compute server-authoritative prices
+    const cartItems: { articleId: number; title: string; priceAtCheckout: number; quantity: number }[] = [];
+    for (const reqItem of requestedItems) {
+      const a = articleMap.get(reqItem.articleId);
+      if (!a || a.quantity < reqItem.quantity || a.quantity <= 0) {
+        return NextResponse.json(
+          { error: 'El artículo ya no tiene stock suficiente disponible', articleId: reqItem.articleId },
+          { status: 409 },
+        );
+      }
+
       const catDiscount = a.categories?.discount_percent ?? null;
       const discount = calculateDiscount(
         a.price,
@@ -75,13 +89,25 @@ export async function POST(request: NextRequest) {
         catDiscount,
         generalDiscountPercent
       );
-      return {
+
+      cartItems.push({
         articleId: a.id,
         title: a.title,
         priceAtCheckout: discount.finalPrice,
-      };
-    });
+        quantity: reqItem.quantity,
+      });
+    }
 
+    const serverSubtotal = cartItems.reduce((sum, item) => sum + item.priceAtCheckout * item.quantity, 0);
+    const isDelivery = shippingAddress?.method === 'envio';
+    const serverShippingCost = isDelivery ? 9.99 : 0;
+    const total = Number((serverSubtotal + serverShippingCost).toFixed(2));
+    const normalizedShippingAddress: ShippingAddress | null = shippingAddress
+      ? { ...shippingAddress, price: serverShippingCost }
+      : null;
+
+    const amountCents = BigInt(Math.round(total * 100));
+    const idempotencyKey = randomUUID();
     const checkoutSessionId = randomUUID();
 
     // ── STEP 1: CREATE PENDING CHECKOUT IN DATABASE AS SAFETY NET ──
@@ -93,7 +119,7 @@ export async function POST(request: NextRequest) {
         name: buyerName,
         email: buyerEmail,
         whatsapp: buyerWhatsapp || null,
-        shippingAddress: shippingAddress || null,
+        shippingAddress: normalizedShippingAddress,
       },
       total,
     });
@@ -144,10 +170,7 @@ export async function POST(request: NextRequest) {
       .update({ square_payment_id: payment.id })
       .eq('id', checkoutSessionId);
 
-    // Build dynamic baseUrl from request headers to support any domain/localhost dynamically
-    const host = request.headers.get('host') || 'localhost:3000';
-    const protocol = host.startsWith('localhost') ? 'http' : 'https';
-    const baseUrl = `${protocol}://${host}`;
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.minienginescreations.com';
 
     // ── STEP 4: CREATE SALE IMMEDIATELY (Synchronous flow) ──
     const { orderNumber } = await createSaleFromPayment({
@@ -158,7 +181,7 @@ export async function POST(request: NextRequest) {
         name: buyerName,
         email: buyerEmail,
         whatsapp: buyerWhatsapp || null,
-        shippingAddress: shippingAddress || null,
+        shippingAddress: normalizedShippingAddress,
       },
       total,
       baseUrl,

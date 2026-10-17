@@ -115,6 +115,7 @@ export default function CheckoutPage() {
   const [countdownValue, setCountdownValue] = useState(60);
   const [pendingSaleId, setPendingSaleId] = useState<string | null>(null);
   const [pendingOrderNumber, setPendingOrderNumber] = useState<string | null>(null);
+  const [pendingPaymentUrl, setPendingPaymentUrl] = useState<string | null>(null);
   const [currentQuoteIndex, setCurrentQuoteIndex] = useState(0);
 
   const unavailableIds = reserved
@@ -463,7 +464,10 @@ export default function CheckoutPage() {
         };
 
     const cartItems = availableItems.map((i) => ({
-      articleId: i.article.id, title: i.article.title, priceAtCheckout: i.priceAtAdd,
+      articleId: i.article.id,
+      title: i.article.title,
+      priceAtCheckout: i.priceAtAdd,
+      quantity: i.quantity || 1,
     }));
 
     try {
@@ -484,18 +488,20 @@ export default function CheckoutPage() {
         const res = await fetch('/api/checkout/create-manual-sale', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ cartItems, buyerName: buyer.name, buyerEmail: buyer.email, buyerWhatsapp: formattedWhatsapp, shippingAddress, total: availableTotal, paymentMethod: selectedMethod === 'bizum' ? 'BIZUM' : 'PAYPAL', delayEmail: true }),
+          body: JSON.stringify({ cartItems, buyerName: buyer.name, buyerEmail: buyer.email, buyerWhatsapp: formattedWhatsapp, shippingAddress, total: availableTotal, paymentMethod: selectedMethod === 'bizum' ? 'BIZUM' : 'PAYPAL', delayEmail: false }),
         });
         const data = await res.json();
         if (!res.ok || !data.success) throw new Error(data.error);
-        const amountInCents = Math.round(Number(availableTotal) * 100);
+        const finalTotal = typeof data.total === 'number' ? data.total : Number(availableTotal);
+        const amountInCents = Math.round(finalTotal * 100);
         const url = selectedMethod === 'bizum' 
             ? `https://revolut.me/jfernandezz?currency=EUR&amount=${amountInCents}&note=${encodeURIComponent(`MEC | Pedido ${data.orderNumber}`)}`
-            : `https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=javifzlvdc@gmail.com&item_name=${encodeURIComponent(`MEC | Pedido ${data.orderNumber}`)}&amount=${Number(availableTotal).toFixed(2)}&currency_code=EUR&no_shipping=1`;
-        window.open(url, '_blank');
+            : `https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=javifzlvdc@gmail.com&item_name=${encodeURIComponent(`MEC | Pedido ${data.orderNumber}`)}&amount=${finalTotal.toFixed(2)}&currency_code=EUR&no_shipping=1`;
+        setPendingPaymentUrl(url);
         setPendingSaleId(data.saleId);
         setPendingOrderNumber(data.orderNumber);
         setCountdownActive(true);
+        window.open(url, '_blank');
       }
     } catch (err) {
       setPayError(err instanceof Error ? err.message : 'Error en el pago');
@@ -518,8 +524,51 @@ export default function CheckoutPage() {
             <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', fontSize: '28px' }}>🏎️</div>
           </div>
           <h1 style={{ fontSize: '24px', fontWeight: 800, marginBottom: '12px', letterSpacing: '-0.02em' }}>Procesando reserva...</h1>
-          <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: '24px' }}>Por favor, completa el pago en la pestaña que se acaba de abrir. No cierres esta ventana.</p>
-          <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '16px', padding: '20px 24px', marginBottom: '40px' }}>
+          <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: '20px' }}>Por favor, completa el pago en la pestaña que se acaba de abrir. Si tu navegador bloqueó la ventana emergente, pulsa el botón inferior:</p>
+          {pendingPaymentUrl && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '24px' }}>
+              <a
+                href={pendingPaymentUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  padding: '14px 20px',
+                  borderRadius: '12px',
+                  background: 'linear-gradient(135deg,#6366f1,#8b5cf6)',
+                  color: '#fff',
+                  fontWeight: 800,
+                  fontSize: '15px',
+                  textDecoration: 'none',
+                }}
+              >
+                Abrir pasarela de pago ({selectedMethod === 'bizum' ? 'Bizum / Revolut' : 'PayPal'}) ↗
+              </a>
+              <button
+                type="button"
+                onClick={() => {
+                  clearCart();
+                  router.push(`/checkout/success?order=${pendingOrderNumber ?? ''}`);
+                }}
+                style={{
+                  padding: '10px 16px',
+                  borderRadius: '10px',
+                  border: '1px solid var(--border-card)',
+                  background: 'var(--bg-card-glass)',
+                  color: 'var(--text-primary)',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                Ya he completado el pago →
+              </button>
+            </div>
+          )}
+          <div style={{ background: 'var(--bg-card-glass)', border: '1px solid var(--border-card)', borderRadius: '16px', padding: '20px 24px', marginBottom: '40px' }}>
             <div style={{ fontSize: '40px', fontWeight: 800, color: 'var(--accent-primary, #6366f1)', fontFamily: 'monospace', letterSpacing: '2px', marginBottom: '4px' }}>{formattedTime}</div>
             <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-secondary)' }}>Espera de validación</div>
           </div>
@@ -687,6 +736,11 @@ export default function CheckoutPage() {
                         }}
                       >
                         {item.article.title}
+                        {(item.quantity || 1) > 1 && (
+                          <span style={{ fontSize: '12px', fontWeight: 700, color: '#6366f1', marginLeft: '6px' }}>
+                            x{item.quantity}
+                          </span>
+                        )}
                       </p>
                       {isUnavailable && (
                         <p style={{ margin: '2px 0 0', fontSize: '11px', color: '#ef4444', fontWeight: 600 }}>
@@ -695,7 +749,7 @@ export default function CheckoutPage() {
                       )}
                     </div>
                     <span style={{ fontSize: '15px', fontWeight: 700, flexShrink: 0 }}>
-                      {formatPrice(item.priceAtAdd)}
+                      {formatPrice(item.priceAtAdd * (item.quantity || 1))}
                     </span>
                   </div>
                 );
@@ -944,6 +998,52 @@ export default function CheckoutPage() {
                 >
                   {countdown}
                 </span>
+                {countdown === '00:00' && (
+                  <button
+                    type="button"
+                    disabled={reserving}
+                    onClick={async () => {
+                      setReserving(true);
+                      setPayError('');
+                      try {
+                        const ids = availableItems.map((i) => i.article.id);
+                        const res = await fetch('/api/checkout/reserve-stock', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ articleIds: ids }),
+                        });
+                        const data = await res.json();
+                        if (data.success) {
+                          const expiry = new Date(Date.now() + 3 * 60 * 1000);
+                          setReservationExpiry(expiry);
+                          setReserved(true);
+                          setCountdown('03:00');
+                          localStorage.setItem('mec_reservation', JSON.stringify({ expiry: expiry.toISOString(), items: ids }));
+                        } else {
+                          setPayError('Algún artículo ya no está disponible.');
+                          await validateStock();
+                        }
+                      } catch {
+                        setPayError('Error al renovar la reserva.');
+                      } finally {
+                        setReserving(false);
+                      }
+                    }}
+                    style={{
+                      marginLeft: 'auto',
+                      padding: '5px 10px',
+                      borderRadius: '6px',
+                      border: 'none',
+                      background: '#6366f1',
+                      color: '#fff',
+                      fontSize: '12px',
+                      fontWeight: 700,
+                      cursor: reserving ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    🔄 Renovar reserva
+                  </button>
+                )}
               </div>
             )}
 

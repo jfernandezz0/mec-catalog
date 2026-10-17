@@ -231,7 +231,10 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (user) {
-      loadSales();
+      const t = setTimeout(() => {
+        loadSales();
+      }, 0);
+      return () => clearTimeout(t);
     }
   }, [user]);
 

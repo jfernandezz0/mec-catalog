@@ -1,10 +1,29 @@
 import { getSupabaseAdmin } from '@/lib/supabase';
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import Image from 'next/image';
 import { formatPrice } from '@/lib/utils';
 import styles from './invoice.module.css';
 import PrintButton from './PrintButton';
 import { ShippingAddress, Sale, SaleItem } from '@/lib/types';
+
+export const metadata: Metadata = {
+  title: 'Recibo de Venta | MiniEngines Creations',
+  robots: { index: false, follow: false },
+};
+
+function maskEmail(email: string): string {
+  const [user, domain] = email.split('@');
+  if (!user || !domain) return email;
+  const visible = user.slice(0, 2);
+  return `${visible}${'*'.repeat(Math.max(2, user.length - 2))}@${domain}`;
+}
+
+function maskPhone(phone: string): string {
+  const clean = phone.startsWith('http') ? `+${phone.split('?')[0].replace(/\D/g, '')}` : phone;
+  if (clean.length <= 4) return clean;
+  return `${clean.slice(0, 4)} *** ${clean.slice(-3)}`;
+}
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -101,7 +120,7 @@ export default async function InvoicePage(props: Props) {
           <div className={styles.invoiceInfo}>
             <h1 className={styles.invoiceTitle}>RECIBO DE VENTA</h1>
             <div className={styles.invoiceMeta}>
-              <p><strong>Nº:</strong> MEC-{sale.id.substring(0, 8).toUpperCase()}</p>
+              <p><strong>Nº:</strong> {sale.order_number || `MEC-${sale.id.substring(0, 8).toUpperCase()}`}</p>
               <p><strong>Fecha:</strong> {formatDate(sale.created_at)}</p>
             </div>
           </div>
@@ -112,10 +131,11 @@ export default async function InvoicePage(props: Props) {
           <div className={styles.detailBlock}>
             <h2 className={styles.blockTitle}>Comprador</h2>
             <div className={styles.blockText}>
-              {sale.buyer_email || sale.buyer_phone ? (
+              {sale.buyer_name || sale.buyer_email || sale.buyer_phone ? (
                 <>
-                  {sale.buyer_email && <p><strong>Email:</strong> {sale.buyer_email}</p>}
-                  {sale.buyer_phone && <p><strong>Teléfono:</strong> {sale.buyer_phone}</p>}
+                  {sale.buyer_name && <p><strong>Nombre:</strong> {sale.buyer_name}</p>}
+                  {sale.buyer_email && <p><strong>Email:</strong> {maskEmail(sale.buyer_email)}</p>}
+                  {sale.buyer_phone && <p><strong>Teléfono:</strong> {maskPhone(sale.buyer_phone)}</p>}
                 </>
               ) : (
                 <p>Cliente no registrado (Venta directa)</p>

@@ -78,23 +78,25 @@ export default function AddToCartButton({
           alignItems: 'center',
           justifyContent: 'space-between',
           padding: '8px 12px',
-          background: 'rgba(255,255,255,0.03)',
-          border: '1px solid rgba(255,255,255,0.08)',
+          background: 'var(--bg-card-glass)',
+          border: '1px solid var(--border-card)',
           borderRadius: '8px',
           marginBottom: '2px',
         }}>
           <span style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 500 }}>Cantidad</span>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <button
+              type="button"
+              aria-label="Reducir cantidad"
               onClick={() => setSelectedQty(prev => Math.max(1, prev - 1))}
               disabled={selectedQty <= 1}
               style={{
                 width: '28px',
                 height: '28px',
                 borderRadius: '6px',
-                border: 'none',
-                background: 'rgba(255,255,255,0.06)',
-                color: '#fff',
+                border: '1px solid var(--border-card)',
+                background: 'var(--bg-page)',
+                color: 'var(--text-primary)',
                 fontSize: '16px',
                 cursor: selectedQty <= 1 ? 'not-allowed' : 'pointer',
                 opacity: selectedQty <= 1 ? 0.4 : 1,
@@ -106,19 +108,21 @@ export default function AddToCartButton({
             >
               −
             </button>
-            <span style={{ fontSize: '15px', fontWeight: 600, color: '#fff', minWidth: '20px', textAlign: 'center' }}>
+            <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)', minWidth: '20px', textAlign: 'center' }}>
               {selectedQty}
             </span>
             <button
+              type="button"
+              aria-label="Aumentar cantidad"
               onClick={() => setSelectedQty(prev => Math.min(currentQty, prev + 1))}
               disabled={selectedQty >= currentQty}
               style={{
                 width: '28px',
                 height: '28px',
                 borderRadius: '6px',
-                border: 'none',
-                background: 'rgba(255,255,255,0.06)',
-                color: '#fff',
+                border: '1px solid var(--border-card)',
+                background: 'var(--bg-page)',
+                color: 'var(--text-primary)',
                 fontSize: '16px',
                 cursor: selectedQty >= currentQty ? 'not-allowed' : 'pointer',
                 opacity: selectedQty >= currentQty ? 0.4 : 1,
@@ -147,7 +151,7 @@ export default function AddToCartButton({
           borderRadius: '10px',
           border: inCart ? '2px solid #6366f1' : '2px solid transparent',
           background: currentQty <= 0 && !inCart
-            ? 'rgba(255, 255, 255, 0.05)'
+            ? 'var(--border-card)'
             : inCart
               ? (isCartHovered ? '#8b5cf6' : 'rgba(99,102,241,0.12)')
               : (isCartHovered ? 'linear-gradient(135deg, #a78bfa 0%, #8b5cf6 100%)' : 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)'),

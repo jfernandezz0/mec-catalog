@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mec-cache-v2';
+const CACHE_NAME = 'mec-cache-v3';
 
 self.addEventListener('install', () => {
   self.skipWaiting();
@@ -37,29 +37,49 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  const isStaticAsset =
-    url.pathname.match(/\.(?:js|css|woff2?|png|jpe?g|gif|svg|webp|json|ico)$/) ||
-    url.pathname.startsWith('/_next/static/');
+  const isHashedNextAsset = url.pathname.startsWith('/_next/static/');
+  const isUnhashedStaticAsset =
+    !isHashedNextAsset &&
+    /\.(?:js|css|woff2?|png|jpe?g|gif|svg|webp|json|ico)$/.test(url.pathname);
 
-  if (isStaticAsset) {
+  if (isHashedNextAsset) {
+    // Cache-First for immutable content-hashed Next.js static chunks
     event.respondWith(
       caches.match(event.request).then((cachedResponse) => {
         if (cachedResponse) {
           return cachedResponse;
         }
-        return fetch(event.request).then((networkResponse) => {
-          if (!networkResponse || networkResponse.status !== 200) {
+        return fetch(event.request)
+          .then((networkResponse) => {
+            if (!networkResponse || networkResponse.status !== 200) {
+              return networkResponse;
+            }
+            const responseToCache = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseToCache);
+            });
             return networkResponse;
-          }
-          const responseToCache = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
-          });
-          return networkResponse;
-        }).catch(() => {
-          // Fail gracefully if network fails
-        });
+          })
+          .catch(() => Response.error());
       })
+    );
+  } else if (isUnhashedStaticAsset) {
+    // Stale-While-Revalidate for unhashed public assets (world.geo.json, logos, etc.)
+    event.respondWith(
+      caches.open(CACHE_NAME).then((cache) =>
+        cache.match(event.request).then((cachedResponse) => {
+          const networkFetch = fetch(event.request)
+            .then((networkResponse) => {
+              if (networkResponse && networkResponse.status === 200) {
+                cache.put(event.request, networkResponse.clone());
+              }
+              return networkResponse;
+            })
+            .catch(() => cachedResponse || Response.error());
+
+          return cachedResponse || networkFetch;
+        })
+      )
     );
   }
 });

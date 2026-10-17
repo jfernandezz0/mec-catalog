@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import { formatPrice } from '@/lib/utils';
 import type { ShippingAddress } from '@/lib/types';
 
 interface ReceiptItem {
@@ -6,11 +7,14 @@ interface ReceiptItem {
   price: number;
 }
 
-function formatPrice(amount: number): string {
-  return new Intl.NumberFormat('es-ES', {
-    style: 'currency',
-    currency: 'EUR',
-  }).format(amount);
+function escapeHtml(value: string | null | undefined): string {
+  if (!value) return '';
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 function getTransporter() {
@@ -51,14 +55,14 @@ function buildReceiptHtml(
     .map(
       (i) => `
       <tr>
-        <td style="padding:10px 16px;border-bottom:1px solid #f0f0f0;font-size:14px;color:#222;">${i.title}</td>
+        <td style="padding:10px 16px;border-bottom:1px solid #f0f0f0;font-size:14px;color:#222;">${escapeHtml(i.title)}</td>
         <td style="padding:10px 16px;border-bottom:1px solid #f0f0f0;font-size:14px;color:#222;text-align:right;white-space:nowrap;">${formatPrice(i.price)}</td>
       </tr>`,
     )
     .join('');
 
   const subtotal = items.reduce((s, i) => s + i.price, 0);
-  const invoiceUrl = `${baseUrl}/invoice/${saleId}`;
+  const invoiceUrl = `${baseUrl}/invoice/${encodeURIComponent(saleId)}`;
 
   const headerTitle = isReservation ? 'Resguardo de reserva' : 'Resguardo de pedido';
   const introText = isReservation
@@ -88,7 +92,7 @@ function buildReceiptHtml(
           <td style="background:linear-gradient(135deg,#6366f1,#8b5cf6);padding:32px 32px 28px;text-align:center;">
             <p style="margin:0;font-size:13px;font-weight:600;color:rgba(255,255,255,0.8);letter-spacing:0.08em;text-transform:uppercase;">MiniEngines Creations</p>
             <h1 style="margin:8px 0 0;font-size:24px;font-weight:800;color:#ffffff;">${headerTitle}</h1>
-            <p style="margin:8px 0 0;font-size:13px;color:rgba(255,255,255,0.75);">${orderNumber}</p>
+            <p style="margin:8px 0 0;font-size:13px;color:rgba(255,255,255,0.75);">${escapeHtml(orderNumber)}</p>
             ${reservationNotice}
           </td>
         </tr>
@@ -96,7 +100,7 @@ function buildReceiptHtml(
         <!-- Greeting -->
         <tr>
           <td style="padding:28px 32px 0;">
-            <p style="margin:0;font-size:16px;color:#333;">Hola <strong>${buyerName}</strong>,</p>
+            <p style="margin:0;font-size:16px;color:#333;">Hola <strong>${escapeHtml(buyerName)}</strong>,</p>
             <p style="margin:10px 0 0;font-size:14px;color:#666;line-height:1.6;">
               ${introText}
             </p>
@@ -263,7 +267,7 @@ export async function sendAdminOrderEmail(params: {
   } = params;
 
   const adminEmail = process.env.ADMIN_EMAIL || 'minienginescreations@gmail.com';
-  const itemList = items.map((i) => `• ${i.title} — ${formatPrice(i.price)}`).join('\n');
+  const itemList = items.map((i) => `• ${escapeHtml(i.title)} — ${formatPrice(i.price)}`).join('\n');
 
   // Format delivery/shipping address elegantly as text
   const shippingInfo = shippingAddress;
@@ -281,11 +285,11 @@ export async function sendAdminOrderEmail(params: {
       deliverySectionHtml = `
         <div style="background:#f9fafb;padding:16px;border-radius:10px;border:1px solid #e5e7eb;margin-top:10px;">
           <p style="margin:0 0 8px 0;font-size:14px;color:#111827;"><strong>Método:</strong> 📦 Envío Peninsular (Pagado: 9,99 €)</p>
-          <p style="margin:0 0 4px 0;font-size:13px;color:#374151;"><strong>Dirección:</strong> ${shippingInfo.address || ''}</p>
-          <p style="margin:0 0 4px 0;font-size:13px;color:#374151;"><strong>Código Postal:</strong> ${shippingInfo.postalCode || ''}</p>
-          <p style="margin:0 0 4px 0;font-size:13px;color:#374151;"><strong>Localidad:</strong> ${shippingInfo.city || ''}</p>
-          <p style="margin:0 0 4px 0;font-size:13px;color:#374151;"><strong>Provincia:</strong> ${shippingInfo.province || ''}</p>
-          <p style="margin:0;font-size:13px;color:#374151;"><strong>País:</strong> ${shippingInfo.country || 'España'}</p>
+          <p style="margin:0 0 4px 0;font-size:13px;color:#374151;"><strong>Dirección:</strong> ${escapeHtml(shippingInfo.address || '')}</p>
+          <p style="margin:0 0 4px 0;font-size:13px;color:#374151;"><strong>Código Postal:</strong> ${escapeHtml(shippingInfo.postalCode || '')}</p>
+          <p style="margin:0 0 4px 0;font-size:13px;color:#374151;"><strong>Localidad:</strong> ${escapeHtml(shippingInfo.city || '')}</p>
+          <p style="margin:0 0 4px 0;font-size:13px;color:#374151;"><strong>Provincia:</strong> ${escapeHtml(shippingInfo.province || '')}</p>
+          <p style="margin:0;font-size:13px;color:#374151;"><strong>País:</strong> ${escapeHtml(shippingInfo.country || 'España')}</p>
         </div>
       `;
     }
@@ -295,14 +299,14 @@ export async function sendAdminOrderEmail(params: {
 
   const html = `
 <div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:24px;background:#ffffff;border:1px solid #f0f0f0;border-radius:12px;">
-  <h2 style="color:#6366f1;margin-top:0;font-size:20px;border-bottom:2px solid #eef2f6;padding-bottom:12px;">🛒 Nuevo pedido online: ${orderNumber}</h2>
+  <h2 style="color:#6366f1;margin-top:0;font-size:20px;border-bottom:2px solid #eef2f6;padding-bottom:12px;">🛒 Nuevo pedido online: ${escapeHtml(orderNumber)}</h2>
   
   <div style="margin-top:16px;margin-bottom:20px;">
     <h3 style="font-size:14px;text-transform:uppercase;color:#8898aa;margin-bottom:8px;letter-spacing:1px;">👤 Datos del cliente</h3>
-    <p style="margin:0 0 6px 0;font-size:14px;"><strong>Nombre completo:</strong> ${buyerName}</p>
-    <p style="margin:0 0 6px 0;font-size:14px;"><strong>Email:</strong> <a href="mailto:${buyerEmail}" style="color:#6366f1;text-decoration:none;">${buyerEmail}</a></p>
-    ${buyerWhatsapp ? `<p style="margin:0 0 6px 0;font-size:14px;"><strong>WhatsApp / Teléfono:</strong> <a href="https://wa.me/${buyerWhatsapp.replace(/\D/g, '')}" style="color:#6366f1;text-decoration:none;">${buyerWhatsapp}</a></p>` : ''}
-    <p style="margin:0;font-size:14px;"><strong>Método de pago:</strong> ${paymentMethod}</p>
+    <p style="margin:0 0 6px 0;font-size:14px;"><strong>Nombre completo:</strong> ${escapeHtml(buyerName)}</p>
+    <p style="margin:0 0 6px 0;font-size:14px;"><strong>Email:</strong> <a href="mailto:${escapeHtml(buyerEmail)}" style="color:#6366f1;text-decoration:none;">${escapeHtml(buyerEmail)}</a></p>
+    ${buyerWhatsapp ? `<p style="margin:0 0 6px 0;font-size:14px;"><strong>WhatsApp / Teléfono:</strong> <a href="https://wa.me/${buyerWhatsapp.replace(/\D/g, '')}" style="color:#6366f1;text-decoration:none;">${escapeHtml(buyerWhatsapp)}</a></p>` : ''}
+    <p style="margin:0;font-size:14px;"><strong>Método de pago:</strong> ${escapeHtml(paymentMethod)}</p>
   </div>
 
   <div style="margin-bottom:20px;">
@@ -367,14 +371,14 @@ export async function sendShippingEmail(params: {
     .map(
       (i) => `
       <tr>
-        <td style="padding:10px 16px;border-bottom:1px solid #f0f0f0;font-size:14px;color:#222;">${i.title}</td>
+        <td style="padding:10px 16px;border-bottom:1px solid #f0f0f0;font-size:14px;color:#222;">${escapeHtml(i.title)}</td>
         <td style="padding:10px 16px;border-bottom:1px solid #f0f0f0;font-size:14px;color:#222;text-align:right;white-space:nowrap;">${formatPrice(i.price)}</td>
       </tr>`,
     )
     .join('');
 
   const subtotal = items.reduce((s, i) => s + i.price, 0);
-  const invoiceUrl = `${baseUrl}/invoice/${saleId}`;
+  const invoiceUrl = `${baseUrl}/invoice/${encodeURIComponent(saleId)}`;
 
   const trackingBlock = trackingLink
     ? `
@@ -385,7 +389,7 @@ export async function sendShippingEmail(params: {
             <p style="margin:0 0 10px 0;font-size:13px;color:#065f46;line-height:1.5;">
               Puedes hacer seguimiento de tu pedido en el siguiente enlace:
             </p>
-            <a href="${trackingLink}" target="_blank"
+            <a href="${escapeHtml(trackingLink)}" target="_blank"
                style="display:inline-block;padding:10px 20px;background:#10b981;color:#fff;text-decoration:none;font-weight:700;font-size:13px;border-radius:8px;">
               Seguir mi pedido →
             </a>
@@ -417,14 +421,14 @@ export async function sendShippingEmail(params: {
           <td style="background:linear-gradient(135deg,#10b981,#059669);padding:32px 32px 28px;text-align:center;">
             <p style="margin:0;font-size:13px;font-weight:600;color:rgba(255,255,255,0.8);letter-spacing:0.08em;text-transform:uppercase;">MiniEngines Creations</p>
             <h1 style="margin:8px 0 0;font-size:24px;font-weight:800;color:#ffffff;">¡Tu pedido está en camino! 🚚</h1>
-            <p style="margin:8px 0 0;font-size:13px;color:rgba(255,255,255,0.75);">${orderNumber}</p>
+            <p style="margin:8px 0 0;font-size:13px;color:rgba(255,255,255,0.75);">${escapeHtml(orderNumber)}</p>
           </td>
         </tr>
 
         <!-- Greeting -->
         <tr>
           <td style="padding:28px 32px 0;">
-            <p style="margin:0;font-size:16px;color:#333;">Hola <strong>${buyerName}</strong>,</p>
+            <p style="margin:0;font-size:16px;color:#333;">Hola <strong>${escapeHtml(buyerName)}</strong>,</p>
             <p style="margin:10px 0 0;font-size:14px;color:#666;line-height:1.6;">
               Tu pedido ha sido <strong>enviado</strong> y está de camino. A continuación encontrarás el resumen.
             </p>

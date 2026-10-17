@@ -87,9 +87,14 @@ export default function SalesTab({ articles, loadArticles }: SalesTabProps) {
         const buyerEmail = sale.receipt_email || sale.buyer_email;
         if (buyerEmail) {
           try {
+            const { data: sessionData } = await supabase.auth.getSession();
+            const token = sessionData.session?.access_token;
             await fetch('/api/sales/notify-shipped', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { Authorization: `Bearer ${token}` } : {}),
+              },
               body: JSON.stringify({ saleId: sale.id, trackingLink: trackingLink || null }),
             });
           } catch (emailErr) {
@@ -250,30 +255,6 @@ export default function SalesTab({ articles, loadArticles }: SalesTabProps) {
 
       if (itemError) throw itemError;
 
-      if (
-        selectedSaleDetail.payment_type !== 'RESERVA' &&
-        selectedSaleDetail.payment_type !== 'BIZUM' &&
-        selectedSaleDetail.payment_type !== 'PAYPAL' &&
-        item.article_id
-      ) {
-        const { data: artData } = await supabase
-          .from('articles')
-          .select('quantity')
-          .eq('id', item.article_id)
-          .single();
-
-        const currentQty = artData ? artData.quantity : 0;
-
-        const { error: stockError } = await supabase
-          .from('articles')
-          .update({ quantity: currentQty + 1 })
-          .eq('id', item.article_id);
-
-        if (stockError) {
-          console.error('Error updating stock on prepurchase completion:', stockError);
-        }
-      }
-
       const updatedItems = saleDetailItems.map((it) =>
         it.id === item.id ? { ...it, is_prepurchase: false } : it
       );
@@ -402,7 +383,11 @@ export default function SalesTab({ articles, loadArticles }: SalesTabProps) {
   function startEditingSale(sale: Sale, initialEditingItemId?: number) {
     setEditBuyerName(sale.buyer_name || '');
     setEditBuyerEmail(sale.buyer_email || sale.receipt_email || '');
-    setEditBuyerPhone(sale.buyer_phone || sale.receipt_whatsapp || '');
+    const rawWa = sale.buyer_phone || sale.receipt_whatsapp || '';
+    const cleanPhone = rawWa.startsWith('http')
+      ? `+${rawWa.split('?')[0].replace(/\D/g, '')}`
+      : rawWa;
+    setEditBuyerPhone(cleanPhone);
     setEditBuyerInstagram(sale.buyer_instagram || '');
     setEditPaymentType(sale.payment_type || 'EFECTIVO');
     setEditLocation(sale.location || '');
@@ -594,9 +579,14 @@ export default function SalesTab({ articles, loadArticles }: SalesTabProps) {
         const buyerEmail = editBuyerEmail || selectedSaleDetail.receipt_email || selectedSaleDetail.buyer_email;
         if (buyerEmail) {
           try {
+            const { data: sessionData } = await supabase.auth.getSession();
+            const token = sessionData.session?.access_token;
             await fetch('/api/sales/notify-shipped', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { Authorization: `Bearer ${token}` } : {}),
+              },
               body: JSON.stringify({ saleId: selectedSaleDetail.id, trackingLink: finalTrackingLink }),
             });
           } catch (emailErr) {
@@ -1036,7 +1026,11 @@ export default function SalesTab({ articles, loadArticles }: SalesTabProps) {
                       {/* WhatsApp pending badge */}
                       {sale.receipt_whatsapp && !sale.whatsapp_sent && (
                         <a
-                          href={`https://wa.me/${(sale.receipt_whatsapp || '').replace(/\D/g, '')}?text=${encodeURIComponent(`Hola${sale.buyer_name ? ' ' + sale.buyer_name : ''}, tu pedido MEC-${sale.id.substring(0,8).toUpperCase()} está listo.`)}`}
+                          href={
+                            sale.receipt_whatsapp.startsWith('http')
+                              ? sale.receipt_whatsapp
+                              : `https://wa.me/${(sale.receipt_whatsapp || '').replace(/\D/g, '')}?text=${encodeURIComponent(`Hola${sale.buyer_name ? ' ' + sale.buyer_name : ''}, tu pedido ${sale.order_number || `MEC-${sale.id.substring(0,8).toUpperCase()}`} está listo.`)}`
+                          }
                           target="_blank"
                           rel="noopener noreferrer"
                           title="WhatsApp pendiente de envío — pulsa para abrir"

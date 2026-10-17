@@ -18,34 +18,34 @@ interface GlobeProps {
 
 // Dominant flag colors for active countries hovers
 const flagColors: Record<string, string> = {
-  DE: '#ef4444', // Germany
-  JP: '#ef4444', // Japan
-  IT: '#22c55e', // Italy
-  US: '#3b82f6', // USA
-  FR: '#2563eb', // France
-  GB: '#4f46e5', // UK
-  HR: '#dc2626', // Croatia
-  SE: '#eab308', // Sweden
-  ES: '#ea580c', // Spain
-  KR: '#0284c7', // Korea
-  AT: '#ef4444', // Austria
-  DK: '#e11d48', // Denmark
+  DE: '#ef4444', ALE: '#ef4444', // Germany
+  JP: '#ef4444', JAP: '#ef4444', // Japan
+  IT: '#22c55e', ITA: '#22c55e', // Italy
+  US: '#3b82f6', USA: '#3b82f6', // USA
+  FR: '#2563eb', FRA: '#2563eb', // France
+  GB: '#4f46e5', UK: '#4f46e5',  // UK
+  HR: '#dc2626', CRO: '#dc2626', // Croatia
+  SE: '#eab308', SUE: '#eab308', // Sweden
+  ES: '#ea580c', ESP: '#ea580c', // Spain
+  KR: '#0284c7', KOR: '#0284c7', // Korea
+  AT: '#ef4444', AUT: '#ef4444', // Austria
+  DK: '#e11d48', DNK: '#e11d48', // Denmark
 };
 
 // Spanish names mapping for tooltips
 const countryNamesES: Record<string, string> = {
-  DE: 'Alemania',
-  JP: 'Japón',
-  IT: 'Italia',
-  US: 'Estados Unidos',
-  FR: 'Francia',
-  GB: 'Reino Unido',
-  HR: 'Croacia',
-  SE: 'Suecia',
-  ES: 'España',
-  KR: 'Corea del Sur',
-  AT: 'Austria',
-  DK: 'Dinamarca'
+  DE: 'Alemania', ALE: 'Alemania',
+  JP: 'Japón', JAP: 'Japón',
+  IT: 'Italia', ITA: 'Italia',
+  US: 'Estados Unidos', USA: 'Estados Unidos',
+  FR: 'Francia', FRA: 'Francia',
+  GB: 'Reino Unido', UK: 'Reino Unido',
+  HR: 'Croacia', CRO: 'Croacia',
+  SE: 'Suecia', SUE: 'Suecia',
+  ES: 'España', ESP: 'España',
+  KR: 'Corea del Sur', KOR: 'Corea del Sur',
+  AT: 'Austria', AUT: 'Austria',
+  DK: 'Dinamarca', DNK: 'Dinamarca',
 };
 
 type Position = [number, number];
@@ -612,6 +612,41 @@ export default function Globe({ categories }: GlobeProps) {
       ctx.restore();
     };
 
+    // Precompute city light positions and radii once so they do not flicker on country hover
+    const W_TEX = 2048;
+    const H_TEX = 1024;
+    const precomputedCityLights = cityLights.map(([lon, lat]) => ({
+      cx: W_TEX * (lon + 180) / 360,
+      cy: H_TEX * (90 - lat) / 180,
+      rad: 2.5 + Math.random() * 3.5,
+    }));
+
+    const precomputedExtraCityLights: { cx: number; cy: number; rad: number }[] = [];
+    geoJsonData.features.forEach((feature: GeoJsonFeature) => {
+      if (feature.category) {
+        const bounds = getGeometryBounds(feature.geometry);
+        if (bounds) {
+          for (let i = 0; i < 15; i++) {
+            const randLon = bounds.minLon + Math.random() * (bounds.maxLon - bounds.minLon);
+            const randLat = bounds.minLat + Math.random() * (bounds.maxLat - bounds.minLat);
+            if (isPointInFeature([randLon, randLat], feature.geometry)) {
+              precomputedExtraCityLights.push({
+                cx: W_TEX * (randLon + 180) / 360,
+                cy: H_TEX * (90 - randLat) / 180,
+                rad: 1.5 + Math.random() * 2,
+              });
+            }
+          }
+        }
+      }
+    });
+
+    const dbToIso2: Record<string, string> = {
+      ALE: 'DE', JAP: 'JP', ITA: 'IT', USA: 'US', FRA: 'FR',
+      UK: 'GB', CRO: 'HR', SUE: 'SE', ESP: 'ES', KOR: 'KR',
+      AUT: 'AT', DNK: 'DK',
+    };
+
     // Draw Map Texture with futuristic holographic styling, clear outlines, sonar echoes and data lanes
     const renderGlobeTexture = (hoveredCode: string | null) => {
       const W = 2048;
@@ -630,7 +665,9 @@ export default function Globe({ categories }: GlobeProps) {
         const cat = feature.category;
         const name = (feature.properties.NAME || '').toUpperCase();
         const rawIso = feature.properties.ISO_A2 || feature.properties.iso_a2;
-        const iso = rawIso ? rawIso.toUpperCase() : '';
+        const catCode = cat ? cat.country_code.toUpperCase().trim() : '';
+        const iso = rawIso && rawIso !== '-99' ? rawIso.toUpperCase() : (dbToIso2[catCode] || catCode);
+        const flagColor = flagColors[iso] || flagColors[catCode];
         
         const isActive = !!cat;
         const isHovered = hoveredCode && cat && cat.country_code === hoveredCode;
@@ -644,11 +681,11 @@ export default function Globe({ categories }: GlobeProps) {
           globeCtx.translate(-cx, -cy);
 
           // Intense glowing shadow
-          globeCtx.shadowColor = flagColors[iso] || '#ffffff';
+          globeCtx.shadowColor = flagColor || '#ffffff';
           globeCtx.shadowBlur = 20;
 
           // Fill with glowing flag color pattern
-          globeCtx.fillStyle = getGlowingPattern(globeCtx, flagColors[iso] || '#ea580c');
+          globeCtx.fillStyle = getGlowingPattern(globeCtx, flagColor || '#ea580c');
           drawGeometry(globeCtx, feature.geometry);
 
           globeCtx.strokeStyle = '#ffffff';
@@ -656,7 +693,7 @@ export default function Globe({ categories }: GlobeProps) {
           drawGeometry(globeCtx, feature.geometry);
 
           // Draw HUD reticle at mainland center
-          drawReticle(globeCtx, cx, cy, flagColors[iso] || '#ea580c', true);
+          drawReticle(globeCtx, cx, cy, flagColor || '#ea580c', true);
           globeCtx.restore();
 
         } else if (iso === 'AQ' || name === 'ANTARCTICA') {
@@ -677,13 +714,13 @@ export default function Globe({ categories }: GlobeProps) {
           drawGeometry(globeCtx, feature.geometry);
 
           // Glowing border stroke
-          globeCtx.strokeStyle = flagColors[iso] || '#00ffcc';
+          globeCtx.strokeStyle = flagColor || '#00ffcc';
           globeCtx.lineWidth = 2.0;
           drawGeometry(globeCtx, feature.geometry);
 
           // Draw HUD reticle at mainland center
           const { cx, cy } = getGeometryMainlandCenter(feature.geometry);
-          drawReticle(globeCtx, cx, cy, flagColors[iso] || '#00ffcc', false);
+          drawReticle(globeCtx, cx, cy, flagColor || '#00ffcc', false);
           globeCtx.restore();
         } else {
           // Inactive countries: clearly visible silhouettes and outlines to avoid empty blackness
@@ -708,11 +745,7 @@ export default function Globe({ categories }: GlobeProps) {
       });
 
       // Scatter city lights dots globally (glowing networks)
-      cityLights.forEach(([lon, lat]) => {
-        const cx = W * (lon + 180) / 360;
-        const cy = H * (90 - lat) / 180;
-        
-        const rad = 2.5 + Math.random() * 3.5;
+      precomputedCityLights.forEach(({ cx, cy, rad }) => {
         const grad = globeCtx.createRadialGradient(cx, cy, 0.2, cx, cy, rad);
         grad.addColorStop(0, '#fef08a'); // Gold core
         grad.addColorStop(0.3, 'rgba(245, 158, 11, 0.85)');
@@ -725,27 +758,11 @@ export default function Globe({ categories }: GlobeProps) {
       });
 
       // Add extra city light points inside active countries
-      geoJsonData.features.forEach((feature: GeoJsonFeature) => {
-        const cat = feature.category;
-        if (cat) {
-          const bounds = getGeometryBounds(feature.geometry);
-          if (bounds) {
-            for (let i = 0; i < 15; i++) {
-              const randLon = bounds.minLon + Math.random() * (bounds.maxLon - bounds.minLon);
-              const randLat = bounds.minLat + Math.random() * (bounds.maxLat - bounds.minLat);
-              if (isPointInFeature([randLon, randLat], feature.geometry)) {
-                const cx = W * (randLon + 180) / 360;
-                const cy = H * (90 - randLat) / 180;
-                
-                const rad = 1.5 + Math.random() * 2;
-                globeCtx.fillStyle = 'rgba(251, 146, 60, 0.85)';
-                globeCtx.beginPath();
-                globeCtx.arc(cx, cy, rad, 0, Math.PI * 2);
-                globeCtx.fill();
-              }
-            }
-          }
-        }
+      precomputedExtraCityLights.forEach(({ cx, cy, rad }) => {
+        globeCtx.fillStyle = 'rgba(251, 146, 60, 0.85)';
+        globeCtx.beginPath();
+        globeCtx.arc(cx, cy, rad, 0, Math.PI * 2);
+        globeCtx.fill();
       });
 
       // Draw connection lines (dashed data/maritime routes) between active countries
@@ -754,7 +771,16 @@ export default function Globe({ categories }: GlobeProps) {
         const cat = feature.category;
         if (cat) {
           const { cx, cy } = getGeometryMainlandCenter(feature.geometry);
-          activeCoordinates[cat.country_code] = { cx, cy };
+          const catCode = cat.country_code.toUpperCase().trim();
+          const rawIso = feature.properties.ISO_A2 || feature.properties.iso_a2;
+          const iso2 = rawIso && rawIso !== '-99' ? rawIso.toUpperCase() : dbToIso2[catCode];
+          activeCoordinates[catCode] = { cx, cy };
+          if (iso2) {
+            activeCoordinates[iso2] = { cx, cy };
+          }
+          if (dbToIso2[catCode]) {
+            activeCoordinates[dbToIso2[catCode]] = { cx, cy };
+          }
         }
       });
 
@@ -964,8 +990,8 @@ export default function Globe({ categories }: GlobeProps) {
       
       if (canvasEl) {
         canvasEl.removeEventListener('pointerdown', handlePointerDown);
-        canvasEl.removeEventListener('pointermove', handlePointerMove);
-        canvasEl.removeEventListener('pointerout', handlePointerOut);
+        canvasEl.removeEventListener('mousemove', handlePointerMove);
+        canvasEl.removeEventListener('mouseout', handlePointerOut);
         canvasEl.removeEventListener('click', handleClick);
       }
 

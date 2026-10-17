@@ -19,13 +19,12 @@ export async function GET(request: NextRequest) {
   const startTime = Date.now();
 
   try {
-    // Optional secret verification if CRON_SECRET is provided and configured
+    // Secret verification if CRON_SECRET is configured in production
     const cronSecret = process.env.CRON_SECRET;
     const authHeader = request.headers.get('authorization');
     const secretHeader = request.headers.get('x-cron-secret');
 
-    // If caller provided credentials, validate them if CRON_SECRET is set
-    if (cronSecret && (authHeader || secretHeader)) {
+    if (cronSecret && process.env.NODE_ENV === 'production') {
       const isAuthorized =
         authHeader === `Bearer ${cronSecret}` || secretHeader === cronSecret;
       if (!isAuthorized) {

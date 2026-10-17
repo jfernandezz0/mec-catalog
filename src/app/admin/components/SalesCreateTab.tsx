@@ -127,7 +127,7 @@ export default function SalesCreateTab({
 
         stockUpdates.push({
           id,
-          quantity: article.quantity - qty,
+          quantity: Math.max(0, article.quantity - qty),
         });
       }
 

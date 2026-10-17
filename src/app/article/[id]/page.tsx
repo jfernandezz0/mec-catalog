@@ -34,7 +34,7 @@ export async function generateMetadata(
 
   if (!article || article.is_visible === false) return { title: 'Artículo | MiniEngines Creations' };
 
-  const ogImage = article.image_urls?.[0] ?? 'https://mec-catalog.vercel.app/logo.png';
+  const ogImage = article.image_urls?.[0] ?? 'https://www.minienginescreations.com/logo.png';
   const price = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(Number(article.price));
   const description = article.description
     ? `${article.description} — ${price}`
@@ -49,7 +49,7 @@ export async function generateMetadata(
     openGraph: {
       title: article.title,
       description,
-      url: `https://mec-catalog.vercel.app/article/${id}`,
+      url: `https://www.minienginescreations.com/article/${id}`,
       siteName: 'MiniEngines Creations',
       type: 'website',
       images: [
@@ -444,13 +444,14 @@ export default async function ArticlePage({
             '@context': 'https://schema.org',
             '@type': 'Product',
             'name': article.title,
+            'sku': `MEC-${String(article.id).padStart(4, '0')}`,
             'image': article.image_urls?.filter(Boolean) ?? [],
             'description': article.description || `Miniatura de coche de bloques ${article.title}`,
             'offers': {
               '@type': 'Offer',
               'url': `https://www.minienginescreations.com/article/${article.id}`,
               'priceCurrency': 'EUR',
-              'price': article.price,
+              ...(isPriceHidden ? {} : { 'price': finalPrice }),
               'availability': article.quantity > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
               'itemCondition': 'https://schema.org/NewCondition'
             }

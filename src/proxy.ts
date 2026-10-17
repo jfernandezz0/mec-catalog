@@ -10,9 +10,10 @@ function isTokenValid(token: string): boolean {
     const payloadBase64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
     const decoded = atob(payloadBase64);
     const payload = JSON.parse(decoded);
+    const adminEmail = process.env.ADMIN_EMAIL || 'minienginescreations@gmail.com';
     
-    // Check if token expiration date is in the future
-    if (payload.exp && payload.exp * 1000 > Date.now()) {
+    // Check if token expiration date is in the future and belongs to admin
+    if (payload.exp && payload.exp * 1000 > Date.now() && (!payload.email || payload.email === adminEmail)) {
       return true;
     }
   } catch (e) {

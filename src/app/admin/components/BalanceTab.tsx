@@ -3,8 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 import { formatPrice } from '@/lib/utils';
-import { Sale, Expense, ExpenseCategory } from '@/lib/types';
-import styles from '../admin.module.css';
+import { Sale, Expense } from '@/lib/types';
 
 interface BalanceTabProps {
   sales: Sale[];
@@ -29,8 +28,8 @@ export default function BalanceTab({
   sales: initialSales,
   onNavigateToRegisterExpense,
 }: BalanceTabProps) {
-  const [salesList, setSalesList] = useState<Sale[]>(initialSales || []);
-  const [loadingSales, setLoadingSales] = useState(true);
+  const [fetchedSales, setFetchedSales] = useState<Sale[] | null>(null);
+  const salesList = useMemo(() => fetchedSales ?? initialSales ?? [], [fetchedSales, initialSales]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loadingExpenses, setLoadingExpenses] = useState(true);
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('this_month');
@@ -38,35 +37,43 @@ export default function BalanceTab({
   const [expenseCategoryFilter, setExpenseCategoryFilter] = useState<string>('all');
   
   // Goal Target
-  const [monthlyGoal, setMonthlyGoal] = useState<number>(1000);
+  const [monthlyGoal, setMonthlyGoal] = useState<number>(() => {
+    if (typeof window !== 'undefined') {
+      const savedGoal = localStorage.getItem('mec_monthly_goal');
+      if (savedGoal) {
+        const g = parseFloat(savedGoal);
+        if (!isNaN(g) && g > 0) return g;
+      }
+    }
+    return 1000;
+  });
   const [isEditingGoal, setIsEditingGoal] = useState(false);
-  const [goalInput, setGoalInput] = useState('1000');
+  const [goalInput, setGoalInput] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      const savedGoal = localStorage.getItem('mec_monthly_goal');
+      if (savedGoal) {
+        const g = parseFloat(savedGoal);
+        if (!isNaN(g) && g > 0) return String(g);
+      }
+    }
+    return '1000';
+  });
 
   // Notice for unmigrated table
   const [tableNotMigrated, setTableNotMigrated] = useState(false);
 
   useEffect(() => {
-    loadSales();
-    loadExpenses();
-    const savedGoal = localStorage.getItem('mec_monthly_goal');
-    if (savedGoal) {
-      const g = parseFloat(savedGoal);
-      if (!isNaN(g) && g > 0) {
-        setMonthlyGoal(g);
-        setGoalInput(String(g));
+    const t = setTimeout(() => {
+      if (!initialSales || initialSales.length === 0) {
+        loadSales();
       }
-    }
+      loadExpenses();
+    }, 0);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
-    if (initialSales && initialSales.length > 0) {
-      setSalesList(initialSales);
-      setLoadingSales(false);
-    }
-  }, [initialSales]);
-
   async function loadSales() {
-    setLoadingSales(true);
     try {
       const { data, error } = await supabase
         .from('sales')
@@ -76,12 +83,10 @@ export default function BalanceTab({
       if (error) {
         console.error('Error loading sales in BalanceTab:', error);
       } else if (data) {
-        setSalesList(data);
+        setFetchedSales(data);
       }
     } catch (err) {
       console.error('Error fetching sales in BalanceTab:', err);
-    } finally {
-      setLoadingSales(false);
     }
   }
 
@@ -946,7 +951,7 @@ export default function BalanceTab({
             <div style={{ padding: '30px', textAlign: 'center', color: 'var(--text-secondary)' }}>Cargando gastos...</div>
           ) : displayedExpenses.length === 0 ? (
             <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '13px' }}>
-              No hay gastos registrados en esta vista. Pulsa en <strong>"+ Registrar Nuevo Gasto"</strong> para añadir uno.
+              No hay gastos registrados en esta vista. Pulsa en <strong>&ldquo;+ Registrar Nuevo Gasto&rdquo;</strong> para añadir uno.
             </div>
           ) : (
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>

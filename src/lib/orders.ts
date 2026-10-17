@@ -106,6 +106,7 @@ export async function createSaleFromPayment(params: {
 
   const orderNumber = await generateOrderNumber();
   const db = getSupabaseAdmin();
+  const totalArticlesCount = cart.reduce((sum, i) => sum + (i.quantity || 1), 0);
 
   // 1. Insert sale
   const { data: sale, error: saleError } = await db
@@ -114,8 +115,9 @@ export async function createSaleFromPayment(params: {
       payment_type: 'SQUARE',
       status: 'COMPLETADA',
       total_price: total,
-      total_articles: cart.length,
+      total_articles: totalArticlesCount,
       buyer_name: buyer.name,
+      buyer_phone: buyer.whatsapp || null,
       receipt_email: buyer.email,
       receipt_whatsapp: buyer.whatsapp || null,
       whatsapp_sent: false,
@@ -160,6 +162,14 @@ export async function createSaleFromPayment(params: {
     await confirmStock(item.articleId, qty);
   }
 
+  const formattedEmailItems = cart.map((i) => {
+    const qty = i.quantity || 1;
+    return {
+      title: qty > 1 ? `${i.title} (x${qty})` : i.title,
+      price: Number((i.priceAtCheckout * qty).toFixed(2)),
+    };
+  });
+
   // 3. Receipt email to buyer
   try {
     const shippingInfo = buyer.shippingAddress;
@@ -170,7 +180,7 @@ export async function createSaleFromPayment(params: {
       to: buyer.email,
       buyerName: buyer.name,
       orderNumber,
-      items: cart.map((i) => ({ title: i.title, price: i.priceAtCheckout })),
+      items: formattedEmailItems,
       total,
       paymentMethod: 'Pago con tarjeta (Square)',
       shippingMethodLabel,
@@ -195,7 +205,7 @@ export async function createSaleFromPayment(params: {
       buyerName: buyer.name,
       buyerEmail: buyer.email,
       buyerWhatsapp: buyer.whatsapp,
-      items: cart.map((i) => ({ title: i.title, price: i.priceAtCheckout })),
+      items: formattedEmailItems,
       total,
       shippingAddress: buyer.shippingAddress,
       paymentMethod: 'Pago con tarjeta (Square)',
@@ -217,15 +227,10 @@ export async function createSaleFromPayment(params: {
       phone: buyer.whatsapp,
       buyerName: buyer.name,
       orderNumber,
-      items: cart.map((i) => ({ title: i.title, price: i.priceAtCheckout })),
+      items: formattedEmailItems,
       total,
       shippingCost,
     });
-
-    await db
-      .from('sales')
-      .update({ receipt_whatsapp: whatsappLink })
-      .eq('id', sale.id);
   }
 
   return { orderNumber, whatsappLink };
@@ -247,6 +252,7 @@ export async function createManualSale(params: {
 
   const orderNumber = await generateOrderNumber();
   const db = getSupabaseAdmin();
+  const totalArticlesCount = cart.reduce((sum, i) => sum + (i.quantity || 1), 0);
 
   // 1. Insert sale
   const { data: sale, error: saleError } = await db
@@ -255,8 +261,9 @@ export async function createManualSale(params: {
       payment_type: paymentMethod,
       status: 'PRECOMPRA', // Pending verification
       total_price: total,
-      total_articles: cart.length,
+      total_articles: totalArticlesCount,
       buyer_name: buyer.name,
+      buyer_phone: buyer.whatsapp || null,
       receipt_email: buyer.email,
       receipt_whatsapp: buyer.whatsapp || null,
       whatsapp_sent: false,
@@ -294,6 +301,13 @@ export async function createManualSale(params: {
   }
 
   const paymentMethodLabel = paymentMethod === 'BIZUM' ? 'Bizum / Transferencia' : 'PayPal';
+  const formattedEmailItems = cart.map((i) => {
+    const qty = i.quantity || 1;
+    return {
+      title: qty > 1 ? `${i.title} (x${qty})` : i.title,
+      price: Number((i.priceAtCheckout * qty).toFixed(2)),
+    };
+  });
 
   // 3. Receipt email to buyer & Admin notification (if not delayed)
   if (!delayEmail) {
@@ -306,7 +320,7 @@ export async function createManualSale(params: {
         to: buyer.email,
         buyerName: buyer.name,
         orderNumber,
-        items: cart.map((i) => ({ title: i.title, price: i.priceAtCheckout })),
+        items: formattedEmailItems,
         total,
         paymentMethod: paymentMethodLabel,
         shippingMethodLabel,
@@ -330,7 +344,7 @@ export async function createManualSale(params: {
         buyerName: buyer.name,
         buyerEmail: buyer.email,
         buyerWhatsapp: buyer.whatsapp,
-        items: cart.map((i) => ({ title: i.title, price: i.priceAtCheckout })),
+        items: formattedEmailItems,
         total,
         shippingAddress: buyer.shippingAddress,
         paymentMethod: paymentMethodLabel,
@@ -353,15 +367,10 @@ export async function createManualSale(params: {
       phone: buyer.whatsapp,
       buyerName: buyer.name,
       orderNumber,
-      items: cart.map((i) => ({ title: i.title, price: i.priceAtCheckout })),
+      items: formattedEmailItems,
       total,
       shippingCost,
     });
-
-    await db
-      .from('sales')
-      .update({ receipt_whatsapp: whatsappLink })
-      .eq('id', sale.id);
   }
 
   return { orderNumber, saleId: sale.id, whatsappLink };
@@ -433,14 +442,24 @@ export async function createSaleFromPresencialOrder(params: {
     }
   }
 
-  const cart = matchedArticles.map((art) => ({
-    articleId: art.id,
-    title: art.title,
-    priceAtCheckout: Number(art.price),
-  }));
+  const cart = matchedArticles.map((art) => {
+    const lineItem = order.lineItems?.find((li) => li.catalogObjectId === art.square_catalog_item_id);
+    const qty = lineItem?.quantity ? Math.max(1, Number(lineItem.quantity)) : 1;
+    return {
+      articleId: art.id,
+      title: art.title,
+      priceAtCheckout: Number(art.price),
+      quantity: qty,
+    };
+  });
 
   const orderNumber = await generateOrderNumber();
-  const totalPrice = Number(order.totalMoney?.amount ? Number(order.totalMoney.amount) / 100 : cart.reduce((sum, item) => sum + item.priceAtCheckout, 0));
+  const totalArticlesCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+  const totalPrice = Number(
+    order.totalMoney?.amount
+      ? Number(order.totalMoney.amount) / 100
+      : cart.reduce((sum, item) => sum + item.priceAtCheckout * item.quantity, 0)
+  );
 
   // 4. Create Sale in Supabase
   const { data: sale, error: saleError } = await db
@@ -449,8 +468,9 @@ export async function createSaleFromPresencialOrder(params: {
       payment_type: paymentType,
       status: 'COMPLETADA',
       total_price: totalPrice,
-      total_articles: cart.length,
+      total_articles: totalArticlesCount,
       buyer_name: buyerName,
+      buyer_phone: buyerPhone,
       receipt_email: buyerEmail,
       receipt_whatsapp: buyerPhone,
       whatsapp_sent: false,
@@ -473,10 +493,7 @@ export async function createSaleFromPresencialOrder(params: {
 
   // 5. Insert sale items and decrement stock
   for (const item of cart) {
-    const lineItem = order.lineItems?.find(
-      (li) => li.catalogObjectId === matchedArticles.find((ma) => ma.id === item.articleId)?.square_catalog_item_id
-    );
-    const qty = lineItem?.quantity ? Number(lineItem.quantity) : 1;
+    const qty = item.quantity || 1;
 
     await db.from('sale_items').insert({
       sale_id: sale.id,
@@ -487,23 +504,15 @@ export async function createSaleFromPresencialOrder(params: {
       is_prepurchase: false,
     });
 
-    // Mark quantity as decremented and clear reservation
-    const { data: art } = await db
-      .from('articles')
-      .select('quantity')
-      .eq('id', item.articleId)
-      .single();
-
-    if (art) {
-      const newQty = Math.max(0, art.quantity - qty);
-      await db
-        .from('articles')
-        .update({ quantity: newQty, reserved_until: null })
-        .eq('id', item.articleId);
-    }
+    await confirmStock(item.articleId, qty);
   }
 
   console.log(`[presencial-sale] Successfully processed presencial sale ${orderNumber} for order ${orderId}`);
+
+  const formattedEmailItems = cart.map((i) => ({
+    title: i.quantity > 1 ? `${i.title} (x${i.quantity})` : i.title,
+    price: Number((i.priceAtCheckout * i.quantity).toFixed(2)),
+  }));
 
   // 6. Send receipt email if email is available
   if (buyerEmail) {
@@ -512,7 +521,7 @@ export async function createSaleFromPresencialOrder(params: {
         to: buyerEmail,
         buyerName,
         orderNumber,
-        items: cart.map((i) => ({ title: i.title, price: i.priceAtCheckout })),
+        items: formattedEmailItems,
         total: totalPrice,
         paymentMethod: 'Pago con tarjeta (Square)',
         shippingMethodLabel: 'Venta presencial',
@@ -536,7 +545,7 @@ export async function createSaleFromPresencialOrder(params: {
       buyerName,
       buyerEmail: buyerEmail || 'N/A',
       buyerWhatsapp: buyerPhone,
-      items: cart.map((i) => ({ title: i.title, price: i.priceAtCheckout })),
+      items: formattedEmailItems,
       total: totalPrice,
       shippingAddress: null,
       paymentMethod: 'Pago presencial (Tap to Pay)',

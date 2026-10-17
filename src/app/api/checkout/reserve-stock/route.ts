@@ -61,17 +61,28 @@ export async function POST(request: NextRequest) {
   try {
     const { articleIds } = (await request.json()) as { articleIds: number[] };
 
-    if (!Array.isArray(articleIds) || articleIds.length === 0) {
-      return NextResponse.json({ error: 'articleIds required' }, { status: 400 });
+    if (!Array.isArray(articleIds) || articleIds.length === 0 || articleIds.length > 50) {
+      return NextResponse.json({ error: 'articleIds required (max 50)' }, { status: 400 });
     }
 
+    const uniqueIds = Array.from(new Set(articleIds.map((id) => Number(id)).filter((id) => !isNaN(id))));
     const results: { articleId: number; reserved: boolean }[] = [];
-    for (const id of articleIds) {
+    const newlyReservedIds: number[] = [];
+
+    for (const id of uniqueIds) {
       const reserved = await tryReserveStock(id);
       results.push({ articleId: id, reserved });
+      if (reserved) {
+        newlyReservedIds.push(id);
+      }
     }
 
     const allReserved = results.every((r) => r.reserved);
+    if (!allReserved && newlyReservedIds.length > 0) {
+      const db = getSupabaseAdmin();
+      await db.from('articles').update({ reserved_until: null }).in('id', newlyReservedIds);
+    }
+
     return NextResponse.json({ success: allReserved, results });
   } catch (err) {
     console.error('[reserve-stock] Unexpected error:', err);

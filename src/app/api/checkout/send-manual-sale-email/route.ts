@@ -40,15 +40,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Could not load sale items' }, { status: 500 });
     }
 
-    // 3. Build baseUrl
-    const host = request.headers.get('host') || 'localhost:3000';
-    const protocol = host.startsWith('localhost') ? 'http' : 'https';
-    const baseUrl = `${protocol}://${host}`;
+    // 3. Build baseUrl safely
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.minienginescreations.com';
 
     const shippingInfo = sale.shipping_address as ShippingAddress | null;
     const shippingMethodLabel = shippingInfo?.method === 'recogida' ? 'Recogida en taller' : 'Envío a domicilio (Península)';
     const shippingCost = shippingInfo?.price ?? 0;
     const paymentMethodLabel = sale.payment_type === 'BIZUM' ? 'Bizum / Transferencia' : 'PayPal';
+    const formattedEmailItems = items.map((i) => {
+      const qty = i.quantity || 1;
+      return {
+        title: qty > 1 ? `${i.title} (x${qty})` : i.title,
+        price: Number((Number(i.price) * qty).toFixed(2)),
+      };
+    });
 
     // 4. Send buyer email (Resguardo de reserva)
     if (sale.buyer_email) {
@@ -57,7 +62,7 @@ export async function POST(request: NextRequest) {
           to: sale.buyer_email,
           buyerName: sale.buyer_name || 'Cliente',
           orderNumber: sale.order_number || saleId.slice(0, 8),
-          items: items.map((i) => ({ title: i.title, price: i.price })),
+          items: formattedEmailItems,
           total: sale.total_price,
           paymentMethod: paymentMethodLabel,
           shippingMethodLabel,
@@ -84,7 +89,7 @@ export async function POST(request: NextRequest) {
         buyerName: sale.buyer_name || 'Cliente',
         buyerEmail: sale.buyer_email || '',
         buyerWhatsapp: sale.receipt_whatsapp, // WhatsApp number or link is fine
-        items: items.map((i) => ({ title: i.title, price: i.price })),
+        items: formattedEmailItems,
         total: sale.total_price,
         shippingAddress: sale.shipping_address,
         paymentMethod: paymentMethodLabel,
