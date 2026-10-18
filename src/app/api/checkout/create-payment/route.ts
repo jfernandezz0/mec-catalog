@@ -170,7 +170,7 @@ export async function POST(request: NextRequest) {
       .update({ square_payment_id: payment.id })
       .eq('id', checkoutSessionId);
 
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.minienginescreations.com';
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://mec-catalog.vercel.app';
 
     // ── STEP 4: CREATE SALE IMMEDIATELY (Synchronous flow) ──
     const { orderNumber } = await createSaleFromPayment({

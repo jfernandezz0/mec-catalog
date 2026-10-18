@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 3. Build baseUrl safely
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.minienginescreations.com';
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://mec-catalog.vercel.app';
 
     const shippingInfo = sale.shipping_address as ShippingAddress | null;
     const shippingMethodLabel = shippingInfo?.method === 'recogida' ? 'Recogida en taller' : 'Envío a domicilio (Península)';

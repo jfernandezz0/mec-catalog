@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
       ? { ...shippingAddress, price: serverShippingCost }
       : null;
 
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.minienginescreations.com';
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://mec-catalog.vercel.app';
 
     // Create the manual sale (stock reservation confirmation, email dispatch, admin alerts)
     const { orderNumber, saleId, whatsappLink } = await createManualSale({

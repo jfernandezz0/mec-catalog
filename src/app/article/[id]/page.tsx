@@ -34,7 +34,7 @@ export async function generateMetadata(
 
   if (!article || article.is_visible === false) return { title: 'Artículo | MiniEngines Creations' };
 
-  const ogImage = article.image_urls?.[0] ?? 'https://www.minienginescreations.com/logo.png';
+  const ogImage = article.image_urls?.[0] ?? 'https://mec-catalog.vercel.app/logo.png';
   const price = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(Number(article.price));
   const description = article.description
     ? `${article.description} — ${price}`
@@ -49,7 +49,7 @@ export async function generateMetadata(
     openGraph: {
       title: article.title,
       description,
-      url: `https://www.minienginescreations.com/article/${id}`,
+      url: `https://mec-catalog.vercel.app/article/${id}`,
       siteName: 'MiniEngines Creations',
       type: 'website',
       images: [
@@ -449,7 +449,7 @@ export default async function ArticlePage({
             'description': article.description || `Miniatura de coche de bloques ${article.title}`,
             'offers': {
               '@type': 'Offer',
-              'url': `https://www.minienginescreations.com/article/${article.id}`,
+              'url': `https://mec-catalog.vercel.app/article/${article.id}`,
               'priceCurrency': 'EUR',
               ...(isPriceHidden ? {} : { 'price': finalPrice }),
               'availability': article.quantity > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
@@ -469,19 +469,19 @@ export default async function ArticlePage({
                 '@type': 'ListItem',
                 'position': 1,
                 'name': 'Inicio',
-                'item': 'https://www.minienginescreations.com'
+                'item': 'https://mec-catalog.vercel.app'
               },
               {
                 '@type': 'ListItem',
                 'position': 2,
                 'name': category?.name || 'Categoría',
-                'item': category ? `https://www.minienginescreations.com/category/${category.country_code.toLowerCase()}` : 'https://www.minienginescreations.com'
+                'item': category ? `https://mec-catalog.vercel.app/category/${category.country_code.toLowerCase()}` : 'https://mec-catalog.vercel.app'
               },
               {
                 '@type': 'ListItem',
                 'position': 3,
                 'name': article.title,
-                'item': `https://www.minienginescreations.com/article/${article.id}`
+                'item': `https://mec-catalog.vercel.app/article/${article.id}`
               }
             ]
           })

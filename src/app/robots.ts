@@ -7,6 +7,6 @@ export default function robots(): MetadataRoute.Robots {
       allow: '/',
       disallow: ['/admin', '/api', '/checkout', '/invoice'],
     },
-    sitemap: 'https://www.minienginescreations.com/sitemap.xml',
+    sitemap: 'https://mec-catalog.vercel.app/sitemap.xml',
   }
 }

@@ -16,7 +16,7 @@ const jakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://www.minienginescreations.com"),
+  metadataBase: new URL("https://mec-catalog.vercel.app"),
   title: "MiniEngines Creations",
   description: "Catálogo digital de artículos y ediciones limitadas de miniaturas de coches.",
   alternates: {

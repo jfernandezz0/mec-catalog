@@ -102,7 +102,7 @@ export async function createSaleFromPayment(params: {
   total: number;
   baseUrl?: string;
 }): Promise<{ orderNumber: string; whatsappLink: string | null }> {
-  const { squarePaymentId, squareOrderId, cart, buyer, total, baseUrl = 'https://www.minienginescreations.com' } = params;
+  const { squarePaymentId, squareOrderId, cart, buyer, total, baseUrl = 'https://mec-catalog.vercel.app' } = params;
 
   const orderNumber = await generateOrderNumber();
   const db = getSupabaseAdmin();
@@ -248,7 +248,7 @@ export async function createManualSale(params: {
   baseUrl?: string;
   delayEmail?: boolean;
 }): Promise<{ orderNumber: string; saleId: string; whatsappLink: string | null }> {
-  const { paymentMethod, cart, buyer, total, baseUrl = 'https://www.minienginescreations.com', delayEmail = false } = params;
+  const { paymentMethod, cart, buyer, total, baseUrl = 'https://mec-catalog.vercel.app', delayEmail = false } = params;
 
   const orderNumber = await generateOrderNumber();
   const db = getSupabaseAdmin();
@@ -382,7 +382,7 @@ export async function createSaleFromPresencialOrder(params: {
   orderId: string;
   baseUrl?: string;
 }): Promise<boolean> {
-  const { paymentId, orderId, baseUrl = 'https://www.minienginescreations.com' } = params;
+  const { paymentId, orderId, baseUrl = 'https://mec-catalog.vercel.app' } = params;
   const db = getSupabaseAdmin();
 
   // 1. Fetch Order from Square

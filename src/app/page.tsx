@@ -145,8 +145,8 @@ export default async function Home() {
             '@context': 'https://schema.org',
             '@type': 'Organization',
             'name': 'MiniEngines Creations',
-            'url': 'https://www.minienginescreations.com',
-            'logo': 'https://www.minienginescreations.com/logo.png',
+            'url': 'https://mec-catalog.vercel.app',
+            'logo': 'https://mec-catalog.vercel.app/logo.png',
             'sameAs': [
               'https://www.instagram.com/minienginescreations'
             ]

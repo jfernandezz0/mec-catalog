@@ -247,13 +247,13 @@ export default async function CategoryPage({
                 '@type': 'ListItem',
                 'position': 1,
                 'name': 'Inicio',
-                'item': 'https://www.minienginescreations.com'
+                'item': 'https://mec-catalog.vercel.app'
               },
               {
                 '@type': 'ListItem',
                 'position': 2,
                 'name': category.name,
-                'item': `https://www.minienginescreations.com/category/${country.toLowerCase()}`
+                'item': `https://mec-catalog.vercel.app/category/${country.toLowerCase()}`
               }
             ]
           })
