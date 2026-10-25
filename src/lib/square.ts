@@ -1,5 +1,5 @@
 import { SquareClient, SquareEnvironment } from 'square';
-import { createHmac } from 'crypto';
+import { createHmac, timingSafeEqual } from 'crypto';
 
 export const squareClient = new SquareClient({
   token: process.env.SQUARE_ACCESS_TOKEN || 'build-time-placeholder',
@@ -11,18 +11,31 @@ export const squareClient = new SquareClient({
 
 export const squareLocationId = process.env.SQUARE_LOCATION_ID!;
 
-/** Verify Square webhook HMAC-SHA256 signature */
+/** Verify Square webhook HMAC-SHA256 signature with constant-time comparison */
 export function verifySquareWebhookSignature(
   body: string,
   signatureHeader: string,
   signatureKey: string,
   notificationUrl: string,
 ): boolean {
-  const combined = notificationUrl + body;
-  const hmac = createHmac('sha256', signatureKey)
-    .update(combined)
-    .digest('base64');
-  return hmac === signatureHeader;
+  if (!signatureKey || !signatureHeader) return false;
+  try {
+    const combined = notificationUrl + body;
+    const hmac = createHmac('sha256', signatureKey)
+      .update(combined)
+      .digest('base64');
+
+    const hmacBuf = Buffer.from(hmac, 'utf8');
+    const sigBuf = Buffer.from(signatureHeader, 'utf8');
+
+    if (hmacBuf.length !== sigBuf.length) {
+      return false;
+    }
+    return timingSafeEqual(hmacBuf, sigBuf);
+  } catch (err) {
+    console.error('[verifySquareWebhookSignature] Error verifying signature:', err);
+    return false;
+  }
 }
 
 /** Create an item in Square Catalog and return its variation ID */
