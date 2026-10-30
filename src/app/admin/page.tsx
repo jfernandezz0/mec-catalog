@@ -45,7 +45,7 @@ const ExpenseCreateTab = dynamic(() => import('./components/ExpenseCreateTab'), 
 // Image helpers
 function getSafeFilePath(file: File) {
   const parts = file.name.split('.');
-  const extension = parts.pop() || 'jpg';
+  const extension = parts.pop() || 'webp';
   const baseName = parts.join('.');
   
   const cleanName = baseName
@@ -58,7 +58,7 @@ function getSafeFilePath(file: File) {
   return `articles/${timestamp}_${cleanName}.${extension.toLowerCase()}`;
 }
 
-function compressImage(file: File, maxWidth = 1200, quality = 0.8): Promise<File> {
+function compressImage(file: File, maxWidth = 1400, quality = 0.82): Promise<File> {
   return new Promise(async (resolve) => {
     if (typeof window === 'undefined') {
       return resolve(file);
@@ -83,7 +83,7 @@ function compressImage(file: File, maxWidth = 1200, quality = 0.8): Promise<File
         let convertedBlob = await heic2any({
           blob: file,
           toType: 'image/jpeg',
-          quality: 0.8,
+          quality: 0.85,
         });
 
         if (Array.isArray(convertedBlob)) {
@@ -123,26 +123,54 @@ function compressImage(file: File, maxWidth = 1200, quality = 0.8): Promise<File
 
         ctx.drawImage(img, 0, 0, width, height);
 
-        canvas.toBlob(
-          (blob) => {
-            if (!blob) {
-              return resolve(fileToProcess);
-            }
-            const originalNameWithoutExt = fileToProcess.name.replace(/\.[^/.]+$/, "");
-            const newName = `${originalNameWithoutExt}.jpg`;
-            const compressedFile = new File([blob], newName, {
-              type: 'image/jpeg',
-              lastModified: Date.now(),
-            });
-            resolve(compressedFile);
-          },
-          'image/jpeg',
-          quality
-        );
+        const tryExport = (mimeType: string, extension: string, q: number) => {
+          canvas.toBlob(
+            (blob) => {
+              // Liberar memoria del canvas
+              canvas.width = 0;
+              canvas.height = 0;
+
+              if (!blob) {
+                return resolve(fileToProcess);
+              }
+
+              // Si el navegador no soporta webp en toBlob, puede devolver PNG o el fallback
+              const isDesiredType = blob.type === mimeType;
+              const finalExt = isDesiredType ? extension : (blob.type.includes('png') ? 'png' : 'jpg');
+              const finalMime = isDesiredType ? mimeType : blob.type;
+
+              const originalNameWithoutExt = fileToProcess.name.replace(/\.[^/.]+$/, "");
+              const newName = `${originalNameWithoutExt}.${finalExt}`;
+              const compressedFile = new File([blob], newName, {
+                type: finalMime,
+                lastModified: Date.now(),
+              });
+              resolve(compressedFile);
+            },
+            mimeType,
+            q
+          );
+        };
+
+        // Comprobar soporte de WebP export en canvas del navegador
+        try {
+          const testCanvas = document.createElement('canvas');
+          testCanvas.width = 1;
+          testCanvas.height = 1;
+          const supportsWebP = testCanvas.toDataURL('image/webp').startsWith('data:image/webp');
+          if (supportsWebP) {
+            tryExport('image/webp', 'webp', quality);
+          } else {
+            tryExport('image/jpeg', 'jpg', quality);
+          }
+        } catch {
+          tryExport('image/jpeg', 'jpg', quality);
+        }
       };
       img.onerror = () => resolve(fileToProcess);
       img.src = (event.target?.result as string) || '';
     };
+    reader.onerror = () => resolve(fileToProcess);
     reader.readAsDataURL(fileToProcess);
   });
 }
@@ -428,7 +456,8 @@ export default function AdminPage() {
       const compressedFile = await compressImage(file);
       const filePath = getSafeFilePath(compressedFile);
       await supabase.storage.from('product-images').upload(filePath, compressedFile, {
-        cacheControl: '3600',
+        cacheControl: '31536000',
+        contentType: compressedFile.type,
         upsert: false,
       });
       const { data } = supabase.storage.from('product-images').getPublicUrl(filePath);
@@ -443,7 +472,8 @@ export default function AdminPage() {
       const compressedFile = await compressImage(file);
       const filePath = getSafeFilePath(compressedFile);
       await supabase.storage.from('product-images').upload(filePath, compressedFile, {
-        cacheControl: '3600',
+        cacheControl: '31536000',
+        contentType: compressedFile.type,
         upsert: false,
       });
       const { data } = supabase.storage.from('product-images').getPublicUrl(filePath);

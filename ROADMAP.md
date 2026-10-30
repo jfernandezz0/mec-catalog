@@ -28,11 +28,12 @@ Esta fase introduce el portal de clientes, la persistencia de datos del comprado
 
 ---
 
-## 🔲 Fase 9 — Optimización de Imágenes en Catálogo (WebP)
+## ✅ Fase 9 — Optimización de Imágenes en Catálogo (WebP)
 
 Esta fase optimiza el tiempo de carga y el uso de almacenamiento.
 
 ### 1. Compresión Automática en Subidas
-- **Procesamiento**: Al subir logos de categoría o imágenes de artículos desde el Panel de Administración, la API de Next.js procesará el archivo en el backend.
-- **Conversión a WebP**: Se comprimirá la imagen al formato WebP (reduciendo hasta un 70% el peso sin pérdida visual de calidad) antes de subir el archivo al bucket de Supabase Storage.
-- **Fallback**: Si falla el procesamiento en el servidor, se subirá el archivo original para no bloquear el flujo del panel.
+- **Procesamiento en Cliente**: Al seleccionar fotos de vehículos o cuadros en el Panel de Administración, el navegador redimensiona y comprime la imagen a formato **WebP** antes de iniciar la subida.
+- **Ventajas de Rendimiento**: Reduce el peso de cada imagen entre un **50% y 70%**, acelerando la subida hasta 10 veces en conexiones móviles y evitando saturar el límite de payload en Vercel.
+- **Soporte y Fallback**: Comprobación dinámica de soporte canvas para `image/webp` con fallback automático a JPEG si el entorno no soportara WebP.
+- **Caché Inmutable de CDN**: Asignación de cabecera `cacheControl: '31536000'` (1 año) y formato WebP/AVIF en `next.config.mjs` para máxima velocidad de entrega en el catálogo público.
