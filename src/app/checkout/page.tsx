@@ -102,11 +102,13 @@ export default function CheckoutPage() {
   const { items, clearCart, validateStock, stockStatuses, addItem } = useCart();
 
   const [step, setStep] = useState<Step>('resumen');
+  type PaymentMethodType = 'tarjeta' | 'apple_pay' | 'google_pay' | 'bizum' | 'paypal' | null;
+
   const [shippingMethod, setShippingMethod] = useState<'recogida' | 'envio'>('recogida');
   const [buyer, setBuyer] = useState<BuyerData>({ name: '', email: '', whatsapp: '+34 ' });
   const [shipping, setShipping] = useState<ShippingData>({ address: '', postalCode: '', city: '', province: '' });
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [selectedMethod, setSelectedMethod] = useState<'tarjeta' | 'bizum' | 'paypal' | null>('tarjeta');
+  const [selectedMethod, setSelectedMethod] = useState<PaymentMethodType>('tarjeta');
   const [squarePaymentEnabled, setSquarePaymentEnabled] = useState(true);
   const [bizumEnabled, setBizumEnabled] = useState(true);
   const [paypalEnabled, setPaypalEnabled] = useState(true);
@@ -127,7 +129,9 @@ export default function CheckoutPage() {
       paypal: paypalEnabled,
     });
     if (squarePaymentEnabled) {
-      setSelectedMethod('tarjeta');
+      if (selectedMethod !== 'apple_pay' && selectedMethod !== 'google_pay') {
+        setSelectedMethod('tarjeta');
+      }
     } else if (bizumEnabled) {
       setSelectedMethod('bizum');
     } else if (paypalEnabled) {
@@ -413,6 +417,8 @@ export default function CheckoutPage() {
           const expiry = new Date(Date.now() + 3 * 60 * 1000);
           setReservationExpiry(expiry);
           setReserved(true);
+          setCountdown('03:00');
+          setPayError('');
           if (typeof window !== 'undefined') {
             localStorage.setItem('mec_reservation', JSON.stringify({ expiry: expiry.toISOString(), items: ids }));
           }
@@ -448,6 +454,7 @@ export default function CheckoutPage() {
       const m = Math.floor(remaining / 60000);
       const s = Math.floor((remaining % 60000) / 1000);
       setCountdown(`${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`);
+      setPayError((prev) => (prev === 'Tu reserva ha expirado.' ? '' : prev));
     };
 
     tick();
@@ -648,6 +655,68 @@ export default function CheckoutPage() {
     handleGooglePayRef.current = handleGooglePay;
   });
 
+  const handleRenewReservation = async () => {
+    if (reserving) return;
+    setReserving(true);
+    setPayError('');
+
+    try {
+      const ids = availableItems.map((i) => i.article.id);
+      if (ids.length === 0) {
+        setPayError('El carrito está vacío.');
+        setReserving(false);
+        return;
+      }
+
+      // 1. Comprobación directa y en tiempo real del stock en Supabase
+      const { data: dbArticles, error: stockErr } = await supabase
+        .from('articles')
+        .select('id, title, quantity')
+        .in('id', ids);
+
+      if (stockErr) {
+        throw new Error('Error al verificar la disponibilidad de los artículos.');
+      }
+
+      const outOfStock = dbArticles?.find((a: { id: number; title: string; quantity: number }) => a.quantity <= 0);
+      if (outOfStock || (dbArticles && dbArticles.length < ids.length)) {
+        const title = outOfStock ? outOfStock.title : 'uno de los artículos';
+        setPayError(`Lo sentimos, el artículo "${title}" ya no tiene stock disponible.`);
+        setReserved(false);
+        await validateStock();
+        setReserving(false);
+        return;
+      }
+
+      // 2. Renovar la reserva de 3 minutos en el backend
+      const res = await fetch('/api/checkout/reserve-stock', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ articleIds: ids, isRenewal: true }),
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        const expiry = new Date(Date.now() + 3 * 60 * 1000);
+        setReservationExpiry(expiry);
+        setReserved(true);
+        setCountdown('03:00');
+        setPayError('');
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('mec_reservation', JSON.stringify({ expiry: expiry.toISOString(), items: ids }));
+        }
+      } else {
+        setPayError('No ha sido posible renovar la reserva porque el stock ha cambiado.');
+        setReserved(false);
+        await validateStock();
+      }
+    } catch (err: unknown) {
+      setPayError(err instanceof Error ? err.message : 'Error al renovar la reserva.');
+    } finally {
+      setReserving(false);
+    }
+  };
+
   const handlePay = async () => {
     if (paying) return;
     setPayError('');
@@ -659,6 +728,10 @@ export default function CheckoutPage() {
         const tokenResult = await squareCard.tokenize();
         if (tokenResult.status !== 'OK' || !tokenResult.token) throw new Error('Datos de tarjeta incompletos o inválidos.');
         await executeSquareCharge(tokenResult.token);
+      } else if (selectedMethod === 'apple_pay') {
+        await handleApplePay();
+      } else if (selectedMethod === 'google_pay') {
+        await handleGooglePay();
       } else {
         const formattedWhatsapp = buyer.whatsapp.replace(/\D/g, '') === '34' || buyer.whatsapp.trim() === '' ? null : buyer.whatsapp.trim();
 
@@ -1198,7 +1271,7 @@ export default function CheckoutPage() {
         {step === 'pago' && (
           <div>
             <h2 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '8px' }}>
-              💳 Pago con tarjeta
+              💳 Método de pago y confirmación
             </h2>
 
             {/* Countdown */}
@@ -1237,46 +1310,23 @@ export default function CheckoutPage() {
                   <button
                     type="button"
                     disabled={reserving}
-                    onClick={async () => {
-                      setReserving(true);
-                      setPayError('');
-                      try {
-                        const ids = availableItems.map((i) => i.article.id);
-                        const res = await fetch('/api/checkout/reserve-stock', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ articleIds: ids }),
-                        });
-                        const data = await res.json();
-                        if (data.success) {
-                          const expiry = new Date(Date.now() + 3 * 60 * 1000);
-                          setReservationExpiry(expiry);
-                          setReserved(true);
-                          setCountdown('03:00');
-                          localStorage.setItem('mec_reservation', JSON.stringify({ expiry: expiry.toISOString(), items: ids }));
-                        } else {
-                          setPayError('Algún artículo ya no está disponible.');
-                          await validateStock();
-                        }
-                      } catch {
-                        setPayError('Error al renovar la reserva.');
-                      } finally {
-                        setReserving(false);
-                      }
-                    }}
+                    onClick={handleRenewReservation}
                     style={{
                       marginLeft: 'auto',
-                      padding: '5px 10px',
+                      padding: '5px 12px',
                       borderRadius: '6px',
                       border: 'none',
-                      background: '#6366f1',
+                      background: reserving ? 'rgba(99,102,241,0.5)' : '#6366f1',
                       color: '#fff',
                       fontSize: '12px',
                       fontWeight: 700,
                       cursor: reserving ? 'not-allowed' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
                     }}
                   >
-                    🔄 Renovar reserva
+                    {reserving ? '⏳ Verificando…' : '🔄 Renovar reserva'}
                   </button>
                 )}
               </div>
@@ -1284,7 +1334,7 @@ export default function CheckoutPage() {
 
             {reserving && (
               <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginBottom: '16px' }}>
-                ⏳ Reservando artículos…
+                ⏳ Comprobando disponibilidad y reservando artículos…
               </p>
             )}
 
@@ -1339,129 +1389,100 @@ export default function CheckoutPage() {
                 Selecciona tu método de pago:
               </label>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {/* 1. Tarjeta bancaria (Square) */}
                 {squarePaymentEnabled && (
                   <div
                     onClick={() => setSelectedMethod('tarjeta')}
                     style={{
                       display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'stretch',
+                      alignItems: 'center',
+                      gap: '12px',
                       padding: '16px',
                       borderRadius: '12px',
                       border: `1.5px solid ${selectedMethod === 'tarjeta' ? '#6366f1' : 'var(--border-card)'}`,
                       background: selectedMethod === 'tarjeta' ? 'rgba(99,102,241,0.04)' : 'var(--bg-card-glass)',
                       cursor: 'pointer',
-                      transition: 'all 0.3s ease',
+                      transition: 'all 0.2s',
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <input
-                        type="radio"
-                        name="paymentMethod"
-                        value="tarjeta"
-                        checked={selectedMethod === 'tarjeta'}
-                        onChange={() => setSelectedMethod('tarjeta')}
-                        style={{ accentColor: '#6366f1', width: '18px', height: '18px', cursor: 'pointer' }}
-                      />
-                      <div>
-                        <strong style={{ display: 'block', fontSize: '14px', color: 'var(--text-primary)' }}>💳 Tarjeta bancaria / Apple Pay / Google Pay</strong>
-                        <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Pago instantáneo seguro con Square (Tarjeta, Pay o GPay)</span>
-                      </div>
-                    </div>
-                    
-                    <div
-                      onClick={(e) => e.stopPropagation()}
-                      style={{
-                        maxHeight: selectedMethod === 'tarjeta' ? '450px' : '0px',
-                        opacity: selectedMethod === 'tarjeta' ? 1 : 0,
-                        overflow: 'hidden',
-                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                        paddingTop: selectedMethod === 'tarjeta' ? '12px' : '0px',
-                        marginTop: selectedMethod === 'tarjeta' ? '8px' : '0px',
-                        borderTop: selectedMethod === 'tarjeta' ? '1px solid rgba(255,255,255,0.06)' : 'none',
-                      }}
-                    >
-                      {/* Express Digital Wallets: Apple Pay & Google Pay */}
-                      <div
-                        style={{
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '10px',
-                          marginBottom: (applePayReady || googlePayReady) ? '14px' : '0px',
-                        }}
-                      >
-                        {applePayReady && (
-                          <button
-                            type="button"
-                            onClick={handleApplePay}
-                            disabled={paying || reserving || countdown === '00:00'}
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              gap: '6px',
-                              width: '100%',
-                              height: '44px',
-                              borderRadius: '8px',
-                              background: '#000000',
-                              color: '#ffffff',
-                              border: '1px solid rgba(255,255,255,0.2)',
-                              fontSize: '16px',
-                              fontWeight: 600,
-                              cursor: paying || countdown === '00:00' ? 'not-allowed' : 'pointer',
-                              boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
-                              transition: 'opacity 0.2s',
-                            }}
-                          >
-                            <span style={{ fontSize: '18px', lineHeight: 1 }}></span>
-                            <span style={{ fontWeight: 600, letterSpacing: '-0.3px' }}>Pay</span>
-                          </button>
-                        )}
-
-                        <div
-                          id="google-pay-container"
-                          style={{
-                            width: '100%',
-                            minHeight: googlePayReady ? '44px' : '0px',
-                            height: googlePayReady ? 'auto' : '0px',
-                            overflow: 'hidden',
-                            opacity: googlePayReady ? 1 : 0,
-                            visibility: googlePayReady ? 'visible' : 'hidden',
-                          }}
-                        />
-
-                        {(applePayReady || googlePayReady) && (
-                          <div
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              margin: '8px 0 2px',
-                              gap: '12px',
-                              color: 'var(--text-secondary)',
-                              fontSize: '11px',
-                            }}
-                          >
-                            <div style={{ flex: 1, height: '1px', background: 'var(--border-card)' }} />
-                            <span>o tarjeta de crédito / débito</span>
-                            <div style={{ flex: 1, height: '1px', background: 'var(--border-card)' }} />
-                          </div>
-                        )}
-                      </div>
-
-                      <div
-                        id="square-card-container"
-                        style={{
-                          width: 'calc(100% + 62px)', // Push postal code field past the viewport
-                          marginLeft: '0px',
-                          padding: '8px 0',
-                          clipPath: 'inset(0 62px 0 0)', // Clip only the postal code field (last 62px)
-                          minHeight: '48px',
-                        }}
-                      />
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      value="tarjeta"
+                      checked={selectedMethod === 'tarjeta'}
+                      onChange={() => setSelectedMethod('tarjeta')}
+                      style={{ accentColor: '#6366f1', width: '18px', height: '18px', cursor: 'pointer' }}
+                    />
+                    <div>
+                      <strong style={{ display: 'block', fontSize: '14px', color: 'var(--text-primary)' }}>💳 Tarjeta bancaria</strong>
+                      <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Pago seguro con tarjeta de crédito o débito (Square)</span>
                     </div>
                   </div>
                 )}
 
+                {/* 2. Apple Pay (Square) */}
+                {squarePaymentEnabled && (
+                  <div
+                    onClick={() => setSelectedMethod('apple_pay')}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      padding: '16px',
+                      borderRadius: '12px',
+                      border: `1.5px solid ${selectedMethod === 'apple_pay' ? '#6366f1' : 'var(--border-card)'}`,
+                      background: selectedMethod === 'apple_pay' ? 'rgba(99,102,241,0.04)' : 'var(--bg-card-glass)',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      value="apple_pay"
+                      checked={selectedMethod === 'apple_pay'}
+                      onChange={() => setSelectedMethod('apple_pay')}
+                      style={{ accentColor: '#6366f1', width: '18px', height: '18px', cursor: 'pointer' }}
+                    />
+                    <div>
+                      <strong style={{ display: 'block', fontSize: '14px', color: 'var(--text-primary)' }}> Apple Pay</strong>
+                      <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Pago instantáneo con Apple Pay (Safari / iOS / Mac)</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* 3. Google Pay (Square) */}
+                {squarePaymentEnabled && (
+                  <div
+                    onClick={() => setSelectedMethod('google_pay')}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      padding: '16px',
+                      borderRadius: '12px',
+                      border: `1.5px solid ${selectedMethod === 'google_pay' ? '#6366f1' : 'var(--border-card)'}`,
+                      background: selectedMethod === 'google_pay' ? 'rgba(99,102,241,0.04)' : 'var(--bg-card-glass)',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      value="google_pay"
+                      checked={selectedMethod === 'google_pay'}
+                      onChange={() => setSelectedMethod('google_pay')}
+                      style={{ accentColor: '#6366f1', width: '18px', height: '18px', cursor: 'pointer' }}
+                    />
+                    <div>
+                      <strong style={{ display: 'block', fontSize: '14px', color: 'var(--text-primary)' }}>🌐 Google Pay</strong>
+                      <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Pago instantáneo con Google Pay (Chrome / Android)</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* 4. Bizum / Transferencia */}
                 {bizumEnabled && (
                   <div
                     onClick={() => setSelectedMethod('bizum')}
@@ -1487,11 +1508,12 @@ export default function CheckoutPage() {
                     />
                     <div>
                       <strong style={{ display: 'block', fontSize: '14px', color: 'var(--text-primary)' }}>📲 Bizum / Transferencia</strong>
-                      <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Te redirigiremos para completar el pago móvil</span>
+                      <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Te redirigiremos para completar el pago móvil (Revolut)</span>
                     </div>
                   </div>
                 )}
 
+                {/* 5. PayPal */}
                 {paypalEnabled && (
                   <div
                     onClick={() => setSelectedMethod('paypal')}
@@ -1542,26 +1564,99 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-            {/* Dynamic payment content based on selection */}
-            {selectedMethod === 'tarjeta' && (
-              <>
-
-                {payError && (
-                  <div
+            {/* Error Banner (only shown if active and never if reservation is valid) */}
+            {payError && (payError !== 'Tu reserva ha expirado.' || countdown === '00:00') && (
+              <div
+                style={{
+                  background: 'rgba(239,68,68,0.08)',
+                  border: '1px solid rgba(239,68,68,0.3)',
+                  borderRadius: '10px',
+                  padding: '12px 14px',
+                  marginBottom: '16px',
+                  fontSize: '13px',
+                  color: '#ef4444',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '12px',
+                  flexWrap: 'wrap',
+                }}
+              >
+                <span>❌ {payError}</span>
+                {countdown === '00:00' && (
+                  <button
+                    type="button"
+                    onClick={handleRenewReservation}
+                    disabled={reserving}
                     style={{
-                      background: 'rgba(239,68,68,0.08)',
-                      border: '1px solid rgba(239,68,68,0.3)',
-                      borderRadius: '10px',
-                      padding: '12px 14px',
-                      marginBottom: '16px',
-                      fontSize: '13px',
-                      color: '#ef4444',
+                      padding: '6px 12px',
+                      borderRadius: '6px',
+                      border: 'none',
+                      background: '#ef4444',
+                      color: '#ffffff',
+                      fontWeight: 700,
+                      fontSize: '12px',
+                      cursor: reserving ? 'not-allowed' : 'pointer',
                     }}
                   >
-                    ❌ {payError}
-                  </div>
+                    {reserving ? '⏳ Comprobando...' : '🔄 Renovar ahora'}
+                  </button>
                 )}
+              </div>
+            )}
 
+            {/* Dynamic payment content based on selection */}
+            {/* Square Card DOM Container - stays mounted so Square iframe is retained */}
+            <div
+              id="square-card-container"
+              style={
+                selectedMethod === 'tarjeta'
+                  ? {
+                      width: 'calc(100% + 62px)',
+                      marginLeft: '0px',
+                      padding: '8px 0',
+                      clipPath: 'inset(0 62px 0 0)',
+                      minHeight: '48px',
+                      marginBottom: '16px',
+                    }
+                  : {
+                      position: 'absolute',
+                      left: '-9999px',
+                      top: '-9999px',
+                      visibility: 'hidden',
+                      pointerEvents: 'none',
+                      width: '300px',
+                    }
+              }
+            />
+
+            {/* Square Google Pay DOM Container - stays mounted so Google Pay iframe is retained */}
+            <div
+              id="google-pay-container"
+              style={
+                selectedMethod === 'google_pay' && googlePayReady
+                  ? {
+                      width: '100%',
+                      minHeight: '48px',
+                      cursor: paying || countdown === '00:00' ? 'not-allowed' : 'pointer',
+                      pointerEvents: paying || countdown === '00:00' ? 'none' : 'auto',
+                      opacity: paying || countdown === '00:00' ? 0.5 : 1,
+                      marginBottom: '14px',
+                    }
+                  : {
+                      position: 'absolute',
+                      left: '-9999px',
+                      top: '-9999px',
+                      visibility: 'hidden',
+                      pointerEvents: 'none',
+                      width: '300px',
+                    }
+              }
+            />
+
+            {/* 1. Tarjeta bancaria */}
+            {selectedMethod === 'tarjeta' && (
+              <>
                 <button
                   onClick={handlePay}
                   disabled={paying || reserving || countdown === '00:00' || !squareCard}
@@ -1590,6 +1685,117 @@ export default function CheckoutPage() {
               </>
             )}
 
+            {/* 2. Apple Pay */}
+            {selectedMethod === 'apple_pay' && (
+              <>
+                {applePayReady ? (
+                  <>
+                    <div style={{ padding: '16px', borderRadius: '12px', background: 'rgba(99,102,241,0.04)', border: '1px solid rgba(99,102,241,0.15)', fontSize: '13.5px', color: 'var(--text-secondary)', lineHeight: '1.6', marginBottom: '18px' }}>
+                      💡 Haz clic en el botón inferior para autorizar tu compra de <strong>{formatPrice(availableTotal)}</strong> con <strong>Apple Pay</strong> de forma biométrica (Face ID / Touch ID).
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleApplePay}
+                      disabled={paying || reserving || countdown === '00:00'}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
+                        width: '100%',
+                        height: '50px',
+                        borderRadius: '12px',
+                        background: '#000000',
+                        color: '#ffffff',
+                        border: '1px solid rgba(255,255,255,0.25)',
+                        fontSize: '16px',
+                        fontWeight: 600,
+                        cursor: paying || countdown === '00:00' ? 'not-allowed' : 'pointer',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                        transition: 'opacity 0.2s',
+                      }}
+                    >
+                      <span style={{ fontSize: '22px', lineHeight: 1 }}></span>
+                      <span>Pagar {formatPrice(availableTotal)} con Apple Pay</span>
+                    </button>
+
+                    <p style={{ textAlign: 'center', fontSize: '11px', color: 'var(--text-secondary)', marginTop: '12px' }}>
+                      🔒 Pago instantáneo y seguro procesado por Apple Pay a través de Square.
+                    </p>
+                  </>
+                ) : (
+                  <div style={{ padding: '18px', borderRadius: '12px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-card)', fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                    <p style={{ margin: '0 0 8px', color: 'var(--text-primary)', fontWeight: 700, fontSize: '14px' }}>
+                       Apple Pay no disponible en este dispositivo o navegador
+                    </p>
+                    <p style={{ margin: '0 0 14px' }}>
+                      Apple Pay solo está activo en el navegador Safari sobre dispositivos Apple (iPhone, iPad, Mac) con tarjetas previamente añadidas a Apple Wallet.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedMethod('tarjeta')}
+                      style={{
+                        padding: '10px 16px',
+                        borderRadius: '8px',
+                        background: 'var(--accent-primary, #6366f1)',
+                        color: '#fff',
+                        fontWeight: 700,
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontSize: '13px',
+                      }}
+                    >
+                      💳 Pagar con Tarjeta bancaria
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* 3. Google Pay */}
+            {selectedMethod === 'google_pay' && (
+              <>
+                {googlePayReady ? (
+                  <>
+                    <div style={{ padding: '16px', borderRadius: '12px', background: 'rgba(99,102,241,0.04)', border: '1px solid rgba(99,102,241,0.15)', fontSize: '13.5px', color: 'var(--text-secondary)', lineHeight: '1.6', marginBottom: '18px' }}>
+                      💡 Haz clic en el botón de Google Pay para abonar <strong>{formatPrice(availableTotal)}</strong> con tu tarjeta vinculada a tu cuenta de Google.
+                    </div>
+
+                    <p style={{ textAlign: 'center', fontSize: '11px', color: 'var(--text-secondary)', marginTop: '12px' }}>
+                      🔒 Pago instantáneo y seguro procesado por Google Pay a través de Square.
+                    </p>
+                  </>
+                ) : (
+                  <div style={{ padding: '18px', borderRadius: '12px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-card)', fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                    <p style={{ margin: '0 0 8px', color: 'var(--text-primary)', fontWeight: 700, fontSize: '14px' }}>
+                      🌐 Google Pay no disponible en este navegador
+                    </p>
+                    <p style={{ margin: '0 0 14px' }}>
+                      Google Pay requiere un navegador compatible (como Google Chrome o Android) con sesión iniciada y tarjetas vinculadas a Google Wallet.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedMethod('tarjeta')}
+                      style={{
+                        padding: '10px 16px',
+                        borderRadius: '8px',
+                        background: 'var(--accent-primary, #6366f1)',
+                        color: '#fff',
+                        fontWeight: 700,
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontSize: '13px',
+                      }}
+                    >
+                      💳 Pagar con Tarjeta bancaria
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* 4. Bizum / Transferencia */}
             {selectedMethod === 'bizum' && (
               <>
                 <div style={{ padding: '18px', borderRadius: '12px', background: 'rgba(99,102,241,0.04)', border: '1px solid rgba(99,102,241,0.15)', fontSize: '13.5px', color: 'var(--text-secondary)', lineHeight: '1.6', marginBottom: '20px' }}>
@@ -1598,22 +1804,6 @@ export default function CheckoutPage() {
                     🚨 Recuerda indicar tu número de pedido como concepto al pagar y guardar la captura.
                   </span>
                 </div>
-
-                {payError && (
-                  <div
-                    style={{
-                      background: 'rgba(239,68,68,0.08)',
-                      border: '1px solid rgba(239,68,68,0.3)',
-                      borderRadius: '10px',
-                      padding: '12px 14px',
-                      marginBottom: '16px',
-                      fontSize: '13px',
-                      color: '#ef4444',
-                    }}
-                  >
-                    ❌ {payError}
-                  </div>
-                )}
 
                 <button
                   onClick={handlePay}
@@ -1639,6 +1829,7 @@ export default function CheckoutPage() {
               </>
             )}
 
+            {/* 5. PayPal */}
             {selectedMethod === 'paypal' && (
               <>
                 <div style={{ padding: '18px', borderRadius: '12px', background: 'rgba(99,102,241,0.04)', border: '1px solid rgba(99,102,241,0.15)', fontSize: '13.5px', color: 'var(--text-secondary)', lineHeight: '1.6', marginBottom: '20px' }}>
@@ -1647,22 +1838,6 @@ export default function CheckoutPage() {
                     🚨 Recuerda realizar el abono y nos pondremos en contacto contigo para verificarlo lo antes posible.
                   </span>
                 </div>
-
-                {payError && (
-                  <div
-                    style={{
-                      background: 'rgba(239,68,68,0.08)',
-                      border: '1px solid rgba(239,68,68,0.3)',
-                      borderRadius: '10px',
-                      padding: '12px 14px',
-                      marginBottom: '16px',
-                      fontSize: '13px',
-                      color: '#ef4444',
-                    }}
-                  >
-                    ❌ {payError}
-                  </div>
-                )}
 
                 <button
                   onClick={handlePay}
@@ -1696,7 +1871,7 @@ export default function CheckoutPage() {
                 color: 'var(--text-secondary)',
                 cursor: 'pointer',
                 fontSize: '13px',
-                marginTop: '8px',
+                marginTop: '16px',
                 display: 'block',
                 width: '100%',
                 textAlign: 'center',

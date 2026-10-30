@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase';
 
-async function tryReserveStock(articleId: number): Promise<boolean> {
+async function tryReserveStock(articleId: number, isRenewal = false): Promise<boolean> {
   const db = getSupabaseAdmin();
 
   // Check article state
@@ -23,9 +23,28 @@ async function tryReserveStock(articleId: number): Promise<boolean> {
 
   const now = new Date();
   const reservedUntil = article.reserved_until ? new Date(article.reserved_until) : null;
-  if (reservedUntil && reservedUntil > now) {
+  // If not a renewal, ensure it is not already actively reserved by another session
+  if (!isRenewal && reservedUntil && reservedUntil > now) {
     console.log(`[reserve-stock] Article ${articleId} already reserved until ${article.reserved_until}`);
     return false;
+  }
+
+  const expiresAt = new Date(Date.now() + 3 * 60 * 1000).toISOString();
+
+  // For renewals, update reserved_until directly
+  if (isRenewal) {
+    const { data, error: updateError } = await db
+      .from('articles')
+      .update({ reserved_until: expiresAt })
+      .eq('id', articleId)
+      .gt('quantity', 0)
+      .select('id');
+
+    if (updateError) {
+      console.error(`[reserve-stock] Renewal update error for article ${articleId}:`, updateError);
+      return false;
+    }
+    return !!data && data.length > 0;
   }
 
   // Try RPC first (atomic)
@@ -41,7 +60,6 @@ async function tryReserveStock(articleId: number): Promise<boolean> {
   // Fallback: direct UPDATE (if RPC not available)
   console.warn(`[reserve-stock] RPC not available, using direct UPDATE. Error: ${rpcError.message}`);
 
-  const expiresAt = new Date(Date.now() + 3 * 60 * 1000).toISOString();
   const { data, error: updateError } = await db
     .from('articles')
     .update({ reserved_until: expiresAt })
@@ -59,7 +77,7 @@ async function tryReserveStock(articleId: number): Promise<boolean> {
 
 export async function POST(request: NextRequest) {
   try {
-    const { articleIds } = (await request.json()) as { articleIds: number[] };
+    const { articleIds, isRenewal } = (await request.json()) as { articleIds: number[]; isRenewal?: boolean };
 
     if (!Array.isArray(articleIds) || articleIds.length === 0 || articleIds.length > 50) {
       return NextResponse.json({ error: 'articleIds required (max 50)' }, { status: 400 });
@@ -70,7 +88,7 @@ export async function POST(request: NextRequest) {
     const newlyReservedIds: number[] = [];
 
     for (const id of uniqueIds) {
-      const reserved = await tryReserveStock(id);
+      const reserved = await tryReserveStock(id, Boolean(isRenewal));
       results.push({ articleId: id, reserved });
       if (reserved) {
         newlyReservedIds.push(id);
