@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
@@ -33,10 +33,45 @@ interface SquareCardTokenResult {
 interface SquareCardInstance {
   attach: (selector: string) => Promise<void>;
   tokenize: () => Promise<SquareCardTokenResult>;
+  destroy?: () => Promise<void>;
+}
+
+interface PaymentRequestOptions {
+  countryCode: string;
+  currencyCode: string;
+  total: {
+    amount: string;
+    label: string;
+  };
+}
+
+interface SquarePaymentRequest {
+  destroy?: () => Promise<void>;
+}
+
+interface SquareApplePayInstance {
+  tokenize: () => Promise<SquareCardTokenResult>;
+  destroy?: () => Promise<void>;
+}
+
+interface GooglePayButtonOptions {
+  buttonColor?: 'black' | 'white' | 'default';
+  buttonType?: 'long' | 'short';
+  buttonSizeMode?: 'static' | 'fill';
+  buttonRadius?: number;
+}
+
+interface SquareGooglePayInstance {
+  attach: (selector: string, options?: GooglePayButtonOptions) => Promise<void>;
+  tokenize: () => Promise<SquareCardTokenResult>;
+  destroy?: () => Promise<void>;
 }
 
 interface SquarePayments {
+  paymentRequest: (options: PaymentRequestOptions) => SquarePaymentRequest;
   card: (options?: { postalCode?: string }) => Promise<SquareCardInstance>;
+  applePay: (paymentRequest: SquarePaymentRequest) => Promise<SquareApplePayInstance>;
+  googlePay: (paymentRequest: SquarePaymentRequest) => Promise<SquareGooglePayInstance>;
 }
 
 interface WindowWithSquare extends Window {
@@ -103,6 +138,10 @@ export default function CheckoutPage() {
   }
   const [squareLoaded, setSquareLoaded] = useState(false);
   const [squareCard, setSquareCard] = useState<SquareCardInstance | null>(null);
+  const [squareApplePay, setSquareApplePay] = useState<SquareApplePayInstance | null>(null);
+  const [squareGooglePay, setSquareGooglePay] = useState<SquareGooglePayInstance | null>(null);
+  const [applePayReady, setApplePayReady] = useState(false);
+  const [googlePayReady, setGooglePayReady] = useState(false);
   const [paying, setPaying] = useState(false);
   const [reserving, setReserving] = useState(false);
   const [reserved, setReserved] = useState(false);
@@ -237,8 +276,12 @@ export default function CheckoutPage() {
     };
   }, [step, squareLoaded, squarePaymentEnabled]);
 
+  const handleGooglePayRef = useRef<() => Promise<void>>(() => Promise.resolve());
+
   useEffect(() => {
     if (!squareLoaded || squareCard || squarePaymentEnabled === false) return;
+
+    let isMounted = true;
 
     const initSquare = async () => {
       try {
@@ -248,18 +291,84 @@ export default function CheckoutPage() {
           process.env.NEXT_PUBLIC_SQUARE_APPLICATION_ID,
           process.env.NEXT_PUBLIC_SQUARE_LOCATION_ID,
         );
+
+        // 1. Credit / Debit card form
         const card = await payments.card({
           postalCode: shipping.postalCode || '28001'
         });
         await card.attach('#square-card-container');
-        setSquareCard(card);
+        if (isMounted) {
+          setSquareCard(card);
+        }
+
+        // 2. Digital wallets (Apple Pay & Google Pay)
+        try {
+          const req = payments.paymentRequest({
+            countryCode: 'ES',
+            currencyCode: 'EUR',
+            total: {
+              amount: Math.max(0.01, availableTotal).toFixed(2),
+              label: 'Mini Engines Creations',
+            },
+          });
+
+          // Check Apple Pay
+          try {
+            const applePay = await payments.applePay(req);
+            if (isMounted) {
+              setSquareApplePay(applePay);
+              setApplePayReady(true);
+            }
+          } catch {
+            if (isMounted) setApplePayReady(false);
+          }
+
+          // Check & attach Google Pay
+          try {
+            const googlePay = await payments.googlePay(req);
+            const gpayElem = document.getElementById('google-pay-container');
+            if (gpayElem) {
+              await googlePay.attach('#google-pay-container', {
+                buttonColor: 'black',
+                buttonSizeMode: 'fill',
+                buttonType: 'long',
+              });
+              if (isMounted) {
+                setSquareGooglePay(googlePay);
+                setGooglePayReady(true);
+              }
+            }
+          } catch {
+            if (isMounted) setGooglePayReady(false);
+          }
+        } catch (wErr) {
+          console.warn('Digital wallets initialization notice:', wErr);
+        }
       } catch {
         setPayError('Error cargando el formulario de pago. Recarga la página.');
       }
     };
 
     initSquare();
-  }, [squareLoaded, squareCard, shipping.postalCode, squarePaymentEnabled]);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [squareLoaded, squareCard, shipping.postalCode, squarePaymentEnabled, availableTotal]);
+
+  useEffect(() => {
+    if (!googlePayReady || !squareGooglePay) return;
+    const gpayElem = document.getElementById('google-pay-container');
+    if (!gpayElem) return;
+    const onClick = (e: MouseEvent) => {
+      e.preventDefault();
+      handleGooglePayRef.current();
+    };
+    gpayElem.addEventListener('click', onClick);
+    return () => {
+      gpayElem.removeEventListener('click', onClick);
+    };
+  }, [googlePayReady, squareGooglePay]);
 
   useEffect(() => {
     try {
@@ -449,11 +558,7 @@ export default function CheckoutPage() {
     }
   };
 
-  const handlePay = async () => {
-    if (paying) return;
-    setPayError('');
-    setPaying(true);
-
+  const executeSquareCharge = async (sourceId: string) => {
     const formattedWhatsapp = buyer.whatsapp.replace(/\D/g, '') === '34' || buyer.whatsapp.trim() === '' ? null : buyer.whatsapp.trim();
 
     const shippingAddress = shippingMethod === 'recogida'
@@ -470,21 +575,99 @@ export default function CheckoutPage() {
       quantity: i.quantity || 1,
     }));
 
+    const res = await fetch('/api/checkout/create-payment', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sourceId,
+        cartItems,
+        total: availableTotal,
+        buyerEmail: buyer.email,
+        buyerName: buyer.name,
+        buyerWhatsapp: formattedWhatsapp,
+        shippingAddress
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error || 'Error al procesar el pago.');
+    clearCart();
+    router.push(`/checkout/success?order=${data.orderNumber ?? ''}`);
+  };
+
+  const handleApplePay = async () => {
+    if (paying || !squareApplePay) return;
+    setPayError('');
+    setPaying(true);
+    try {
+      const tokenResult = await squareApplePay.tokenize();
+      if (tokenResult.status !== 'OK' || !tokenResult.token) {
+        if (tokenResult.errors && tokenResult.errors.length > 0) {
+          throw new Error('Pago con Apple Pay rechazado o cancelado.');
+        }
+        return;
+      }
+      await executeSquareCharge(tokenResult.token);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error al pagar con Apple Pay.';
+      setPayError(msg);
+    } finally {
+      setPaying(false);
+    }
+  };
+
+  const handleGooglePay = async () => {
+    if (paying || !squareGooglePay) return;
+    setPayError('');
+    setPaying(true);
+    try {
+      const tokenResult = await squareGooglePay.tokenize();
+      if (tokenResult.status !== 'OK' || !tokenResult.token) {
+        if (tokenResult.errors && tokenResult.errors.length > 0) {
+          throw new Error('Pago con Google Pay rechazado o cancelado.');
+        }
+        return;
+      }
+      await executeSquareCharge(tokenResult.token);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error al pagar con Google Pay.';
+      setPayError(msg);
+    } finally {
+      setPaying(false);
+    }
+  };
+
+  useEffect(() => {
+    handleGooglePayRef.current = handleGooglePay;
+  });
+
+  const handlePay = async () => {
+    if (paying) return;
+    setPayError('');
+    setPaying(true);
+
     try {
       if (selectedMethod === 'tarjeta') {
-        if (!squareCard) throw new Error('Formulario no listo');
+        if (!squareCard) throw new Error('Formulario de tarjeta no listo.');
         const tokenResult = await squareCard.tokenize();
-        if (tokenResult.status !== 'OK') throw new Error('Error tarjeta');
-        const res = await fetch('/api/checkout/create-payment', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sourceId: tokenResult.token, cartItems, total: availableTotal, buyerEmail: buyer.email, buyerName: buyer.name, buyerWhatsapp: formattedWhatsapp, shippingAddress }),
-        });
-        const data = await res.json();
-        if (!res.ok || !data.success) throw new Error(data.error);
-        clearCart();
-        router.push(`/checkout/success?order=${data.orderNumber ?? ''}`);
+        if (tokenResult.status !== 'OK' || !tokenResult.token) throw new Error('Datos de tarjeta incompletos o inválidos.');
+        await executeSquareCharge(tokenResult.token);
       } else {
+        const formattedWhatsapp = buyer.whatsapp.replace(/\D/g, '') === '34' || buyer.whatsapp.trim() === '' ? null : buyer.whatsapp.trim();
+
+        const shippingAddress = shippingMethod === 'recogida'
+          ? { method: 'recogida', price: 0, description: 'Recogida en taller (León, ESP)' }
+          : {
+              method: 'envio', price: 9.99, address: shipping.address, postalCode: shipping.postalCode,
+              city: shipping.city, province: shipping.province, country: 'España',
+            };
+
+        const cartItems = availableItems.map((i) => ({
+          articleId: i.article.id,
+          title: i.article.title,
+          priceAtCheckout: i.priceAtAdd,
+          quantity: i.quantity || 1,
+        }));
+
         const res = await fetch('/api/checkout/create-manual-sale', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1129,15 +1312,15 @@ export default function CheckoutPage() {
                         style={{ accentColor: '#6366f1', width: '18px', height: '18px', cursor: 'pointer' }}
                       />
                       <div>
-                        <strong style={{ display: 'block', fontSize: '14px', color: 'var(--text-primary)' }}>💳 Pago con tarjeta bancaria</strong>
-                        <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Seguro e instantáneo a través de Square</span>
+                        <strong style={{ display: 'block', fontSize: '14px', color: 'var(--text-primary)' }}>💳 Tarjeta bancaria / Apple Pay / Google Pay</strong>
+                        <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Pago instantáneo seguro con Square (Tarjeta, Pay o GPay)</span>
                       </div>
                     </div>
                     
                     <div
                       onClick={(e) => e.stopPropagation()}
                       style={{
-                        maxHeight: selectedMethod === 'tarjeta' ? '180px' : '0px',
+                        maxHeight: selectedMethod === 'tarjeta' ? '450px' : '0px',
                         opacity: selectedMethod === 'tarjeta' ? 1 : 0,
                         overflow: 'hidden',
                         transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -1146,6 +1329,73 @@ export default function CheckoutPage() {
                         borderTop: selectedMethod === 'tarjeta' ? '1px solid rgba(255,255,255,0.06)' : 'none',
                       }}
                     >
+                      {/* Express Digital Wallets: Apple Pay & Google Pay */}
+                      <div
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '10px',
+                          marginBottom: (applePayReady || googlePayReady) ? '14px' : '0px',
+                        }}
+                      >
+                        {applePayReady && (
+                          <button
+                            type="button"
+                            onClick={handleApplePay}
+                            disabled={paying || reserving || countdown === '00:00'}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '6px',
+                              width: '100%',
+                              height: '44px',
+                              borderRadius: '8px',
+                              background: '#000000',
+                              color: '#ffffff',
+                              border: '1px solid rgba(255,255,255,0.2)',
+                              fontSize: '16px',
+                              fontWeight: 600,
+                              cursor: paying || countdown === '00:00' ? 'not-allowed' : 'pointer',
+                              boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
+                              transition: 'opacity 0.2s',
+                            }}
+                          >
+                            <span style={{ fontSize: '18px', lineHeight: 1 }}></span>
+                            <span style={{ fontWeight: 600, letterSpacing: '-0.3px' }}>Pay</span>
+                          </button>
+                        )}
+
+                        <div
+                          id="google-pay-container"
+                          style={{
+                            width: '100%',
+                            minHeight: googlePayReady ? '44px' : '0px',
+                            height: googlePayReady ? 'auto' : '0px',
+                            overflow: 'hidden',
+                            opacity: googlePayReady ? 1 : 0,
+                            visibility: googlePayReady ? 'visible' : 'hidden',
+                          }}
+                        />
+
+                        {(applePayReady || googlePayReady) && (
+                          <div
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              margin: '8px 0 2px',
+                              gap: '12px',
+                              color: 'var(--text-secondary)',
+                              fontSize: '11px',
+                            }}
+                          >
+                            <div style={{ flex: 1, height: '1px', background: 'var(--border-card)' }} />
+                            <span>o tarjeta de crédito / débito</span>
+                            <div style={{ flex: 1, height: '1px', background: 'var(--border-card)' }} />
+                          </div>
+                        )}
+                      </div>
+
                       <div
                         id="square-card-container"
                         style={{

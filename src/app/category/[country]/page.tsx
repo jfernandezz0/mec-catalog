@@ -43,14 +43,6 @@ export async function generateMetadata(
       url: `https://mec-catalog.vercel.app/category/${country}`,
       siteName: 'MiniEngines Creations',
       type: 'website',
-      images: [
-        {
-          url: 'https://mec-catalog.vercel.app/logo.png',
-          width: 800,
-          height: 300,
-          alt: `MiniEngines Creations — ${category.name}`,
-        },
-      ],
     },
     twitter: {
       card: 'summary_large_image',

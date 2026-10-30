@@ -33,20 +33,11 @@ export const metadata: Metadata = {
     siteName: "MiniEngines Creations",
     locale: "es_ES",
     type: "website",
-    images: [
-      {
-        url: "https://mec-catalog.vercel.app/logo.png",
-        width: 800,
-        height: 300,
-        alt: "MiniEngines Creations",
-      },
-    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "MiniEngines Creations",
     description: "Catálogo digital de artículos y ediciones limitadas de miniaturas de coches.",
-    images: ["https://mec-catalog.vercel.app/logo.png"],
   },
 };
 
