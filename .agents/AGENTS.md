@@ -26,5 +26,13 @@ This file defines the specialized personas and task scopes for the MEC Catalog Q
   - Enforce strict typing in all files under `src/`.
   - Review that files follow Clean Code principles (single responsibility, readability, minimal complexity).
 
+## Workspace Skills
+The specialized workspace skills guiding agents across specific project domains:
+- **`square-payments`** (`.agents/skills/square_payments/SKILL.md`): Square API, stock reservation/release cycle, and webhook signature verification.
+- **`email-notifications`** (`.agents/skills/email_notifications/SKILL.md`): Transactional emails (Resend/Nodemailer), HTML templates, and cart recovery.
+- **`security-audit`** (`.agents/skills/security_audit/SKILL.md`): PostgreSQL RLS policies, secrets, and endpoint safety.
+- **`functional-testing`** (`.agents/skills/functional_testing/SKILL.md`): Sandbox endpoint, status codes, and routing assertions.
+- **`code-quality`** (`.agents/skills/code_quality/SKILL.md`): Clean code, TypeScript strictness, and N+1 query prevention.
+
 ## Regla Global: Despliegue / Push Automático
 - **Regla**: Tras aplicar y verificar con éxito cualquier cambio en el repositorio, realizar siempre de forma automática `git add`, `git commit` descriptivo y `git push origin main` al repositorio remoto.
