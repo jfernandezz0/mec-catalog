@@ -35,13 +35,18 @@ export default function SalesCreateTab({
   const [tpvPaymentType, setTpvPaymentType] = useState<SalePaymentType>('EFECTIVO');
   const [tpvCashGiven, setTpvCashGiven] = useState('');
   const [tpvBuyerPhone, setTpvBuyerPhone] = useState('');
+  const [tpvBuyerEmail, setTpvBuyerEmail] = useState('');
+  const [tpvDiscountType, setTpvDiscountType] = useState<'fixed' | 'percent'>('fixed');
+  const [tpvDiscountValue, setTpvDiscountValue] = useState('');
   const [tpvSearch, setTpvSearch] = useState('');
   const [showQrModal, setShowQrModal] = useState(false);
   const [tpvLastSale, setTpvLastSale] = useState<{
     orderNumber: string;
     total: number;
     phone: string;
+    email?: string;
     items: Array<{ title: string; price: number }>;
+    discount?: number;
   } | null>(null);
 
   // Detailed mode states
@@ -134,23 +139,44 @@ export default function SalesCreateTab({
       return;
     }
 
+    const subtotal = tpvCart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    const totalCount = tpvCart.reduce((sum, item) => sum + item.quantity, 0);
+
+    // Calculate manual discount
+    let discountAmount = 0;
+    const numDiscount = parseFloat(tpvDiscountValue) || 0;
+    if (numDiscount > 0) {
+      if (tpvDiscountType === 'fixed') {
+        discountAmount = Math.min(subtotal, Math.max(0, numDiscount));
+      } else {
+        const pct = Math.min(100, Math.max(0, numDiscount));
+        discountAmount = (subtotal * pct) / 100;
+      }
+    }
+    const finalTotal = Math.max(0, subtotal - discountAmount);
+
+    const cleanEmail = tpvBuyerEmail.trim();
+    if (cleanEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      alert('Por favor introduce un email válido (o déjalo en blanco si el cliente no desea facilitarlo).');
+      return;
+    }
+
+    const cleanPhone = tpvBuyerPhone.replace(/\D/g, '');
+    const fullPhone = cleanPhone ? (cleanPhone.startsWith('34') ? `+${cleanPhone}` : `+34${cleanPhone}`) : null;
+
     setRegisteringSale(true);
     try {
-      const totalAmount = tpvCart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-      const totalCount = tpvCart.reduce((sum, item) => sum + item.quantity, 0);
-
-      const cleanPhone = tpvBuyerPhone.replace(/\D/g, '');
-      const fullPhone = cleanPhone ? (cleanPhone.startsWith('34') ? `+${cleanPhone}` : `+34${cleanPhone}`) : null;
-
       // 1. Insert sale record
       const { data: saleData, error: saleError } = await supabase
         .from('sales')
         .insert({
           buyer_phone: fullPhone,
+          buyer_email: cleanEmail || null,
           receipt_whatsapp: fullPhone,
+          receipt_email: cleanEmail || null,
           location: tpvLocation.trim() || 'Feria / Evento presencial',
           payment_type: tpvPaymentType,
-          total_price: totalAmount,
+          total_price: finalTotal,
           total_articles: totalCount,
           status: 'COMPLETADA',
         })
@@ -191,15 +217,20 @@ export default function SalesCreateTab({
       const orderNum = saleData.order_number || `MEC-FERIA-${saleData.id.substring(0, 6).toUpperCase()}`;
       setTpvLastSale({
         orderNumber: orderNum,
-        total: totalAmount,
+        total: finalTotal,
         phone: fullPhone || '',
+        email: cleanEmail || '',
         items: tpvCart.map((i) => ({ title: i.article.title, price: i.price * i.quantity })),
+        discount: discountAmount > 0 ? discountAmount : 0,
       });
 
       // 5. Reset TPV
       setTpvCart([]);
       setTpvCashGiven('');
       setTpvBuyerPhone('');
+      setTpvBuyerEmail('');
+      setTpvDiscountValue('');
+      setTpvDiscountType('fixed');
       await loadArticles();
     } catch (err) {
       console.error('Error in TPV sale:', err);
@@ -447,10 +478,15 @@ export default function SalesCreateTab({
               <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
                 Pedido: <strong>{tpvLastSale.orderNumber}</strong> · Total:{' '}
                 <strong>{formatPrice(tpvLastSale.total)}</strong>
+                {tpvLastSale.discount ? (
+                  <span style={{ marginLeft: '8px', color: '#f59e0b', fontWeight: 700 }}>
+                    (Descuento: –{formatPrice(tpvLastSale.discount)})
+                  </span>
+                ) : null}
               </div>
 
-              {tpvLastSale.phone && (
-                <div style={{ display: 'flex', gap: '10px', marginTop: '6px' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '6px', alignItems: 'center' }}>
+                {tpvLastSale.phone ? (
                   <a
                     href={buildReceiptWhatsAppLink({
                       phone: tpvLastSale.phone,
@@ -458,6 +494,7 @@ export default function SalesCreateTab({
                       orderNumber: tpvLastSale.orderNumber,
                       items: tpvLastSale.items,
                       total: tpvLastSale.total,
+                      discount: tpvLastSale.discount,
                       shippingCost: 0,
                     })}
                     target="_blank"
@@ -478,8 +515,26 @@ export default function SalesCreateTab({
                   >
                     <span>📲 Enviar resguardo por WhatsApp</span>
                   </a>
-                </div>
-              )}
+                ) : (
+                  <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+                    🔒 Venta anónima (sin WhatsApp)
+                  </span>
+                )}
+
+                {tpvLastSale.email && (
+                  <span
+                    style={{
+                      fontSize: '13px',
+                      color: 'var(--text-secondary)',
+                      padding: '6px 10px',
+                      borderRadius: '8px',
+                      backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                    }}
+                  >
+                    ✉️ Email: <strong>{tpvLastSale.email}</strong>
+                  </span>
+                )}
+              </div>
             </div>
           )}
 
@@ -842,12 +897,26 @@ export default function SalesCreateTab({
                 )}
               </div>
 
-              {/* Total Display */}
+              {/* Total & Discount Display */}
               {(() => {
-                const total = tpvCart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+                const subtotal = tpvCart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
+                // Calculate manual discount
+                let discountAmount = 0;
+                const numDiscount = parseFloat(tpvDiscountValue) || 0;
+                if (numDiscount > 0) {
+                  if (tpvDiscountType === 'fixed') {
+                    discountAmount = Math.min(subtotal, Math.max(0, numDiscount));
+                  } else {
+                    const pct = Math.min(100, Math.max(0, numDiscount));
+                    discountAmount = (subtotal * pct) / 100;
+                  }
+                }
+                const finalTotal = Math.max(0, subtotal - discountAmount);
+
                 const cashGiven = parseFloat(tpvCashGiven) || 0;
-                const change = Math.max(0, cashGiven - total);
-                const revolutCents = Math.round(total * 100);
+                const change = Math.max(0, cashGiven - finalTotal);
+                const revolutCents = Math.round(finalTotal * 100);
                 const revolutUrl = `https://revolut.me/jfernandezz?currency=EUR&amount=${revolutCents}&note=${encodeURIComponent(
                   `MEC Feria ${tpvLocation}`
                 )}`;
@@ -855,23 +924,191 @@ export default function SalesCreateTab({
                   revolutUrl
                 )}`;
 
+                const handleDiscountInput = (val: string) => {
+                  if (val === '') {
+                    setTpvDiscountValue('');
+                    return;
+                  }
+                  const num = parseFloat(val);
+                  if (isNaN(num) || num < 0) {
+                    setTpvDiscountValue('0');
+                    return;
+                  }
+                  if (tpvDiscountType === 'percent') {
+                    if (num > 100) setTpvDiscountValue('100');
+                    else setTpvDiscountValue(val);
+                  } else {
+                    if (num > subtotal) setTpvDiscountValue(subtotal.toString());
+                    else setTpvDiscountValue(val);
+                  }
+                };
+
+                const switchDiscountType = (type: 'fixed' | 'percent') => {
+                  setTpvDiscountType(type);
+                  if (tpvDiscountValue !== '') {
+                    const num = parseFloat(tpvDiscountValue) || 0;
+                    if (type === 'percent' && num > 100) {
+                      setTpvDiscountValue('100');
+                    } else if (type === 'fixed' && num > subtotal) {
+                      setTpvDiscountValue(subtotal.toString());
+                    }
+                  }
+                };
+
                 return (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                    {/* Financial summary: Subtotal + Descuento Manual Admin + Total */}
                     <div
                       style={{
-                        padding: '14px 18px',
-                        borderRadius: '12px',
-                        backgroundColor: 'rgba(99, 102, 241, 0.08)',
+                        padding: '16px',
+                        borderRadius: '14px',
+                        backgroundColor: 'rgba(99, 102, 241, 0.05)',
                         border: '1px solid rgba(99, 102, 241, 0.2)',
                         display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
+                        flexDirection: 'column',
+                        gap: '10px',
                       }}
                     >
-                      <span style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-secondary)' }}>TOTAL:</span>
-                      <span style={{ fontSize: '28px', fontWeight: 900, color: '#10b981', fontFamily: 'monospace' }}>
-                        {formatPrice(total)}
-                      </span>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px' }}>
+                        <span style={{ color: 'var(--text-secondary)' }}>
+                          Subtotal artículos ({tpvCart.reduce((acc, it) => acc + it.quantity, 0)} uds.):
+                        </span>
+                        <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{formatPrice(subtotal)}</span>
+                      </div>
+
+                      {/* Campo Manual de Descuento (Admin) */}
+                      <div
+                        style={{
+                          padding: '10px 12px',
+                          borderRadius: '10px',
+                          backgroundColor: 'var(--bg-page)',
+                          border: '1px solid var(--border-card)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '8px',
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: '12px', fontWeight: 800, color: '#f59e0b', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            🏷️ Descuento manual TPV (Admin)
+                          </span>
+                          {discountAmount > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => setTpvDiscountValue('')}
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                color: '#ef4444',
+                                fontSize: '11px',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                              }}
+                            >
+                              ✕ Quitar
+                            </button>
+                          )}
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          {/* Unit Selector (€ / %) */}
+                          <div style={{ display: 'flex', borderRadius: '6px', overflow: 'hidden', border: '1px solid var(--border-card)' }}>
+                            <button
+                              type="button"
+                              onClick={() => switchDiscountType('fixed')}
+                              style={{
+                                padding: '6px 10px',
+                                fontSize: '12px',
+                                fontWeight: 800,
+                                border: 'none',
+                                cursor: 'pointer',
+                                backgroundColor: tpvDiscountType === 'fixed' ? '#6366f1' : 'var(--bg-card)',
+                                color: tpvDiscountType === 'fixed' ? '#ffffff' : 'var(--text-secondary)',
+                              }}
+                            >
+                              €
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => switchDiscountType('percent')}
+                              style={{
+                                padding: '6px 10px',
+                                fontSize: '12px',
+                                fontWeight: 800,
+                                border: 'none',
+                                cursor: 'pointer',
+                                backgroundColor: tpvDiscountType === 'percent' ? '#6366f1' : 'var(--bg-card)',
+                                color: tpvDiscountType === 'percent' ? '#ffffff' : 'var(--text-secondary)',
+                              }}
+                            >
+                              %
+                            </button>
+                          </div>
+
+                          {/* Value Input */}
+                          <div style={{ flex: 1 }}>
+                            <input
+                              type="number"
+                              min="0"
+                              max={tpvDiscountType === 'percent' ? 100 : subtotal}
+                              step={tpvDiscountType === 'percent' ? 1 : 0.5}
+                              placeholder={tpvDiscountType === 'percent' ? 'Ej. 10 (máx 100%)' : `Ej. 5 (máx ${subtotal.toFixed(0)}€)`}
+                              value={tpvDiscountValue}
+                              onChange={(e) => handleDiscountInput(e.target.value)}
+                              disabled={subtotal === 0}
+                              style={{
+                                width: '100%',
+                                padding: '6px 10px',
+                                borderRadius: '6px',
+                                border: '1px solid var(--border-card)',
+                                backgroundColor: 'var(--bg-card)',
+                                color: 'var(--text-primary)',
+                                fontWeight: 700,
+                                fontSize: '13px',
+                              }}
+                            />
+                          </div>
+
+                          {/* Quick Chips */}
+                          <div style={{ display: 'flex', gap: '4px' }}>
+                            {tpvDiscountType === 'percent' ? (
+                              <>
+                                <button type="button" onClick={() => handleDiscountInput('5')} style={{ padding: '4px 6px', fontSize: '11px', borderRadius: '4px', border: '1px solid var(--border-card)', background: 'var(--bg-card)', color: 'var(--text-secondary)', cursor: 'pointer' }}>5%</button>
+                                <button type="button" onClick={() => handleDiscountInput('10')} style={{ padding: '4px 6px', fontSize: '11px', borderRadius: '4px', border: '1px solid var(--border-card)', background: 'var(--bg-card)', color: 'var(--text-secondary)', cursor: 'pointer' }}>10%</button>
+                                <button type="button" onClick={() => handleDiscountInput('20')} style={{ padding: '4px 6px', fontSize: '11px', borderRadius: '4px', border: '1px solid var(--border-card)', background: 'var(--bg-card)', color: 'var(--text-secondary)', cursor: 'pointer' }}>20%</button>
+                              </>
+                            ) : (
+                              <>
+                                <button type="button" onClick={() => handleDiscountInput('5')} style={{ padding: '4px 6px', fontSize: '11px', borderRadius: '4px', border: '1px solid var(--border-card)', background: 'var(--bg-card)', color: 'var(--text-secondary)', cursor: 'pointer' }}>5€</button>
+                                <button type="button" onClick={() => handleDiscountInput('10')} style={{ padding: '4px 6px', fontSize: '11px', borderRadius: '4px', border: '1px solid var(--border-card)', background: 'var(--bg-card)', color: 'var(--text-secondary)', cursor: 'pointer' }}>10€</button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+
+                        {discountAmount > 0 && (
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#f59e0b', fontWeight: 700, paddingTop: '2px' }}>
+                            <span>Descuento aplicado:</span>
+                            <span>–{formatPrice(discountAmount)} ({tpvDiscountType === 'percent' ? `${tpvDiscountValue}%` : subtotal > 0 ? `${((discountAmount / subtotal) * 100).toFixed(0)}%` : '0%'})</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Total final */}
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          paddingTop: '6px',
+                          borderTop: '1px dashed var(--border-card)',
+                        }}
+                      >
+                        <span style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)' }}>TOTAL A COBRAR:</span>
+                        <span style={{ fontSize: '28px', fontWeight: 900, color: '#10b981', fontFamily: 'monospace' }}>
+                          {formatPrice(finalTotal)}
+                        </span>
+                      </div>
                     </div>
 
                     {/* Payment Method Selector */}
@@ -944,7 +1181,7 @@ export default function SalesCreateTab({
                     </div>
 
                     {/* Cash change calculator if Efectivo */}
-                    {tpvPaymentType === 'EFECTIVO' && total > 0 && (
+                    {tpvPaymentType === 'EFECTIVO' && finalTotal > 0 && (
                       <div
                         style={{
                           padding: '12px',
@@ -977,8 +1214,8 @@ export default function SalesCreateTab({
                         {cashGiven > 0 && (
                           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', paddingTop: '4px', borderTop: '1px dashed var(--border-card)' }}>
                             <span style={{ fontWeight: 700, color: 'var(--text-secondary)' }}>Cambio a devolver:</span>
-                            <span style={{ fontWeight: 900, color: cashGiven >= total ? '#10b981' : '#ef4444' }}>
-                              {cashGiven >= total ? formatPrice(change) : 'Faltan ' + formatPrice(total - cashGiven)}
+                            <span style={{ fontWeight: 900, color: cashGiven >= finalTotal ? '#10b981' : '#ef4444' }}>
+                              {cashGiven >= finalTotal ? formatPrice(change) : 'Faltan ' + formatPrice(finalTotal - cashGiven)}
                             </span>
                           </div>
                         )}
@@ -986,7 +1223,7 @@ export default function SalesCreateTab({
                     )}
 
                     {/* QR Code for Bizum / Revolut */}
-                    {tpvPaymentType === 'BIZUM' && total > 0 && showQrModal && (
+                    {tpvPaymentType === 'BIZUM' && finalTotal > 0 && showQrModal && (
                       <div
                         style={{
                           padding: '16px',
@@ -1011,31 +1248,79 @@ export default function SalesCreateTab({
                           style={{ borderRadius: '8px' }}
                         />
                         <span style={{ fontSize: '12px', color: '#6b7280', fontWeight: 600 }}>
-                          Total preconfigurado: <strong>{formatPrice(total)}</strong>
+                          Total con descuento: <strong>{formatPrice(finalTotal)}</strong>
                         </span>
                       </div>
                     )}
 
-                    {/* Customer phone for WhatsApp receipt */}
-                    <div>
-                      <span style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>
-                        📱 Móvil del cliente (opcional para recibo WhatsApp):
+                    {/* Customer contact fields (100% optional for privacy) */}
+                    <div
+                      style={{
+                        padding: '12px 14px',
+                        borderRadius: '10px',
+                        backgroundColor: 'var(--bg-page)',
+                        border: '1px solid var(--border-card)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '10px',
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-secondary)' }}>
+                          👤 Datos del cliente (100% opcionales):
+                        </span>
+                        <span style={{ fontSize: '10px', color: '#10b981', backgroundColor: 'rgba(16, 185, 129, 0.1)', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>
+                          Privacidad protegida
+                        </span>
+                      </div>
+
+                      {/* Option 1: WhatsApp / Mobile */}
+                      <div>
+                        <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>
+                          📱 Opción 1: Teléfono / WhatsApp (para recibo digital):
+                        </label>
+                        <input
+                          type="tel"
+                          placeholder="600 000 000 (opcional)"
+                          value={tpvBuyerPhone}
+                          onChange={(e) => setTpvBuyerPhone(e.target.value)}
+                          style={{
+                            width: '100%',
+                            padding: '8px 12px',
+                            borderRadius: '6px',
+                            border: '1px solid var(--border-card)',
+                            backgroundColor: 'var(--bg-card)',
+                            color: 'var(--text-primary)',
+                            fontSize: '13px',
+                          }}
+                        />
+                      </div>
+
+                      {/* Option 2: Email */}
+                      <div>
+                        <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>
+                          ✉️ Opción 2: Correo electrónico (opcional):
+                        </label>
+                        <input
+                          type="email"
+                          placeholder="cliente@ejemplo.com (opcional)"
+                          value={tpvBuyerEmail}
+                          onChange={(e) => setTpvBuyerEmail(e.target.value)}
+                          style={{
+                            width: '100%',
+                            padding: '8px 12px',
+                            borderRadius: '6px',
+                            border: '1px solid var(--border-card)',
+                            backgroundColor: 'var(--bg-card)',
+                            color: 'var(--text-primary)',
+                            fontSize: '13px',
+                          }}
+                        />
+                      </div>
+
+                      <span style={{ fontSize: '11px', color: 'var(--text-tertiary)', fontStyle: 'italic', lineHeight: 1.3 }}>
+                        🔒 Si el cliente no desea facilitar datos personales por privacidad, puedes dejar ambos vacíos y la venta se registrará sin datos de contacto.
                       </span>
-                      <input
-                        type="tel"
-                        placeholder="600 000 000"
-                        value={tpvBuyerPhone}
-                        onChange={(e) => setTpvBuyerPhone(e.target.value)}
-                        style={{
-                          width: '100%',
-                          padding: '10px 12px',
-                          borderRadius: '8px',
-                          border: '1px solid var(--border-card)',
-                          backgroundColor: 'var(--bg-page)',
-                          color: 'var(--text-primary)',
-                          fontSize: '13px',
-                        }}
-                      />
                     </div>
 
                     {/* Checkout Button */}
@@ -1057,7 +1342,11 @@ export default function SalesCreateTab({
                         transition: 'all 0.2s',
                       }}
                     >
-                      {registeringSale ? '⏳ Registrando venta…' : `⚡ COBRAR Y DESCONTAR (${formatPrice(total)})`}
+                      {registeringSale
+                        ? '⏳ Registrando venta…'
+                        : discountAmount > 0
+                        ? `⚡ COBRAR (${formatPrice(finalTotal)}) [–${formatPrice(discountAmount)} dto.]`
+                        : `⚡ COBRAR Y DESCONTAR (${formatPrice(finalTotal)})`}
                     </button>
                   </div>
                 );

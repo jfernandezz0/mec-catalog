@@ -26,8 +26,9 @@ export function buildReceiptWhatsAppLink(params: {
   items: ReceiptItem[];
   total: number;
   shippingCost: number;
+  discount?: number;
 }): string {
-  const { phone, buyerName, orderNumber, items, total, shippingCost } = params;
+  const { phone, buyerName, orderNumber, items, total, shippingCost, discount } = params;
 
   const normalizedPhone = phone.replace(/\D/g, '');
   const subtotal = items.reduce((s, i) => s + i.price, 0);
@@ -39,7 +40,7 @@ export function buildReceiptWhatsAppLink(params: {
   const deliveryMethod = shippingCost === 0 ? 'Recogida en Taller' : 'Envío a domicilio';
   const deliveryCostLabel = shippingCost === 0 ? 'Gratis' : formatPrice(shippingCost);
 
-  const message = [
+  const messageLines = [
     `🏎️ *MiniEngines Creations — Resguardo de pedido*`,
     ``,
     `¡Hola ${buyerName}! Gracias por tu compra 🧡`,
@@ -50,6 +51,13 @@ export function buildReceiptWhatsAppLink(params: {
     itemLines,
     ``,
     `*Subtotal artículos:* ${formatPrice(subtotal)}`,
+  ];
+
+  if (discount && discount > 0) {
+    messageLines.push(`*Descuento especial:* -${formatPrice(discount)}`);
+  }
+
+  messageLines.push(
     `*Entrega:* ${deliveryMethod} (${deliveryCostLabel})`,
     `*Total cobrado:* ${formatPrice(total)}`,
     ``,
@@ -57,8 +65,8 @@ export function buildReceiptWhatsAppLink(params: {
       ? `📍 Nos pondremos en contacto contigo para coordinar la recogida en nuestro taller (León, ESP).`
       : `📦 El paquete será protegido con el máximo mimo y te contactaremos antes de enviarlo.`,
     ``,
-    `¡Hasta pronto! — Equipo MEC`,
-  ].join('\n');
+    `¡Hasta pronto! — Equipo MEC`
+  );
 
-  return `https://wa.me/${normalizedPhone}?text=${encodeURIComponent(message)}`;
+  return `https://wa.me/${normalizedPhone}?text=${encodeURIComponent(messageLines.join('\n'))}`;
 }
