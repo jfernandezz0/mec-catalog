@@ -38,6 +38,7 @@ export default function SalesCreateTab({
   const [tpvBuyerEmail, setTpvBuyerEmail] = useState('');
   const [tpvDiscountType, setTpvDiscountType] = useState<'fixed' | 'percent'>('fixed');
   const [tpvDiscountValue, setTpvDiscountValue] = useState('');
+  const [tpvShowDiscount, setTpvShowDiscount] = useState(false);
   const [tpvSearch, setTpvSearch] = useState('');
   const [showQrModal, setShowQrModal] = useState(false);
   const [tpvLastSale, setTpvLastSale] = useState<{
@@ -231,6 +232,7 @@ export default function SalesCreateTab({
       setTpvBuyerEmail('');
       setTpvDiscountValue('');
       setTpvDiscountType('fixed');
+      setTpvShowDiscount(false);
       await loadArticles();
     } catch (err) {
       console.error('Error in TPV sale:', err);
@@ -976,123 +978,148 @@ export default function SalesCreateTab({
                         <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{formatPrice(subtotal)}</span>
                       </div>
 
-                      {/* Campo Manual de Descuento (Admin) */}
-                      <div
-                        style={{
-                          padding: '10px 12px',
-                          borderRadius: '10px',
-                          backgroundColor: 'var(--bg-page)',
-                          border: '1px solid var(--border-card)',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '8px',
-                        }}
-                      >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ fontSize: '12px', fontWeight: 800, color: '#f59e0b', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            🏷️ Descuento manual TPV (Admin)
-                          </span>
-                          {discountAmount > 0 && (
+                      {/* Campo Manual de Descuento (Expandible / Casual) */}
+                      {!tpvShowDiscount && discountAmount === 0 ? (
+                        <div style={{ display: 'flex', justifyContent: 'flex-start', paddingTop: '2px' }}>
+                          <button
+                            type="button"
+                            onClick={() => setTpvShowDiscount(true)}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              color: '#818cf8',
+                              fontSize: '12px',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              padding: '2px 0',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '5px',
+                              transition: 'opacity 0.2s',
+                            }}
+                          >
+                            <span>🏷️ + Aplicar descuento manual (opcional)</span>
+                          </button>
+                        </div>
+                      ) : (
+                        <div
+                          style={{
+                            padding: '10px 12px',
+                            borderRadius: '10px',
+                            backgroundColor: 'var(--bg-page)',
+                            border: '1px solid var(--border-card)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '8px',
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontSize: '12px', fontWeight: 800, color: '#f59e0b', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              🏷️ Descuento manual TPV (Admin)
+                            </span>
                             <button
                               type="button"
-                              onClick={() => setTpvDiscountValue('')}
+                              onClick={() => {
+                                setTpvDiscountValue('');
+                                setTpvShowDiscount(false);
+                              }}
                               style={{
                                 background: 'none',
                                 border: 'none',
-                                color: '#ef4444',
+                                color: discountAmount > 0 ? '#ef4444' : 'var(--text-tertiary)',
                                 fontSize: '11px',
                                 fontWeight: 700,
                                 cursor: 'pointer',
                               }}
                             >
-                              ✕ Quitar
+                              {discountAmount > 0 ? '✕ Quitar' : '▴ Ocultar'}
                             </button>
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            {/* Unit Selector (€ / %) */}
+                            <div style={{ display: 'flex', borderRadius: '6px', overflow: 'hidden', border: '1px solid var(--border-card)' }}>
+                              <button
+                                type="button"
+                                onClick={() => switchDiscountType('fixed')}
+                                style={{
+                                  padding: '6px 10px',
+                                  fontSize: '12px',
+                                  fontWeight: 800,
+                                  border: 'none',
+                                  cursor: 'pointer',
+                                  backgroundColor: tpvDiscountType === 'fixed' ? '#6366f1' : 'var(--bg-card)',
+                                  color: tpvDiscountType === 'fixed' ? '#ffffff' : 'var(--text-secondary)',
+                                }}
+                              >
+                                €
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => switchDiscountType('percent')}
+                                style={{
+                                  padding: '6px 10px',
+                                  fontSize: '12px',
+                                  fontWeight: 800,
+                                  border: 'none',
+                                  cursor: 'pointer',
+                                  backgroundColor: tpvDiscountType === 'percent' ? '#6366f1' : 'var(--bg-card)',
+                                  color: tpvDiscountType === 'percent' ? '#ffffff' : 'var(--text-secondary)',
+                                }}
+                              >
+                                %
+                              </button>
+                            </div>
+
+                            {/* Value Input */}
+                            <div style={{ flex: 1 }}>
+                              <input
+                                type="number"
+                                min="0"
+                                max={tpvDiscountType === 'percent' ? 100 : subtotal}
+                                step={tpvDiscountType === 'percent' ? 1 : 0.5}
+                                placeholder={tpvDiscountType === 'percent' ? 'Ej. 10 (máx 100%)' : `Ej. 5 (máx ${subtotal.toFixed(0)}€)`}
+                                value={tpvDiscountValue}
+                                onChange={(e) => handleDiscountInput(e.target.value)}
+                                disabled={subtotal === 0}
+                                style={{
+                                  width: '100%',
+                                  padding: '6px 10px',
+                                  borderRadius: '6px',
+                                  border: '1px solid var(--border-card)',
+                                  backgroundColor: 'var(--bg-card)',
+                                  color: 'var(--text-primary)',
+                                  fontWeight: 700,
+                                  fontSize: '13px',
+                                }}
+                              />
+                            </div>
+
+                            {/* Quick Chips */}
+                            <div style={{ display: 'flex', gap: '4px' }}>
+                              {tpvDiscountType === 'percent' ? (
+                                <>
+                                  <button type="button" onClick={() => handleDiscountInput('5')} style={{ padding: '4px 6px', fontSize: '11px', borderRadius: '4px', border: '1px solid var(--border-card)', background: 'var(--bg-card)', color: 'var(--text-secondary)', cursor: 'pointer' }}>5%</button>
+                                  <button type="button" onClick={() => handleDiscountInput('10')} style={{ padding: '4px 6px', fontSize: '11px', borderRadius: '4px', border: '1px solid var(--border-card)', background: 'var(--bg-card)', color: 'var(--text-secondary)', cursor: 'pointer' }}>10%</button>
+                                  <button type="button" onClick={() => handleDiscountInput('20')} style={{ padding: '4px 6px', fontSize: '11px', borderRadius: '4px', border: '1px solid var(--border-card)', background: 'var(--bg-card)', color: 'var(--text-secondary)', cursor: 'pointer' }}>20%</button>
+                                </>
+                              ) : (
+                                <>
+                                  <button type="button" onClick={() => handleDiscountInput('5')} style={{ padding: '4px 6px', fontSize: '11px', borderRadius: '4px', border: '1px solid var(--border-card)', background: 'var(--bg-card)', color: 'var(--text-secondary)', cursor: 'pointer' }}>5€</button>
+                                  <button type="button" onClick={() => handleDiscountInput('10')} style={{ padding: '4px 6px', fontSize: '11px', borderRadius: '4px', border: '1px solid var(--border-card)', background: 'var(--bg-card)', color: 'var(--text-secondary)', cursor: 'pointer' }}>10€</button>
+                                </>
+                              )}
+                            </div>
+                          </div>
+
+                          {discountAmount > 0 && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#f59e0b', fontWeight: 700, paddingTop: '2px' }}>
+                              <span>Descuento aplicado:</span>
+                              <span>–{formatPrice(discountAmount)} ({tpvDiscountType === 'percent' ? `${tpvDiscountValue}%` : subtotal > 0 ? `${((discountAmount / subtotal) * 100).toFixed(0)}%` : '0%'})</span>
+                            </div>
                           )}
                         </div>
-
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          {/* Unit Selector (€ / %) */}
-                          <div style={{ display: 'flex', borderRadius: '6px', overflow: 'hidden', border: '1px solid var(--border-card)' }}>
-                            <button
-                              type="button"
-                              onClick={() => switchDiscountType('fixed')}
-                              style={{
-                                padding: '6px 10px',
-                                fontSize: '12px',
-                                fontWeight: 800,
-                                border: 'none',
-                                cursor: 'pointer',
-                                backgroundColor: tpvDiscountType === 'fixed' ? '#6366f1' : 'var(--bg-card)',
-                                color: tpvDiscountType === 'fixed' ? '#ffffff' : 'var(--text-secondary)',
-                              }}
-                            >
-                              €
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => switchDiscountType('percent')}
-                              style={{
-                                padding: '6px 10px',
-                                fontSize: '12px',
-                                fontWeight: 800,
-                                border: 'none',
-                                cursor: 'pointer',
-                                backgroundColor: tpvDiscountType === 'percent' ? '#6366f1' : 'var(--bg-card)',
-                                color: tpvDiscountType === 'percent' ? '#ffffff' : 'var(--text-secondary)',
-                              }}
-                            >
-                              %
-                            </button>
-                          </div>
-
-                          {/* Value Input */}
-                          <div style={{ flex: 1 }}>
-                            <input
-                              type="number"
-                              min="0"
-                              max={tpvDiscountType === 'percent' ? 100 : subtotal}
-                              step={tpvDiscountType === 'percent' ? 1 : 0.5}
-                              placeholder={tpvDiscountType === 'percent' ? 'Ej. 10 (máx 100%)' : `Ej. 5 (máx ${subtotal.toFixed(0)}€)`}
-                              value={tpvDiscountValue}
-                              onChange={(e) => handleDiscountInput(e.target.value)}
-                              disabled={subtotal === 0}
-                              style={{
-                                width: '100%',
-                                padding: '6px 10px',
-                                borderRadius: '6px',
-                                border: '1px solid var(--border-card)',
-                                backgroundColor: 'var(--bg-card)',
-                                color: 'var(--text-primary)',
-                                fontWeight: 700,
-                                fontSize: '13px',
-                              }}
-                            />
-                          </div>
-
-                          {/* Quick Chips */}
-                          <div style={{ display: 'flex', gap: '4px' }}>
-                            {tpvDiscountType === 'percent' ? (
-                              <>
-                                <button type="button" onClick={() => handleDiscountInput('5')} style={{ padding: '4px 6px', fontSize: '11px', borderRadius: '4px', border: '1px solid var(--border-card)', background: 'var(--bg-card)', color: 'var(--text-secondary)', cursor: 'pointer' }}>5%</button>
-                                <button type="button" onClick={() => handleDiscountInput('10')} style={{ padding: '4px 6px', fontSize: '11px', borderRadius: '4px', border: '1px solid var(--border-card)', background: 'var(--bg-card)', color: 'var(--text-secondary)', cursor: 'pointer' }}>10%</button>
-                                <button type="button" onClick={() => handleDiscountInput('20')} style={{ padding: '4px 6px', fontSize: '11px', borderRadius: '4px', border: '1px solid var(--border-card)', background: 'var(--bg-card)', color: 'var(--text-secondary)', cursor: 'pointer' }}>20%</button>
-                              </>
-                            ) : (
-                              <>
-                                <button type="button" onClick={() => handleDiscountInput('5')} style={{ padding: '4px 6px', fontSize: '11px', borderRadius: '4px', border: '1px solid var(--border-card)', background: 'var(--bg-card)', color: 'var(--text-secondary)', cursor: 'pointer' }}>5€</button>
-                                <button type="button" onClick={() => handleDiscountInput('10')} style={{ padding: '4px 6px', fontSize: '11px', borderRadius: '4px', border: '1px solid var(--border-card)', background: 'var(--bg-card)', color: 'var(--text-secondary)', cursor: 'pointer' }}>10€</button>
-                              </>
-                            )}
-                          </div>
-                        </div>
-
-                        {discountAmount > 0 && (
-                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#f59e0b', fontWeight: 700, paddingTop: '2px' }}>
-                            <span>Descuento aplicado:</span>
-                            <span>–{formatPrice(discountAmount)} ({tpvDiscountType === 'percent' ? `${tpvDiscountValue}%` : subtotal > 0 ? `${((discountAmount / subtotal) * 100).toFixed(0)}%` : '0%'})</span>
-                          </div>
-                        )}
-                      </div>
+                      )}
 
                       {/* Total final */}
                       <div
