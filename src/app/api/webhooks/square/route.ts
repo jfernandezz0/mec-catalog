@@ -137,7 +137,9 @@ export async function POST(request: NextRequest) {
 
       if (pending?.cart_items) {
         const ids = (pending.cart_items as { articleId: number }[]).map((i) => i.articleId);
-        await Promise.all(ids.map((id) => releaseStock(id)));
+        if (ids.length > 0) {
+          await releaseStock(ids);
+        }
       }
 
       if (pending) {

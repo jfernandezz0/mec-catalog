@@ -48,9 +48,11 @@ export async function reserveStock(articleId: number): Promise<boolean> {
 }
 
 /** Release a stock reservation (payment failed / user abandoned) */
-export async function releaseStock(articleId: number): Promise<void> {
+export async function releaseStock(articleIdOrIds: number | number[]): Promise<void> {
   const db = getSupabaseAdmin();
-  await db.from('articles').update({ reserved_until: null }).eq('id', articleId);
+  const ids = Array.isArray(articleIdOrIds) ? articleIdOrIds : [articleIdOrIds];
+  if (ids.length === 0) return;
+  await db.from('articles').update({ reserved_until: null }).in('id', ids);
 }
 
 /**
