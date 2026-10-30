@@ -34,7 +34,6 @@ export async function generateMetadata(
 
   if (!article || article.is_visible === false) return { title: 'Artículo | MiniEngines Creations' };
 
-  const ogImage = article.image_urls?.[0] ?? 'https://mec-catalog.vercel.app/logo.png';
   const price = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(Number(article.price));
   const description = article.description
     ? `${article.description} — ${price}`
@@ -52,20 +51,11 @@ export async function generateMetadata(
       url: `https://mec-catalog.vercel.app/article/${id}`,
       siteName: 'MiniEngines Creations',
       type: 'website',
-      images: [
-        {
-          url: ogImage,
-          width: 1200,
-          height: 630,
-          alt: article.title,
-        },
-      ],
     },
     twitter: {
       card: 'summary_large_image',
       title: article.title,
       description,
-      images: [ogImage],
     },
   };
 }
