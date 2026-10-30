@@ -514,6 +514,14 @@ export default function CheckoutPage() {
     if (!buyer.email.trim()) e.email = 'El email es obligatorio';
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(buyer.email))
       e.email = 'Introduce un email válido';
+
+    const digitsOnly = buyer.whatsapp.replace(/\D/g, '');
+    if (!buyer.whatsapp.trim() || digitsOnly === '' || digitsOnly === '34') {
+      e.whatsapp = 'El número de móvil es obligatorio para tramitar el pedido';
+    } else if (digitsOnly.startsWith('34') ? digitsOnly.length < 11 : digitsOnly.length < 9) {
+      e.whatsapp = 'Introduce un número de móvil válido (mínimo 9 dígitos)';
+    }
+
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -977,12 +985,34 @@ export default function CheckoutPage() {
               type="email"
             />
             <Field
-              label="WhatsApp (opcional)"
+              label="Móvil *"
               value={buyer.whatsapp}
               onChange={(v) => setBuyer((b) => ({ ...b, whatsapp: v }))}
+              error={errors.whatsapp}
               placeholder="+34 612 345 678"
-              hint="Si lo rellenas, te enviaremos también el resguardo por WhatsApp."
             />
+
+            <div
+              style={{
+                display: 'flex',
+                gap: '10px',
+                alignItems: 'flex-start',
+                padding: '12px 14px',
+                borderRadius: '10px',
+                backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+                fontSize: '12px',
+                color: 'var(--text-secondary)',
+                lineHeight: 1.5,
+                marginTop: '8px',
+                marginBottom: '20px',
+              }}
+            >
+              <span style={{ fontSize: '15px', lineHeight: 1.2 }}>🔒</span>
+              <span>
+                La información proporcionada, se usará unicamente para gestionar la reserva, envío y comunicaciones desde taller o transportista, no se registra antes del pago y NUNCA recibirás publicidad de terceros por nuestra culpa. Seremos pobres, pero tenemos alma.
+              </span>
+            </div>
 
             <NavButtons onBack={goBack} onNext={goNext} nextLabel="Continuar" />
           </div>
@@ -1137,6 +1167,28 @@ export default function CheckoutPage() {
                 ✅ <strong>Excelente elección.</strong> Evitas riesgos de roturas en el transporte y gastos de envío. Coordinaremos contigo la recogida en León (ESP) en cuanto confirmes el pago.
               </div>
             )}
+
+            <div
+              style={{
+                display: 'flex',
+                gap: '10px',
+                alignItems: 'flex-start',
+                padding: '12px 14px',
+                borderRadius: '10px',
+                backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+                fontSize: '12px',
+                color: 'var(--text-secondary)',
+                lineHeight: 1.5,
+                marginTop: '16px',
+                marginBottom: '20px',
+              }}
+            >
+              <span style={{ fontSize: '15px', lineHeight: 1.2 }}>🔒</span>
+              <span>
+                La información proporcionada, se usará unicamente para gestionar la reserva, envío y comunicaciones desde taller o transportista, no se registra antes del pago y NUNCA recibirás publicidad de terceros por nuestra culpa. Seremos pobres, pero tenemos alma.
+              </span>
+            </div>
 
             <NavButtons onBack={goBack} onNext={goNext} nextLabel="Ir al pago" />
           </div>
