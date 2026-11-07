@@ -10,11 +10,9 @@ import styles from './article.module.css';
 import { getMECLogo } from '@/lib/utils.server';
 import { formatPrice } from '@/lib/utils';
 import { Category, Article } from '@/lib/types';
-
+import { calculateDiscount } from '@/lib/discounts';
 
 export const revalidate = 60;
-
-import { calculateDiscount } from '@/lib/discounts';
 
 
 

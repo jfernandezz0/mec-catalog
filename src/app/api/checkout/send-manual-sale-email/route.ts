@@ -6,8 +6,9 @@ import type { ShippingAddress } from '@/lib/types';
 export async function POST(request: NextRequest) {
   try {
     const { saleId } = await request.json();
-    if (!saleId) {
-      return NextResponse.json({ error: 'saleId is required' }, { status: 400 });
+    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!saleId || typeof saleId !== 'string' || !UUID_REGEX.test(saleId)) {
+      return NextResponse.json({ error: 'Valid UUID saleId is required' }, { status: 400 });
     }
 
     const db = getSupabaseAdmin();

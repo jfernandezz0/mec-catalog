@@ -42,8 +42,8 @@ async function isTokenValid(token: string): Promise<boolean> {
       return user && user.email === ADMIN_EMAIL;
     }
 
-    // Fallback if env vars are unavailable (e.g. build time)
-    return payload.email === ADMIN_EMAIL;
+    // Fail closed if cryptographic verification cannot be completed
+    return false;
   } catch (e) {
     console.error('Error parsing token in proxy:', e);
   }

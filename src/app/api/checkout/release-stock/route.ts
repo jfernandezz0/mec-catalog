@@ -4,16 +4,25 @@ import { getSupabaseAdmin } from '@/lib/supabase';
 export async function POST(request: NextRequest) {
   const db = getSupabaseAdmin();
   try {
-    const { articleIds } = await request.json() as { articleIds: number[] };
+    const raw = (await request.json()) as { articleIds?: unknown };
+    const articleIds = Array.isArray(raw?.articleIds) ? raw.articleIds : [];
 
-    if (!Array.isArray(articleIds) || articleIds.length === 0) {
-      return NextResponse.json({ error: 'articleIds required' }, { status: 400 });
+    const sanitizedIds = Array.from(
+      new Set(
+        articleIds
+          .map(Number)
+          .filter((id) => Number.isInteger(id) && id > 0)
+      )
+    ).slice(0, 50);
+
+    if (sanitizedIds.length === 0) {
+      return NextResponse.json({ error: 'Valid articleIds array required (max 50)' }, { status: 400 });
     }
 
     const { error } = await db
       .from('articles')
       .update({ reserved_until: null })
-      .in('id', articleIds);
+      .in('id', sanitizedIds);
 
     if (error) {
       throw error;

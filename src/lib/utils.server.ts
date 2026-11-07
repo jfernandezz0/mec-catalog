@@ -1,16 +1,24 @@
 import fs from 'fs';
 import path from 'path';
+import { cache } from 'react';
+import type { NextRequest } from 'next/server';
+import { createClient, type User } from '@supabase/supabase-js';
 import { supabase } from './supabase';
+
+const logoCache = new Map<string, string>();
 
 /**
  * Returns the path to the custom MEC country logo for a given country code,
  * or the default fallback /logo_mini.png if no custom logo exists.
- * Files are checked first locally in public, and if not found, in Supabase Storage.
+ * Local packaged assets are checked first for 0ms latency, falling back to Supabase Storage.
  */
-export async function getMECLogo(countryCode: string): Promise<string> {
+export const getMECLogo = cache(async (countryCode: string): Promise<string> => {
   if (!countryCode) return '/logo_mini.png';
 
   const code = countryCode.toUpperCase().trim();
+  if (logoCache.has(code)) {
+    return logoCache.get(code)!;
+  }
 
   // Mapping aliases (e.g. JAP -> JP, FRA -> FR) to standard files
   const aliases: Record<string, string> = {
@@ -24,7 +32,25 @@ export async function getMECLogo(countryCode: string): Promise<string> {
   const fileNameWebP = `MEC_${targetCode}.webp`;
   const fileNamePng = `MEC_${targetCode}.png`;
 
-  // 1. Check Supabase Storage first to allow dynamic admin overrides
+  // 1. Fast local check in public directory (0ms latency for bundled logos)
+  try {
+    const filePathWebP = path.join(process.cwd(), 'public', fileNameWebP);
+    if (fs.existsSync(filePathWebP)) {
+      const result = `/${fileNameWebP}`;
+      logoCache.set(code, result);
+      return result;
+    }
+    const filePathPng = path.join(process.cwd(), 'public', fileNamePng);
+    if (fs.existsSync(filePathPng)) {
+      const result = `/${fileNamePng}`;
+      logoCache.set(code, result);
+      return result;
+    }
+  } catch (err) {
+    console.error(`Error checking local logo file for country ${code}:`, err);
+  }
+
+  // 2. Check Supabase Storage for dynamic admin-uploaded custom overrides
   try {
     const { data, error } = await supabase.storage
       .from('product-images')
@@ -39,6 +65,7 @@ export async function getMECLogo(countryCode: string): Promise<string> {
         const { data: urlData } = supabase.storage
           .from('product-images')
           .getPublicUrl(`logos/${matchWebP.name}`);
+        logoCache.set(code, urlData.publicUrl);
         return urlData.publicUrl;
       }
       const matchPng = data.find((f) => f.name.toLowerCase() === fileNamePng.toLowerCase());
@@ -46,6 +73,7 @@ export async function getMECLogo(countryCode: string): Promise<string> {
         const { data: urlData } = supabase.storage
           .from('product-images')
           .getPublicUrl(`logos/${matchPng.name}`);
+        logoCache.set(code, urlData.publicUrl);
         return urlData.publicUrl;
       }
     }
@@ -53,26 +81,11 @@ export async function getMECLogo(countryCode: string): Promise<string> {
     console.error(`Error checking Supabase Storage for country ${code}:`, err);
   }
 
-  // 2. Fallback check in local directory
-  try {
-    const filePathWebP = path.join(process.cwd(), 'public', fileNameWebP);
-    if (fs.existsSync(filePathWebP)) {
-      return `/${fileNameWebP}`;
-    }
-    const filePathPng = path.join(process.cwd(), 'public', fileNamePng);
-    if (fs.existsSync(filePathPng)) {
-      return `/${fileNamePng}`;
-    }
-  } catch (err) {
-    console.error(`Error checking local logo file for country ${code}:`, err);
-  }
-
-  // Fallback to the mini logo as requested
-  return '/logo_mini.png';
-}
-
-import type { NextRequest } from 'next/server';
-import { createClient, type User } from '@supabase/supabase-js';
+  // Fallback to the mini logo as default
+  const fallback = '/logo_mini.png';
+  logoCache.set(code, fallback);
+  return fallback;
+});
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'minienginescreations@gmail.com';
 
